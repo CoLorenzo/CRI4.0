@@ -196,6 +196,7 @@ function makeLabConfFile(netkit, lab) {
     lab.file["lab.conf"] += `${machineName}[bridged]=true\n`;
 
     // image per tipo
+if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
 if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }

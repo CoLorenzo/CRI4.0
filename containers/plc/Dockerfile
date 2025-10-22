@@ -18,7 +18,11 @@ RUN apt update && \
 #install OpenPLC-CLI
 RUN apt update && \
     apt install -y pipx && \
-    pipx install git+https://github.com/CoLorenzo/openplc-cli.git
+    pipx install git+https://github.com/CoLorenzo/openplc-cli.git@2c9e81617a86b5402c79f9ba15ff5eb0e45bd9f8
 
 #install iproute2
 RUN apt update && apt install -y iproute2
+
+#install supervisord
+RUN apt update && apt install -y supervisor
+COPY ./supervisord.conf /etc/supervisor/supervisord.conf

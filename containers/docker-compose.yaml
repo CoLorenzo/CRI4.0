@@ -4,9 +4,9 @@ services:
     build: ./collector
     image: icr/collector
     ports:
-      - "3100:3100"
-    profiles: [collector]
-
+      - 3100:3100
+    profiles:
+      - collector
   collector-db:
     build: ./collector/db
     image: icr/collector-db
@@ -24,9 +24,8 @@ services:
     image: icr/mitm-arp-spoofing
     cap_add:
       - NET_ADMIN
-    profiles: [kali]
-
-
+    profiles:
+      - kali
   Reconnaissance-arp-scanning:
     build: ./Reconnaissance/arp-scanning
     image: icr/reconnaissance-arp-scanning
@@ -34,7 +33,6 @@ services:
       - NET_ADMIN
     profiles:
       - kali
-
   Reconnaissance-icmp-scanning:
     build: ./Reconnaissance/ICMP-scanning
     image: icr/reconnaissance-icmp-scanning
@@ -42,7 +40,6 @@ services:
       - NET_ADMIN
     profiles:
       - kali
-
   Reconnaissance-port-scanning:
     build: ./Reconnaissance/port-scanning
     image: icr/reconnaissance-port-scanning
@@ -50,7 +47,6 @@ services:
       - NET_ADMIN
     profiles:
       - kali
-
   Reconnaissance-os-fingerprint:
     build: ./Reconnaissance/os-fingerprinting
     image: icr/reconnaissance-os-fingerprint
@@ -58,7 +54,6 @@ services:
       - NET_ADMIN
     profiles:
       - kali
-
   Reconnaissance-service-enumeration:
     build: ./Reconnaissance/service-enumeration
     image: icr/reconnaissance-service-enumeration
@@ -66,8 +61,6 @@ services:
       - NET_ADMIN
     profiles:
       - kali
-
-
   dos-modbustcp-flood:
     build: ./dos/modbustcp-flood
     image: icr/dos-modbustcp-flood
@@ -75,115 +68,108 @@ services:
       - NET_ADMIN
     profiles:
       - kali
-
   dos-icmp-flood:
     build: ./dos/icmp-flood
     image: icr/dos-icmp-flood
     cap_add:
       - NET_ADMIN
-    profiles: [kali]
-
-
-
+    profiles:
+      - kali
   dos-syn-flood:
     build: ./dos/syn-flood
     image: icr/dos-syn-flood
     cap_add:
       - NET_ADMIN
-    profiles: [kali]
-
+    profiles:
+      - kali
   dos-udp-flood:
     build: ./dos/udp-flood
     image: icr/dos-udp-flood
     cap_add:
       - NET_ADMIN
-    profiles: [kali]
-
+    profiles:
+      - kali
   dos-icmp-floodlite:
     build: ./dos/icmp-flood
     image: icr/dos-icmp-floodlite
     cap_add:
       - NET_ADMIN
-    profiles: [kali]
-
+    profiles:
+      - kali
   dos-syn-floodlite:
     build: ./dos/syn-flood
     image: icr/dos-syn-floodlite
     cap_add:
       - NET_ADMIN
-    profiles: [kali]
-
+    profiles:
+      - kali
   dos-udp-floodlite:
     build: ./dos/udp-flood
     image: icr/dos-udp-floodlite
     cap_add:
       - NET_ADMIN
-    profiles: [kali]
-
+    profiles:
+      - kali
   ping-icmp-ping:
     build: ./PING/icmp-ping
     image: icr/ping-icmp-ping
     cap_add:
       - NET_ADMIN
-    profiles: [kali]
-
+    profiles:
+      - kali
   ping-syn-ping:
     build: ./PING/syn-ping
     image: icr/ping-syn-ping
     cap_add:
       - NET_ADMIN
-    profiles: [kali]
-
+    profiles:
+      - kali
   ping-udp-ping:
     build: ./PING/udp-ping
     image: icr/ping-udp-ping
     cap_add:
       - NET_ADMIN
-    profiles: [kali]
-
+    profiles:
+      - kali
   ping-icmp-pinglite:
     build: ./PING/icmp-ping
     image: icr/ping-icmp-pinglite
     cap_add:
       - NET_ADMIN
-    profiles: [kali]
-
+    profiles:
+      - kali
   ping-syn-pinglite:
     build: ./PING/syn-ping
     image: icr/ping-syn-pinglite
     cap_add:
       - NET_ADMIN
-    profiles: [kali]
-
+    profiles:
+      - kali
   ping-udp-pinglite:
     build: ./PING/udp-ping
     image: icr/ping-udp-pinglite
     cap_add:
       - NET_ADMIN
-    profiles: [kali]
+    profiles:
+      - kali
   apg:
     build: ./apg
     image: icr/apg
-
   conveyor:
     build: ./conveyor
     image: icr/conveyor
-
   laser:
     build: ./laser
     image: icr/laser
-
   plc:
     build: ./plc
     image: icr/plc
-
   rejector:
     build: ./rejector
     image: icr/rejector
-
   scada:
     build: ./scada
     image: icr/scada
-  
-  
-
+  tls_termination_proxy:
+    build: ./tls_termination_proxy
+    image: icr/tls_termination_proxy
