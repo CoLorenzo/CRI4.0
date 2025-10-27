@@ -546,7 +546,7 @@ function makeStaticRouting(netkit, lab){
 				}
 			}
 
-			lab.file[machine.name + ".startup"] += "ip address add "+ availableIPs.shift() + "/" + availableSubnet.split("/")[1] +" dev eth" + (machine.interfaces.if[machine.interfaces.if.length - 1].eth.number + 1) +"\n";
+			lab.file[machine.name + ".startup"] += "ip address add "+ availableIPs.shift() + "/" + availableSubnet.split("/")[1] +" dev eth" + (machine.interfaces.if[machine.interfaces.if.length - 1].eth.number + 2) +"\n";
 			if (machine.name != "attacker")
 				lab.file[machine.name + ".startup"] += "COLLECTOR_HOST="+ collector_host +" /bin/bash /root/collector_client.sh &\n";
 
