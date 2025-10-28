@@ -81,7 +81,36 @@ function makeStartupFiles(netkit, lab) {
       }
       const body = (userScript || "").trim();
   
-      lab.file[`${machineName}.startup`] = header + ipSetup + (body ? body + "\n\n" : "");
+      if (machine.type === "tls_termination_proxy") {
+        const { in_addr = "0.0.0.0:50000", out_addr = "10.0.0.2:50001", verify = "0" } = machine.tls || {};
+        const tlsScript = `
+cd /etc/stunnel
+mkcert -cert-file server.crt -key-file server.key "localhost" "127.0.0.1" $(hostname -I)
+
+tee /etc/stunnel/stunnel.conf << __EOF__
+cert = /etc/stunnel/server.crt
+key  = /etc/stunnel/server.key
+CAfile = $(mkcert -CAROOT)/rootCA.pem
+
+verify = ${verify}
+sslVersion = TLSv1.2
+options = NO_SSLv2
+options = NO_SSLv3
+options = NO_COMPRESSION
+pid = /var/run/stunnel.pid
+foreground = no
+
+[section]
+accept = ${in_addr}
+connect = ${out_addr}
+__EOF__
+
+stunnel
+`;
+        lab.file[`${machineName}.startup`] = header + ipSetup + tlsScript;
+      } else {
+        lab.file[`${machineName}.startup`] = header + ipSetup + (body ? body + "\n\n" : "");
+      }
     }}
 
 /* -------------------- LAB CONF -------------------- */
