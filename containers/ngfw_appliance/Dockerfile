@@ -5,7 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Update and install base deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    jq iproute2 ipcalc wget sed curl suricata tar git pipx gpg sendmail\
+    jq iproute2 ipcalc wget sed curl suricata tar git pipx gpg sendmail nmap\
     && rm -rf /var/lib/apt/lists/*
 
 

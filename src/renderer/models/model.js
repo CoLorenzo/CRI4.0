@@ -68,6 +68,11 @@ export const backboneModel = {
     topology: true,
     custom: "",
   },
+  tls: {
+    in_addr: "0.0.0.0:50000",
+    out_addr: "10.0.0.2:50001",
+    verify: "0",
+  },
   routing: {
     rip: {
       en: false,

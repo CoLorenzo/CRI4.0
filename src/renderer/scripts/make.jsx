@@ -32,6 +32,7 @@ function makeStartupFiles(netkit, lab) {
 	lab.file["collector.startup"] = "";
 	lab.file["collectordb.startup"] = "";
 	for (let machine of netkit) {
+if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
 if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
@@ -81,6 +82,7 @@ function makeLabConfFile(netkit, lab) {
 	lab.file["lab.conf"] += "collectordb[image]=icr/collector-db\n";
 
 	for (let machine of netkit) {
+if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
 if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
@@ -131,6 +133,7 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 // TODO: Metti a fattor comune:
 /*
 	for (let machine of netkit) {
+if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
 if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
@@ -141,6 +144,7 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 */
 function makeTerminal(netkit, lab) {
 	for (let machine of netkit) {
+if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
 if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
@@ -156,6 +160,7 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 
 function makeAttacker(netkit, lab) {
 	for (let machine of netkit) {
+if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
 if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
@@ -480,6 +485,7 @@ function makeBgpConfQuagga(router, lab) {
 
 function makeWebserver(netkit, lab) {
 	for (let machine of netkit) {
+if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
 if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
@@ -540,7 +546,7 @@ function makeStaticRouting(netkit, lab){
 				}
 			}
 
-			lab.file[machine.name + ".startup"] += "ip address add "+ availableIPs.shift() + "/" + availableSubnet.split("/")[1] +" dev eth" + (machine.interfaces.if[machine.interfaces.if.length - 1].eth.number + 1) +"\n";
+			lab.file[machine.name + ".startup"] += "ip address add "+ availableIPs.shift() + "/" + availableSubnet.split("/")[1] +" dev eth" + (machine.interfaces.if[machine.interfaces.if.length - 1].eth.number + 2) +"\n";
 			if (machine.name != "attacker")
 				lab.file[machine.name + ".startup"] += "COLLECTOR_HOST="+ collector_host +" /bin/bash /root/collector_client.sh &\n";
 
@@ -563,6 +569,7 @@ function makeStaticRouting(netkit, lab){
 
 function makeOther(netkit, lab) {
 	for (let machine of netkit) {
+if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
 if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
@@ -590,6 +597,7 @@ function makeNameserver(netkit, lab) {
 
 	// generazione file e cartelle comuni
 	for (let machine of netkit) {
+if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
 if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
@@ -616,6 +624,7 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 	//db.root in ogni macchina dns
 	if (nsroot) {
 		for (let machine of netkit) {
+if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
 if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
@@ -640,6 +649,7 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 		}
 		//entry in db.zona e named.conf per le altre macchine
 		for (let machine of netkit) {
+if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
 if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
@@ -656,6 +666,7 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 		}
 		//entry per l'alberatura delle zone (. conosce .com, .com conosce pippo.com, ecc)
 		for (let machine of netkit) {
+if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
 if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
@@ -729,6 +740,7 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 
 function makeOVSwitch(netkit, lab) {
 	for (let machine of netkit) {
+if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
 if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
@@ -758,6 +770,7 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 function makeRyuController(netkit, lab) {
 	let isSDN = false;
 	for (let machine of netkit) {
+if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
 if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }

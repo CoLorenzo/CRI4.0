@@ -14,6 +14,7 @@ import { RouterFunctions } from "./RouterFunctions/RouterFunctions";
 import { WebServerFunctions } from "./WebServerFunctions";
 import { OpenFlowRyu } from "./OpenFlowRyu";
 import { OtherFunctions } from "./OtherFunctions";
+import { TlsTerminationProxyFunctions } from "./TlsTerminationProxyFunctions";
 
 export function AdditionalFunctions({machine, machines, setMachines}) {
     return (
@@ -53,6 +54,12 @@ export function AdditionalFunctions({machine, machines, setMachines}) {
                     />
                 case "other":
                     return <OtherFunctions
+                        machine={machine}
+                        machines={machines}
+                        setMachines={setMachines}
+                    />
+                case 'tls_termination_proxy':
+                    return <TlsTerminationProxyFunctions
                         machine={machine}
                         machines={machines}
                         setMachines={setMachines}

@@ -41,72 +41,77 @@ function makeStartupFiles(netkit, lab) {
   lab.file["collector.startup"] = "";
   lab.file["collector.startup"] = "";
   lab.file["collectordb.startup"] = "";
-  let ipCounter = 1;
-  for (let machine of netkit) {
-    const rawName = machine.type === "attacker" ? "attacker" : machine.name;
-    const machineName = String(rawName || "node").replace(/[^\w.-]/g, "_");
-
-    // prendi lo script dal nuovo campo, fallback al vecchio
-    const userScript =
-      (machine.scripts && typeof machine.scripts.startup === "string"
-        ? machine.scripts.startup
-        : "") ||
-      (machine.interfaces && typeof machine.interfaces.free === "string"
-        ? machine.interfaces.free
-        : "");
-
-    // header sicuro
-    let header = "#!/bin/bash\nset -euo pipefail\n\n";
-    let ipSetup = "";
-    // Collector escluso, assegna IP incrementale su eth1
-    if (machineName !== "collector") {
-      ipSetup = `ip addr add 20.0.0.${ipCounter}/24 dev eth1\nip link set eth1 up\n`;
-      ipCounter++;
-    }
-    const body = (userScript || "").trim();
-
-    // Per tutte le macchine (tranne collector) aggiungiamo la configurazione di rete
-    // usando l'IP ricavato da machine.interfaces.if[...] (prima interfaccia con ip non vuoto).
-    // Se non troviamo IP, usiamo un fallback.
-    let netcfg = "";
-    if (machine.type !== "collector") {
-      // ricava ip dalla prima interfaccia definita con ip
-      let ipRaw = "";
-      try {
-        if (machine.interfaces && Array.isArray(machine.interfaces.if)) {
-          const ipEntry = machine.interfaces.if.find((iface) => {
-            return iface && typeof iface.ip === "string" && iface.ip.trim() !== "";
-          });
-          if (ipEntry) {
-            ipRaw = String(ipEntry.ip).trim();
+      let collectorIpCounter = 1; // New counter for 20.0.0.X subnet
+    for (let machine of netkit) {
+      const rawName = machine.type === "attacker" ? "attacker" : machine.name;
+      const machineName = String(rawName || "node").replace(/[^\w.-]/g, "_");
+  
+      // prendi lo script dal nuovo campo, fallback al vecchio
+      const userScript =
+        (machine.scripts && typeof machine.scripts.startup === "string"
+          ? machine.scripts.startup
+          : "") ||
+        (machine.interfaces && typeof machine.interfaces.free === "string"
+          ? machine.interfaces.free
+          : "");
+  
+      // header sicuro
+      let header = "#!/bin/bash\nset -euo pipefail\n\n";
+      let ipSetup = "";
+  
+      // Assign IP to eth0 from 20.0.0.0/24 subnet
+      let eth0Ip;
+      if (machineName === "collector") {
+        eth0Ip = "20.0.0.254/24"; // Dedicated IP for the collector
+      } else {
+        eth0Ip = `20.0.0.${collectorIpCounter}/24`;
+        collectorIpCounter++;
+      }
+      ipSetup += `ip addr add ${eth0Ip} dev eth0\nip link set eth0 up\n`;
+  
+      // Assign IPs to eth1 and subsequent interfaces from frontend
+      if (machine.interfaces && Array.isArray(machine.interfaces.if)) {
+        for (const iface of machine.interfaces.if) {
+          if (iface && iface.eth && iface.eth.number >= 1 && typeof iface.ip === "string" && iface.ip.trim() !== "") {
+            const interfaceNumber = iface.eth.number;
+            const ipAddress = String(iface.ip).trim();
+            ipSetup += `ip addr add ${ipAddress} dev eth${interfaceNumber}\nip link set eth${interfaceNumber} up\n`;
           }
         }
-      } catch (e) {
-        // ignore e fallback più sotto
       }
+      const body = (userScript || "").trim();
+  
+      if (machine.type === "tls_termination_proxy") {
+        const { in_addr = "0.0.0.0:50000", out_addr = "10.0.0.2:50001", verify = "0" } = machine.tls || {};
+        const tlsScript = `
+cd /etc/stunnel
+mkcert -cert-file server.crt -key-file server.key "localhost" "127.0.0.1" $(hostname -I)
 
-      // fallback statico se non troviamo nulla
-      const finalIp = ipRaw && ipRaw.length > 0 ? ipRaw : "192.168.10.100/24";
+tee /etc/stunnel/stunnel.conf << __EOF__
+cert = /etc/stunnel/server.crt
+key  = /etc/stunnel/server.key
+CAfile = $(mkcert -CAROOT)/rootCA.pem
 
-      netcfg = `
-# Configurazione rete aggiunta automaticamente (saltata per collector)
-# Usato per macchina: ${machineName}
-# Indirizzo IP selezionato: ${finalIp}
-ip addr add "${finalIp}" dev eth0
-ip link set eth0 up
+verify = ${verify}
+sslVersion = TLSv1.2
+options = NO_SSLv2
+options = NO_SSLv3
+options = NO_COMPRESSION
+pid = /var/run/stunnel.pid
+foreground = no
 
+[section]
+accept = ${in_addr}
+connect = ${out_addr}
+__EOF__
+
+stunnel
 `;
-    } else {
-      // (opzionale) se vuoi un commento esplicito per i collector
-      netcfg = `
-# Collector: configurazione IP automatica SKIPPED for ${machineName}
-`;
-    }
-
-    // compone il file startup: header + body + netcfg
-    lab.file[`${machineName}.startup`] = header + ipSetup + (body ? body + "\n\n" : "") + netcfg;
-  }
-}
+        lab.file[`${machineName}.startup`] = header + ipSetup + tlsScript;
+      } else {
+        lab.file[`${machineName}.startup`] = header + ipSetup + (body ? body + "\n\n" : "");
+      }
+    }}
 
 /* -------------------- LAB CONF -------------------- */
 
@@ -147,8 +152,6 @@ function makeLabConfFile(netkit, lab) {
   lab.file["lab.conf"] += 'collector[0]="_collector"\n';
   lab.file["lab.conf"] += "collector[image]=\"icr/collector\"\n";
   lab.file["collector.startup"] = `#!/bin/sh
-  ip addr add 20.0.0.254/24 dev eth0
-  ip link set eth0 up
   echo "nameserver 8.8.8.8" > /etc/resolv.conf
   loki -config.file=/etc/loki/config.yml
   `;
@@ -177,25 +180,18 @@ function makeLabConfFile(netkit, lab) {
     const machineName = String(rawName).replace(/[^\w.-]/g, "_");
 
     for (let machineInterface of machine.interfaces.if) {
-      if (
-        machineInterface.eth.number == 0 &&
-        (machine.type == "controller" || machine.type == "switch")
-      ) {
-        machineInterface.eth.domain = "SDNRESERVED";
-        //lab.file["lab.conf"] += `${machine.name}[0]=SDNRESERVED\n`;
-        lab.file["lab.conf"] += `${machineName}[0]=SDNRESERVED\n`;
-      } else if (machineInterface.eth.domain && machineInterface.eth.domain !== "") {
-        //lab.file["lab.conf"] += `${machine.name}[${machineInterface.eth.number}]=${machineInterface.eth.domain}\n`;
+      if (machineInterface.eth.number > 0 && machineInterface.eth.domain && machineInterface.eth.domain !== "") {
         lab.file["lab.conf"] += `${machineName}[${machineInterface.eth.number}]=${machineInterface.eth.domain}\n`;
       }
     }
     // aggiunge l'interfaccia _collector come ultima
     const lastIndex = machine.interfaces.if[machine.interfaces.if.length - 1]?.eth?.number ?? -1;
     //lab.file["lab.conf"] += `${machine.name}[${lastIndex + 1}]=_collector\n`;
-    lab.file["lab.conf"] += `${machineName}[${lastIndex + 1}]=_collector\n`;
+    lab.file["lab.conf"] += `${machineName}[0]=_collector\n`;
     lab.file["lab.conf"] += `${machineName}[bridged]=true\n`;
 
     // image per tipo
+if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
 if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
@@ -241,16 +237,29 @@ export function toNetkitFormat(machines) {
   // Se ha già interfaces.if con eth.number → lascio stare
   if (Array.isArray(machines) && machines[0]?.interfaces?.if?.[0]?.eth?.number !== undefined) {
     return machines.map(m => {
-      if (m.type === "attacker") {
-        return { ...m, name: "attacker" };
+      const updatedInterfaces = m.interfaces.if.map((iface, idx) => ({
+        ...iface,
+        eth: { ...iface.eth, number: idx + 1 } // Adjust eth.number here
+      }));
+
+      const copy = {
+        ...m,
+        interfaces: { ...m.interfaces, if: updatedInterfaces }
+      };
+
+      if (copy.type === "attacker") {
+        copy.name = "attacker";
       }
-      return m;
+      return copy;
     });
   }
 
   // Se ha interfaces come lista ["A","B"] → converto
   const convertIfList = (ifs) =>
-    (ifs || []).map((domain, idx) => ({ eth: { number: idx, domain } }));
+    (ifs || []).map((iface, idx) => ({
+      eth: { number: idx + 1, domain: iface.domain }, // Increment idx by 1
+      ip: iface.ip // Capture the IP here
+    }));
 
   return (machines || []).map((m) => {
     const copy = {
