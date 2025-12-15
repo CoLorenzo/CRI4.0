@@ -54,7 +54,10 @@ function TopologyGraph({ machines }) {
       },
     },
 		groups: {
-"tls_termination_proxy": { image: DIR + "tls_termination_proxy.png", shape: "image", },
+			"ngfw": {
+				image: DIR + "ngfw_appliance.png",
+				shape: "image",
+			},
 			"attacker": {
 				image: DIR + "attacker.png",
 				shape: "image",
