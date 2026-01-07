@@ -1,0 +1,260 @@
+import { Request, Response } from 'express';
+import { exec, spawn } from 'child_process';
+import path from 'path';
+import fs from 'fs';
+import { promises as fsp } from 'fs';
+import os from 'os';
+import AdmZip from 'adm-zip';
+import { generateZipNode } from '../shared/make-node';
+
+// Type definitions
+type CurrentLab = {
+    name: string;
+    labsDir: string;
+    labPath: string;
+    zipPath: string;
+};
+
+let CURRENT_LAB: CurrentLab | null = null;
+let clients: Response[] = [];
+
+// Helper to send logs to all connected clients
+const sendLog = (level: 'log' | 'error' | 'warn' | 'info' | 'debug', message: string) => {
+    const logEntry = JSON.stringify({ level, message });
+    clients.forEach(client => client.write(`data: ${logEntry}\n\n`));
+    console.log(`[${level.toUpperCase()}] ${message}`); // Keep server console logs too
+};
+
+// --- Controllers ---
+
+export const subscribeToLogs = (req: Request, res: Response) => {
+    const headers = {
+        'Content-Type': 'text/event-stream',
+        'Connection': 'keep-alive',
+        'Cache-Control': 'no-cache'
+    };
+    res.writeHead(200, headers);
+
+    clients.push(res);
+
+    req.on('close', () => {
+        clients = clients.filter(client => client !== res);
+    });
+};
+
+export const getDockerImages = async (req: Request, res: Response) => {
+    exec('docker images --format "{{.Repository}}" | grep "^icr/"', (error, stdout, stderr) => {
+        if (error) {
+            res.json([]);
+        } else {
+            res.json(stdout.trim().split("\n"));
+        }
+    });
+};
+
+export const buildDockerImage = async (req: Request, res: Response) => {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: 'Image name required' });
+
+    console.log("BUILDING:", name);
+    exec(`docker compose -f ./containers/docker-compose.yaml build ${name}`, (error, stdout, stderr) => {
+        if (error) {
+            res.json([]); // mimicking original behavior, though maybe 500 would be better
+        } else {
+            res.json(stdout.split("\n"));
+        }
+    });
+};
+
+export const simulateAttack = async (req: Request, res: Response) => {
+    const { container, command } = req.body;
+    const timestamp = new Date().toLocaleString();
+
+    sendLog('log', `[${timestamp}] simulate-attack request`);
+    sendLog('log', `Image name received: ${container}`);
+    sendLog('log', `Raw command payload: ${command}`);
+
+    let args: string[] = [];
+
+    try {
+        if (Array.isArray(command)) {
+            args = command.flatMap((el) => String(el).split(/[,\s]+/).filter(Boolean));
+        } else if (typeof command === 'string') {
+            args = command.trim().split(/[,\s]+/).filter(Boolean);
+        } else {
+            throw new Error('Invalid command type');
+        }
+
+        args = args.map(a => a.replace(/^["']|["']$/g, '').trim()).filter(Boolean);
+        const seen = new Set<string>();
+        args = args.filter(x => (seen.has(x) ? false : (seen.add(x), true)));
+
+        if (args.length === 0) {
+            throw new Error('No valid command arguments after normalization.');
+        }
+        sendLog('log', `Normalized args for docker exec: ${args}`);
+    } catch (err: any) {
+        sendLog('error', `❌ Failed to normalize command: ${err}`);
+        return res.status(400).json({ error: err.message });
+    }
+
+    try {
+        const containerName = await new Promise<string>((resolve, reject) => {
+            exec(`docker ps --filter ancestor=${container} --format "{{.Names}}"`, (err, stdout, stderr) => {
+                if (err) {
+                    const msg = `❌ Error looking for container: ${stderr || err.message}`;
+                    sendLog('error', msg);
+                    return reject(msg);
+                }
+                const name = stdout.trim().split("\n")[0];
+                if (!name) {
+                    const msg = `⚠️ No running container found for image: ${container}`;
+                    sendLog('warn', msg);
+                    return reject(msg);
+                }
+                sendLog('log', `✅ Using container: ${name}`);
+                resolve(name);
+            });
+        });
+
+        const output = await new Promise<string>((resolve, reject) => {
+            const dockerArgs = ['exec', containerName, ...args];
+            sendLog('log', `Spawning process: docker ${dockerArgs.join(' ')}`);
+
+            const proc = spawn('docker', dockerArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+            let stdout = '';
+            let stderr = '';
+
+            proc.stdout.on('data', (data) => {
+                const message = data.toString();
+                stdout += message;
+                sendLog('log', message);
+            });
+
+            proc.stderr.on('data', (data) => {
+                const message = data.toString();
+                stderr += message;
+                sendLog('error', message);
+            });
+
+            proc.on('close', (code) => {
+                if (code !== 0) {
+                    const errorMessage = `❌ Command failed (code ${code}): ${stderr || `exit ${code}`}`;
+                    sendLog('error', errorMessage);
+                    return reject(errorMessage);
+                }
+                const successMessage = `✅ Command output: ${stdout.trim()}`;
+                sendLog('log', successMessage);
+                resolve(stdout.trim());
+            });
+
+            proc.on('error', (err) => {
+                const errorMessage = `❌ Spawn error: ${err.message || String(err)}`;
+                sendLog('error', errorMessage);
+                reject(errorMessage);
+            });
+        });
+
+        res.json({ output });
+    } catch (error: any) {
+        res.status(500).json({ error: error.toString() });
+    }
+};
+
+export const runSimulation = async (req: Request, res: Response) => {
+    const { machines, labInfo } = req.body;
+    sendLog('log', `machines? ${Array.isArray(machines)} ${machines?.length}`);
+    sendLog('log', `labInfo? ${JSON.stringify(labInfo)}`);
+
+    const LAB_NAME = labInfo?.name || 'default-lab';
+    const LABS_DIR = path.join(os.homedir(), 'kathara-labs');
+    const ZIP_PATH = path.join(LABS_DIR, `${LAB_NAME}.zip`);
+    const LAB_PATH = path.join(LABS_DIR, LAB_NAME);
+
+    if (!fs.existsSync(LABS_DIR)) {
+        fs.mkdirSync(LABS_DIR, { recursive: true });
+    }
+
+    try {
+        sendLog('log', "📦 Generating ZIP...");
+        await generateZipNode(machines, labInfo, ZIP_PATH);
+
+        sendLog('log', "📂 Extracting ZIP...");
+        const zip = new AdmZip(ZIP_PATH);
+        zip.extractAllTo(LABS_DIR, true);
+
+        CURRENT_LAB = { name: LAB_NAME, labsDir: LABS_DIR, labPath: LAB_PATH, zipPath: ZIP_PATH };
+
+        sendLog('log', "🚀 Launching Kathara...");
+        const output = await new Promise((resolve, reject) => {
+            sendLog('log', `📂 Lanciando kathara in: ${LAB_PATH}`);
+            sendLog('log', `📄 File presenti: ${fs.readdirSync(LABS_DIR)}`);
+            exec(`kathara lstart --noterminals`, { cwd: LABS_DIR }, (error, stdout, stderr) => {
+                if (error) {
+                    const errorMessage = `❌ Failed to start: ${stderr || error.message}`;
+                    sendLog('error', errorMessage);
+                    return reject(errorMessage);
+                }
+                if (stderr) {
+                    sendLog('warn', stderr);
+                }
+                sendLog('log', stdout);
+                sendLog('log', "✅ Lab started.");
+                resolve(stdout.trim());
+            });
+        });
+        res.json({ output });
+
+    } catch (err: any) {
+        res.status(500).json({ error: err.toString() });
+    }
+};
+
+async function emptyKatharaLabs(labsDir: string) {
+    try {
+        const entries = await fsp.readdir(labsDir);
+        await Promise.allSettled(
+            entries.map((entry) =>
+                fsp.rm(path.join(labsDir, entry), { recursive: true, force: true })
+            )
+        );
+        sendLog('log', `🧹 Contenuto rimosso da: ${labsDir}`);
+    } catch (err) {
+        sendLog('error', `❌ Errore durante lo svuotamento: ${err}`);
+    }
+}
+
+export const stopSimulation = async (req: Request, res: Response) => {
+    if (!CURRENT_LAB) {
+        return res.status(400).json({ error: "Nessuna simulazione attiva." });
+    }
+
+    const { name, labsDir } = CURRENT_LAB;
+    const safeName = String(name).replace(/"/g, '\"');
+    const cmd = `kathara lclean -d "${labsDir}"`;
+
+    sendLog('log', `🛑 Stopping lab with: ${cmd}`);
+
+    try {
+        const output = await new Promise((resolve, reject) => {
+            exec(cmd, async (error, stdout, stderr) => {
+                if (error) {
+                    const errorMessage = `❌ lclean failed: ${stderr || error.message}`;
+                    sendLog('error', errorMessage);
+                    return reject(errorMessage);
+                }
+                if (stderr) {
+                    sendLog('warn', stderr);
+                }
+                sendLog('log', stdout);
+                await emptyKatharaLabs(labsDir);
+
+                sendLog('log', "✅ lclean done.");
+                resolve(stdout.trim());
+            });
+        });
+        res.json({ output });
+    } catch (err: any) {
+        res.status(500).json({ error: err.toString() });
+    }
+};
