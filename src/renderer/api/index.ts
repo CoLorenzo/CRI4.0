@@ -1,12 +1,13 @@
-
 import { Channels } from '../../main/preload';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const BASE_URL = 'http://localhost:3001';
+export const API_BASE_URL = `${BASE_URL}/api`;
 
 const isElectron = () => !!(window.electron);
 
 export const api = {
     isElectron: isElectron(),
+    assetsUrl: isElectron() ? 'icr://images/' : `${BASE_URL}/assets/images/`,
 
     async getDockerImages(): Promise<string[]> {
         if (isElectron()) {

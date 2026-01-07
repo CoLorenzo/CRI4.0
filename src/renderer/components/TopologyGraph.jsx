@@ -21,38 +21,40 @@ const WHITE = '#fafafa';
 const BLUE = '#2B7CE9';
 const BLACK = '#2B1B17';
 
-const DIR = 'icr://images/';
+//const DIR = 'icr://images/';
+import { api } from '../api';
+const DIR = api.assetsUrl;
 
 function TopologyGraph({ machines }) {
-  const [ifNameAt, setIfNameAt] = useState({ checked: false });
-  const [ifOspfCost, setIfOspfCost] = useState({ checked: false });
-  const [routingLabel, setRoutingLabel] = useState({ checked: false });
+	const [ifNameAt, setIfNameAt] = useState({ checked: false });
+	const [ifOspfCost, setIfOspfCost] = useState({ checked: false });
+	const [routingLabel, setRoutingLabel] = useState({ checked: false });
 
-  const [smoothEnabled, setSmoothEnabled] = useState({
-    checked: true,
-    value: 'dynamic',
-  });
-  const [physicsEnabled, setPhysicsEnabled] = useState({
-    checked: true,
-    value: -1200,
-  });
+	const [smoothEnabled, setSmoothEnabled] = useState({
+		checked: true,
+		value: 'dynamic',
+	});
+	const [physicsEnabled, setPhysicsEnabled] = useState({
+		checked: true,
+		value: -1200,
+	});
 
-  const data = makeGraph(machines, ifNameAt, ifOspfCost, routingLabel);
-  const [edges, setEdges] = useState(data.edges);
-  const [nodes, setNodes] = useState(data.nodes);
+	const data = makeGraph(machines, ifNameAt, ifOspfCost, routingLabel);
+	const [edges, setEdges] = useState(data.edges);
+	const [nodes, setNodes] = useState(data.nodes);
 
-  const graph = {
-    nodes: nodes,
-    edges: edges,
-  };
+	const graph = {
+		nodes: nodes,
+		edges: edges,
+	};
 
-  const options = {
-    nodes: {
-      scaling: {
-        min: 16,
-        max: 32,
-      },
-    },
+	const options = {
+		nodes: {
+			scaling: {
+				min: 16,
+				max: 32,
+			},
+		},
 		groups: {
 			"ngfw": {
 				image: DIR + "ngfw_appliance.png",
@@ -142,49 +144,49 @@ function TopologyGraph({ machines }) {
 		}
 	};
 
-  const events = {
-    select: function (event) {
-      var { nodes, edges } = event;
-    },
-  };
+	const events = {
+		select: function (event) {
+			var { nodes, edges } = event;
+		},
+	};
 
-  return (
-    <Graph
-      graph={graph}
-      options={options}
-      events={events}
-      getNetwork={(network) => {
-        let edges = {};
-        let physics = {};
+	return (
+		<Graph
+			graph={graph}
+			options={options}
+			events={events}
+			getNetwork={(network) => {
+				let edges = {};
+				let physics = {};
 
-        if (smoothEnabled.checked) {
-          edges = {
-            smooth: {
-              type: smoothEnabled.value,
-            },
-          };
-        } else {
-          edges = {
-            smooth: false,
-          };
-        }
+				if (smoothEnabled.checked) {
+					edges = {
+						smooth: {
+							type: smoothEnabled.value,
+						},
+					};
+				} else {
+					edges = {
+						smooth: false,
+					};
+				}
 
-        if (physicsEnabled.checked) {
-          physics = {
-            enabled: true,
-            barnesHut: {
-              gravitationalConstant: parseInt(physicsEnabled.value),
-            },
-          };
-        } else {
-          physics = {
-            enabled: false,
-          };
-        }
-        network.setOptions({ edges, physics });
-      }}
-    />
-  );
+				if (physicsEnabled.checked) {
+					physics = {
+						enabled: true,
+						barnesHut: {
+							gravitationalConstant: parseInt(physicsEnabled.value),
+						},
+					};
+				} else {
+					physics = {
+						enabled: false,
+					};
+				}
+				network.setOptions({ edges, physics });
+			}}
+		/>
+	);
 }
 
 export default TopologyGraph;
