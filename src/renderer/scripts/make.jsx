@@ -32,13 +32,13 @@ function makeStartupFiles(netkit, lab) {
 	lab.file["collector.startup"] = "";
 	lab.file["collectordb.startup"] = "";
 	for (let machine of netkit) {
-if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
-if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
-if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
-if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
-if(machine.type == "laser"){ lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
-if(machine.type == "conveyor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
-if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
+		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
+		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
+		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
+		if (machine.type == "apg") { lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
+		if (machine.type == "laser") { lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
+		if (machine.type == "conveyor") { lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
+		if (machine.type == "plc") { lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
 		if (machine.name && machine.name != "")
 			lab.file[machine.name + ".startup"] = "";
 	}
@@ -71,7 +71,7 @@ function makeLabConfFile(netkit, lab) {
 
 	lab.file["lab.conf"] += "collector[bridged]=true\n";
 	lab.file["lab.conf"] += "collector[port]=\"1337:80\"\n";
-	// lab.file["lab.conf"] += "collector[0]=_collector\n";
+	lab.file["lab.conf"] += "collector[0]=_collector\n";
 	// bug: https://github.com/KatharaFramework/Kathara/issues/230
 	// fix:
 	// after kathara lstart
@@ -82,13 +82,13 @@ function makeLabConfFile(netkit, lab) {
 	lab.file["lab.conf"] += "collectordb[image]=icr/collector-db\n";
 
 	for (let machine of netkit) {
-if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
-if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
-if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
-if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
-if(machine.type == "laser"){ lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
-if(machine.type == "conveyor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
-if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
+		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
+		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
+		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
+		if (machine.type == "apg") { lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
+		if (machine.type == "laser") { lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
+		if (machine.type == "conveyor") { lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
+		if (machine.type == "plc") { lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
 		if (machine.bridged) {
 			lab.file["lab.conf"] += `${machine.name}[bridged]=true\n`;
 		}
@@ -101,22 +101,22 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 			}
 		}
 		lab.file["lab.conf"] += machine.name + "[" + (machine.interfaces.if[machine.interfaces.if.length - 1].eth.number + 1) + "]=_collector\n";
-		if(machine.type == "router"){
-			if(machine.routingSoftware == "frr"){
+		if (machine.type == "router") {
+			if (machine.routingSoftware == "frr") {
 				lab.file["lab.conf"] += machine.name + "[image]=kathara/frr";
 			}
-			if(machine.routingSoftware == "quagga"){
+			if (machine.routingSoftware == "quagga") {
 				lab.file["lab.conf"] += machine.name + "[image]=kathara/quagga";
 			}
 		}
-		if(machine.type == "terminal" || machine.type == "ws" || machine.type == "ns"){
+		if (machine.type == "terminal" || machine.type == "ws" || machine.type == "ns") {
 			lab.file["lab.conf"] += machine.name + "[image]=icr/kathara-base";
 		}
-		if(machine.type == "ngfw"){
+		if (machine.type == "ngfw") {
 			lab.file["lab.conf"] += machine.name + "[image]=ngfw_appliance";
 		}
-		if(machine.type == "attacker"){
-			if (machine.attackLoaded && machine.attackImage != ""){
+		if (machine.type == "attacker") {
+			if (machine.attackLoaded && machine.attackImage != "") {
 				lab.file["lab.conf"] += machine.name + "[image]=" + machine.attackImage;
 			} else {
 				lab.file["lab.conf"] += machine.name + "[image]=kalilinux/kali-rolling@sha256:eb500810d9d44236e975291205bfd45e9e19b7f63859e3a72ba30ea548ddb1df";
@@ -144,13 +144,13 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 */
 function makeTerminal(netkit, lab) {
 	for (let machine of netkit) {
-if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
-if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
-if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
-if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
-if(machine.type == "laser"){ lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
-if(machine.type == "conveyor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
-if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
+		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
+		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
+		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
+		if (machine.type == "apg") { lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
+		if (machine.type == "laser") { lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
+		if (machine.type == "conveyor") { lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
+		if (machine.type == "plc") { lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
 		if (machine.name && machine.name != "" && machine.type == "terminal" && machine.pc.dns && machine.pc.dns != "-") {
 			lab.folders.push(machine.name + "/etc");
 			lab.file[machine.name + "/etc/resolv.conf"] = "nameserver " + machine.pc.dns + "\n";
@@ -160,18 +160,18 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 
 function makeAttacker(netkit, lab) {
 	for (let machine of netkit) {
-if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
-if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
-if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
-if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
-if(machine.type == "laser"){ lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
-if(machine.type == "conveyor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
-if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
+		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
+		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
+		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
+		if (machine.type == "apg") { lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
+		if (machine.type == "laser") { lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
+		if (machine.type == "conveyor") { lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
+		if (machine.type == "plc") { lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
 		if (machine.name && machine.name != "" && machine.type == "attacker" && machine.pc.dns && machine.pc.dns != "-") {
 			lab.folders.push(machine.name + "/etc");
 			lab.file[machine.name + "/etc/resolv.conf"] = "nameserver " + machine.pc.dns + "\n";
 		}
-		if (machine.attackLoaded && machine.attackImage != ""){
+		if (machine.attackLoaded && machine.attackImage != "") {
 			lab.file[machine.name + ".startup"] += "\n" + machine.attackCommand + "\n";
 		}
 	}
@@ -181,13 +181,13 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 /*-----------------------------------------*/
 
 
-function makeRouter(netkit, lab){
-	for(let machine of netkit){
-		if(machine.name && machine.name != "" && machine.type=="router"){
-			if(machine.routingSoftware == "frr"){
+function makeRouter(netkit, lab) {
+	for (let machine of netkit) {
+		if (machine.name && machine.name != "" && machine.type == "router") {
+			if (machine.routingSoftware == "frr") {
 				makeRouterFrr(machine, lab);
 			}
-			if(machine.routingSoftware == "quagga"){
+			if (machine.routingSoftware == "quagga") {
 				makeRouterQuagga(machine, lab);
 			}
 		}
@@ -200,54 +200,54 @@ function makeRouter(netkit, lab){
 
 function makeRouterFrr(machine, lab) {
 	// routing dinamico RIP e OSPF
-		if (machine.name && machine.name != "" && machine.type == "router") {
-			if (machine.routing.rip.en || machine.routing.ospf.en || machine.routing.bgp.en) {
-				lab.file[machine.name + ".startup"] += "systemctl start frr\n";
-				lab.folders.push(machine.name + "/etc/frr");
-				lab.file[machine.name + "/etc/frr/daemons"] = "zebra=yes\n";
-			}
-			//inizializziamo il file frr.conf
-			lab.file[machine.name+"/etc/frr/frr.conf"]="";
-			//creiamo il file di vtysh
-			lab.file[machine.name+"/etc/frr/vtysh.conf"]="service integrated-vtysh-config";
-			if (machine.routing.rip.en) {
-				makeRouterRipFrr(machine, lab);
-			}
+	if (machine.name && machine.name != "" && machine.type == "router") {
+		if (machine.routing.rip.en || machine.routing.ospf.en || machine.routing.bgp.en) {
+			lab.file[machine.name + ".startup"] += "systemctl start frr\n";
+			lab.folders.push(machine.name + "/etc/frr");
+			lab.file[machine.name + "/etc/frr/daemons"] = "zebra=yes\n";
+		}
+		//inizializziamo il file frr.conf
+		lab.file[machine.name + "/etc/frr/frr.conf"] = "";
+		//creiamo il file di vtysh
+		lab.file[machine.name + "/etc/frr/vtysh.conf"] = "service integrated-vtysh-config";
+		if (machine.routing.rip.en) {
+			makeRouterRipFrr(machine, lab);
+		}
 
-			if (machine.routing.ospf.en) {
-				makeRouterOspfFrr(machine, lab);
-			}
+		if (machine.routing.ospf.en) {
+			makeRouterOspfFrr(machine, lab);
+		}
 
-			if (machine.routing.bgp.en)
-				makeBgpConfFrr(machine, lab);
+		if (machine.routing.bgp.en)
+			makeBgpConfFrr(machine, lab);
 
-			//nb: i costi vanno qui alla fine
-			if (machine.routing.ospf.en) {
-				for (let machineInterface of machine.routing.ospf.if) {
-					if (machineInterface.cost != "" && machineInterface.cost) {
-						lab.file[machine.name + "/etc/frr/frr.conf"] += "machineInterface eth" + machineInterface.machineInterface + "\n";
-						lab.file[machine.name + "/etc/frr/frr.conf"] += "ospf cost " + machineInterface.cost + "\n";
-					}
+		//nb: i costi vanno qui alla fine
+		if (machine.routing.ospf.en) {
+			for (let machineInterface of machine.routing.ospf.if) {
+				if (machineInterface.cost != "" && machineInterface.cost) {
+					lab.file[machine.name + "/etc/frr/frr.conf"] += "machineInterface eth" + machineInterface.machineInterface + "\n";
+					lab.file[machine.name + "/etc/frr/frr.conf"] += "ospf cost " + machineInterface.cost + "\n";
 				}
 			}
-
-			//Free conf
-			if(machine.routing.frr.free && machine.routing.frr.free != ""){
-				lab.file[machine.name + "/etc/frr/frr.conf"] += "\n" + machine.routing.frr.free + "\n";
-			}
-			//nb: e infine i log
-			lab.file[machine.name + "/etc/frr/frr.conf"] += "\nlog file /var/log/frr/frr.log\n";
 		}
+
+		//Free conf
+		if (machine.routing.frr.free && machine.routing.frr.free != "") {
+			lab.file[machine.name + "/etc/frr/frr.conf"] += "\n" + machine.routing.frr.free + "\n";
+		}
+		//nb: e infine i log
+		lab.file[machine.name + "/etc/frr/frr.conf"] += "\nlog file /var/log/frr/frr.log\n";
+	}
 }
 
-function makeRouterRipFrr(machine, lab){
+function makeRouterRipFrr(machine, lab) {
 	lab.file[machine.name + "/etc/frr/daemons"] += "ripd=yes\n";
 
 	lab.file[machine.name + "/etc/frr/frr.conf"] += "router rip\n";
 
 	for (let network of machine.routing.rip.network)
-		if(network && network != "")
-		lab.file[machine.name + "/etc/frr/frr.conf"] += "network " + network + "\n";
+		if (network && network != "")
+			lab.file[machine.name + "/etc/frr/frr.conf"] += "network " + network + "\n";
 
 	for (let route of machine.routing.rip.route) {
 		if (route && route != "")
@@ -255,7 +255,7 @@ function makeRouterRipFrr(machine, lab){
 	}
 	lab.file[machine.name + "/etc/frr/frr.conf"] += "\n";
 
-		//nb: mantenere l'ordine
+	//nb: mantenere l'ordine
 	if (machine.routing.rip.en && machine.routing.rip.connected) {
 		lab.file[machine.name + "/etc/frr/frr.conf"] += "redistribute connected\n";
 	}
@@ -267,19 +267,19 @@ function makeRouterRipFrr(machine, lab){
 	}
 
 	//Free conf
-	if (machine.routing.rip.en && machine.routing.rip.connected){
+	if (machine.routing.rip.en && machine.routing.rip.connected) {
 		if (machine.routing.rip.free && machine.routing.rip.free != "")
 			lab.file[machine.name + "/etc/frr/frr.conf"] += machine.routing.rip.free + "\n";
 	}
 }
 
-function makeRouterOspfFrr(machine, lab){
+function makeRouterOspfFrr(machine, lab) {
 	lab.file[machine.name + "/etc/frr/daemons"] += "ospfd=yes\n";
 	lab.file[machine.name + "/etc/frr/frr.conf"] += "router ospf\n";
 	for (let m /* non trasformare in un for... of */ in machine.routing.ospf.network) {
-		if(machine.routing.ospf.network[m] && machine.routing.ospf.network[m] != "")
+		if (machine.routing.ospf.network[m] && machine.routing.ospf.network[m] != "")
 			lab.file[machine.name + "/etc/frr/frr.conf"] += "network " + machine.routing.ospf.network[m] + " area " + machine.routing.ospf.area[m] + "\n";
-		if (machine.routing.ospf.stub[m] && machine.routing.ospf.stub[m]!="")
+		if (machine.routing.ospf.stub[m] && machine.routing.ospf.stub[m] != "")
 			lab.file[machine.name + "/etc/frr/frr.conf"] += "area " + machine.routing.ospf.area[m] + " stub\n";
 	}
 	lab.file[machine.name + "/etc/frr/frr.conf"] += "\n";
@@ -294,7 +294,7 @@ function makeRouterOspfFrr(machine, lab){
 	}
 
 	//Free conf
-	if (machine.routing.ospf.en && machine.routing.ospf.connected){
+	if (machine.routing.ospf.en && machine.routing.ospf.connected) {
 		if (machine.routing.ospf.free && machine.routing.ospf.free != "")
 			lab.file[machine.name + "/etc/frr/frr.conf"] += machine.routing.ospf.free + "\n";
 	}
@@ -338,103 +338,103 @@ function makeBgpConfFrr(router, lab) {
 
 function makeRouterQuagga(machine, lab) {
 	// routing dinamico RIP e OSPF
-		if (machine.name && machine.name != "" && machine.type == "router") {
-			if (machine.routing.rip.en || machine.routing.ospf.en || machine.routing.bgp.en) {
-				lab.file[machine.name + ".startup"] += "/etc/init.d/zebra start\n";
-				lab.folders.push(machine.name + "/etc/zebra");
-				lab.file[machine.name + "/etc/zebra/daemons"] = "zebra=yes\n";
+	if (machine.name && machine.name != "" && machine.type == "router") {
+		if (machine.routing.rip.en || machine.routing.ospf.en || machine.routing.bgp.en) {
+			lab.file[machine.name + ".startup"] += "/etc/init.d/zebra start\n";
+			lab.folders.push(machine.name + "/etc/zebra");
+			lab.file[machine.name + "/etc/zebra/daemons"] = "zebra=yes\n";
 
-				lab.file[machine.name + "/etc/zebra/zebra.conf"] = "hostname zebra\n"
-					+ "password zebra\n"
-					+ "enable password zebra\n"
-					+ "\nlog file /var/log/zebra/zebra.log\n";
+			lab.file[machine.name + "/etc/zebra/zebra.conf"] = "hostname zebra\n"
+				+ "password zebra\n"
+				+ "enable password zebra\n"
+				+ "\nlog file /var/log/zebra/zebra.log\n";
+		}
+
+		if (machine.routing.rip.en) {
+			lab.file[machine.name + "/etc/zebra/daemons"] += "ripd=yes\n";
+
+			lab.file[machine.name + "/etc/zebra/ripd.conf"] = "hostname ripd\n"
+				+ "password zebra\n"
+				+ "enable password zebra\n"
+				+ "\n"
+				+ "router rip\n";
+
+			for (let network of machine.routing.rip.network)
+				lab.file[machine.name + "/etc/zebra/ripd.conf"] += "network " + network + "\n";
+
+			for (let route of machine.routing.rip.route) {
+				if (route && route != "")
+					lab.file[machine.name + "/etc/zebra/ripd.conf"] += "route " + route + "\n";
 			}
+			lab.file[machine.name + "/etc/zebra/ripd.conf"] += "\n";
+		}
 
-			if (machine.routing.rip.en) {
-				lab.file[machine.name + "/etc/zebra/daemons"] += "ripd=yes\n";
+		if (machine.routing.ospf.en) {
+			lab.file[machine.name + "/etc/zebra/daemons"] += "ospfd=yes\n";
 
-				lab.file[machine.name + "/etc/zebra/ripd.conf"] = "hostname ripd\n"
-					+ "password zebra\n"
-					+ "enable password zebra\n"
-					+ "\n"
-					+ "router rip\n";
+			lab.file[machine.name + "/etc/zebra/ospfd.conf"] = "hostname ospfd\n"
+				+ "password zebra\n"
+				+ "enable password zebra\n"
+				+ "\n"
+				+ "router ospf\n";
 
-				for (let network of machine.routing.rip.network)
-					lab.file[machine.name + "/etc/zebra/ripd.conf"] += "network " + network + "\n";
+			for (let m /* non trasformare in un for... of */ in machine.routing.ospf.network) {
+				lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "network " + machine.routing.ospf.network[m] + " area " + machine.routing.ospf.area[m] + "\n";
+				if (machine.routing.ospf.stub[m])
+					lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "area " + machine.routing.ospf.area[m] + " stub\n";
+			}
+			lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "\n";
+		}
 
-				for (let route of machine.routing.rip.route) {
-					if (route && route != "")
-						lab.file[machine.name + "/etc/zebra/ripd.conf"] += "route " + route + "\n";
+		if (machine.routing.bgp.en) makeBgpConfQuagga(machine, lab);
+
+		//nb: mantenere l'ordine
+		if (machine.routing.rip.en && machine.routing.rip.connected) {
+			lab.file[machine.name + "/etc/zebra/ripd.conf"] += "redistribute connected\n";
+		}
+		if (machine.routing.ospf.en && machine.routing.ospf.connected) {
+			lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "redistribute connected\n";
+		}
+		if (machine.routing.rip.en && machine.routing.rip.ospf) {
+			lab.file[machine.name + "/etc/zebra/ripd.conf"] += "redistribute ospf\n";
+		}
+		if (machine.routing.rip.en && machine.routing.rip.bgp) {
+			lab.file[machine.name + "/etc/zebra/ripd.conf"] += "redistribute bgp\n";
+		}
+		if (machine.routing.ospf.en && machine.routing.ospf.rip) {
+			lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "redistribute rip\n";
+		}
+		if (machine.routing.ospf.en && machine.routing.ospf.bgp) {
+			lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "redistribute bgp\n";
+		}
+
+		//nb: i costi vanno qui alla fine
+		if (machine.routing.ospf.en) {
+			for (let machineInterface of machine.routing.ospf.if) {
+				if (machineInterface.cost != "" && machineInterface.cost) {
+					lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "machineInterface eth" + machineInterface.machineInterface + "\n";
+					lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "ospf cost " + machineInterface.cost + "\n";
 				}
-				lab.file[machine.name + "/etc/zebra/ripd.conf"] += "\n";
-			}
-
-			if (machine.routing.ospf.en) {
-				lab.file[machine.name + "/etc/zebra/daemons"] += "ospfd=yes\n";
-
-				lab.file[machine.name + "/etc/zebra/ospfd.conf"] = "hostname ospfd\n"
-					+ "password zebra\n"
-					+ "enable password zebra\n"
-					+ "\n"
-					+ "router ospf\n";
-
-				for (let m /* non trasformare in un for... of */ in machine.routing.ospf.network) {
-					lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "network " + machine.routing.ospf.network[m] + " area " + machine.routing.ospf.area[m] + "\n";
-					if (machine.routing.ospf.stub[m])
-						lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "area " + machine.routing.ospf.area[m] + " stub\n";
-				}
-				lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "\n";
-			}
-
-			if (machine.routing.bgp.en) makeBgpConfQuagga(machine, lab);
-
-			//nb: mantenere l'ordine
-			if (machine.routing.rip.en && machine.routing.rip.connected) {
-				lab.file[machine.name + "/etc/zebra/ripd.conf"] += "redistribute connected\n";
-			}
-			if (machine.routing.ospf.en && machine.routing.ospf.connected) {
-				lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "redistribute connected\n";
-			}
-			if (machine.routing.rip.en && machine.routing.rip.ospf) {
-				lab.file[machine.name + "/etc/zebra/ripd.conf"] += "redistribute ospf\n";
-			}
-			if (machine.routing.rip.en && machine.routing.rip.bgp) {
-				lab.file[machine.name + "/etc/zebra/ripd.conf"] += "redistribute bgp\n";
-			}
-			if (machine.routing.ospf.en && machine.routing.ospf.rip) {
-				lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "redistribute rip\n";
-			}
-			if (machine.routing.ospf.en && machine.routing.ospf.bgp) {
-				lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "redistribute bgp\n";
-			}
-
-			//nb: i costi vanno qui alla fine
-			if (machine.routing.ospf.en) {
-				for (let machineInterface of machine.routing.ospf.if) {
-					if (machineInterface.cost != "" && machineInterface.cost) {
-						lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "machineInterface eth" + machineInterface.machineInterface + "\n";
-						lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "ospf cost " + machineInterface.cost + "\n";
-					}
-				}
-			}
-
-			//Free conf
-			if (machine.routing.ospf.en) {
-				if (machine.routing.ospf.free && machine.routing.ospf.free != "")
-					lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "\n" + machine.routing.ospf.free + "\n";
-			}
-			if (machine.routing.rip.en) {
-				if (machine.routing.rip.free && machine.routing.rip.free != "")
-					lab.file[machine.name + "/etc/zebra/ripd.conf"] += "\n" + machine.routing.rip.free + "\n";
-			}
-			//nb: e infine i log
-			if (machine.routing.rip.en) {
-				lab.file[machine.name + "/etc/zebra/ripd.conf"] += "\nlog file /var/log/zebra/ripd.log\n";
-			}
-			if (machine.routing.ospf.en) {
-				lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "\nlog file /var/log/zebra/ospfd.log\n";
 			}
 		}
+
+		//Free conf
+		if (machine.routing.ospf.en) {
+			if (machine.routing.ospf.free && machine.routing.ospf.free != "")
+				lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "\n" + machine.routing.ospf.free + "\n";
+		}
+		if (machine.routing.rip.en) {
+			if (machine.routing.rip.free && machine.routing.rip.free != "")
+				lab.file[machine.name + "/etc/zebra/ripd.conf"] += "\n" + machine.routing.rip.free + "\n";
+		}
+		//nb: e infine i log
+		if (machine.routing.rip.en) {
+			lab.file[machine.name + "/etc/zebra/ripd.conf"] += "\nlog file /var/log/zebra/ripd.log\n";
+		}
+		if (machine.routing.ospf.en) {
+			lab.file[machine.name + "/etc/zebra/ospfd.conf"] += "\nlog file /var/log/zebra/ospfd.log\n";
+		}
+	}
 }
 
 function makeBgpConfQuagga(router, lab) {
@@ -485,13 +485,13 @@ function makeBgpConfQuagga(router, lab) {
 
 function makeWebserver(netkit, lab) {
 	for (let machine of netkit) {
-if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
-if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
-if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
-if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
-if(machine.type == "laser"){ lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
-if(machine.type == "conveyor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
-if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
+		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
+		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
+		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
+		if (machine.type == "apg") { lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
+		if (machine.type == "laser") { lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
+		if (machine.type == "conveyor") { lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
+		if (machine.type == "plc") { lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
 		if (machine.name && machine.name != "" && machine.type == "ws") {
 			if (machine.ws.userdir == true) {
 				lab.folders.push(machine.name + "/var/www/html");
@@ -507,9 +507,9 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 /* ------------------ AUX FUNCTIONS -----------------------*/
 /* ------------------------------------------------------- */
 
-function makeStaticRouting(netkit, lab){
+function makeStaticRouting(netkit, lab) {
 	let networks = [];
-	for(let machine of netkit){
+	for (let machine of netkit) {
 		for (let machineInterface of machine.interfaces.if) {
 			if (machineInterface.ip && machineInterface.ip != "") {
 				networks.push(machineInterface.ip);
@@ -518,20 +518,23 @@ function makeStaticRouting(netkit, lab){
 	}
 	console.log(netkit.length)
 	console.log(networks)
-	const availableSubnet = findAvailableSubnet(networks, netkit.length + 2);
+	// const availableSubnet = findAvailableSubnet(networks, netkit.length + 2);
+	const availableSubnet = "20.0.0.0/24";
 	console.log(availableSubnet);
 	let availableIPs = getUsableIPs(availableSubnet);
 	console.log(availableIPs);
 
-	let collector_host = availableIPs.shift();
+	let collector_host = "20.0.0.254";
+	availableIPs = availableIPs.filter(ip => ip !== collector_host);
+
 	let collector_db = availableIPs.shift();
 
-	//lab.file["collector.startup"] += "ip address add "+ collector_host + "/" + availableSubnet.split("/")[1] +" dev eth0\n";
-	lab.file["collector.startup"] += "COLLECTORDB_HOST="+ collector_db +" /app/collector\n";
-	lab.file["collectordb.startup"] += "ip address add "+ collector_db + "/" + availableSubnet.split("/")[1] +" dev eth0\n";
+	lab.file["collector.startup"] += "ip address add " + collector_host + "/" + availableSubnet.split("/")[1] + " dev eth0\n";
+	lab.file["collector.startup"] += "COLLECTORDB_HOST=" + collector_db + " /app/collector\n";
+	lab.file["collectordb.startup"] += "ip address add " + collector_db + "/" + availableSubnet.split("/")[1] + " dev eth0\n";
 
 	let switchCounter = 2;
-	for(let machine of netkit){
+	for (let machine of netkit) {
 		if (machine.name && machine.name != "") {
 			for (let machineInterface of machine.interfaces.if) {
 				if (machineInterface.eth.number == 0) {
@@ -542,21 +545,21 @@ function makeStaticRouting(netkit, lab){
 					}
 				}
 				if (machineInterface.eth.domain && machineInterface.eth.domain != "" && machineInterface.ip && machineInterface.ip != "") {
-					lab.file[machine.name + ".startup"] += "ip address add "+machineInterface.ip+" dev eth" + machineInterface.eth.number+"\n";
+					lab.file[machine.name + ".startup"] += "ip address add " + machineInterface.ip + " dev eth" + machineInterface.eth.number + "\n";
 				}
 			}
 
-			lab.file[machine.name + ".startup"] += "ip address add "+ availableIPs.shift() + "/" + availableSubnet.split("/")[1] +" dev eth" + (machine.interfaces.if[machine.interfaces.if.length - 1].eth.number + 2) +"\n";
+			lab.file[machine.name + ".startup"] += "ip address add " + availableIPs.shift() + "/" + availableSubnet.split("/")[1] + " dev eth" + (machine.interfaces.if[machine.interfaces.if.length - 1].eth.number + 2) + "\n";
 			if (machine.name != "attacker")
-				lab.file[machine.name + ".startup"] += "COLLECTOR_HOST="+ collector_host +" /bin/bash /root/collector_client.sh &\n";
+				lab.file[machine.name + ".startup"] += "COLLECTOR_HOST=" + collector_host + " /bin/bash /root/collector_client.sh &\n";
 
 			for (let gateway of machine.gateways.gw) {
 				if (gateway.gw && gateway.gw != "") {
 					if (gateway.route == "") {
-						lab.file[machine.name + ".startup"] += "ip route add 0.0.0.0/0 via "+ gateway.gw +" dev eth"+gateway.if+ "\n";
+						lab.file[machine.name + ".startup"] += "ip route add 0.0.0.0/0 via " + gateway.gw + " dev eth" + gateway.if + "\n";
 					}
 					else {
-						lab.file[machine.name + ".startup"] += "ip route add " + gateway.route +" via "+gateway.gw + " dev eth" +gateway.if + "\n";
+						lab.file[machine.name + ".startup"] += "ip route add " + gateway.route + " via " + gateway.gw + " dev eth" + gateway.if + "\n";
 					}
 				}
 			}
@@ -569,13 +572,13 @@ function makeStaticRouting(netkit, lab){
 
 function makeOther(netkit, lab) {
 	for (let machine of netkit) {
-if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
-if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
-if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
-if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
-if(machine.type == "laser"){ lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
-if(machine.type == "conveyor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
-if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
+		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
+		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
+		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
+		if (machine.type == "apg") { lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
+		if (machine.type == "laser") { lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
+		if (machine.type == "conveyor") { lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
+		if (machine.type == "plc") { lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
 		if (machine.name && machine.name != "" && machine.type == "other" && machine.other.image) {
 			lab.file["lab.conf"] += machine.name + '[image]="' + machine.other.image + '"\n';
 			for (let file of machine.other.files) {
@@ -597,13 +600,13 @@ function makeNameserver(netkit, lab) {
 
 	// generazione file e cartelle comuni
 	for (let machine of netkit) {
-if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
-if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
-if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
-if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
-if(machine.type == "laser"){ lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
-if(machine.type == "conveyor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
-if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
+		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
+		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
+		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
+		if (machine.type == "apg") { lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
+		if (machine.type == "laser") { lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
+		if (machine.type == "conveyor") { lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
+		if (machine.type == "plc") { lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
 		if (machine.name && machine.name != "" && machine.type == "ns") {
 			lab.file[machine.name + ".startup"] += "systemctl start named\n";
 			lab.folders.push(machine.name + "/etc/bind");
@@ -624,13 +627,13 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 	//db.root in ogni macchina dns
 	if (nsroot) {
 		for (let machine of netkit) {
-if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
-if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
-if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
-if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
-if(machine.type == "laser"){ lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
-if(machine.type == "conveyor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
-if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
+			if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
+			if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
+			if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
+			if (machine.type == "apg") { lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
+			if (machine.type == "laser") { lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
+			if (machine.type == "conveyor") { lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
+			if (machine.type == "plc") { lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
 			if (machine.name && machine.name != "" && machine.type == "ns") {
 				lab.file[machine.name + "/etc/bind/db.root"] = "";
 				if (machine.ns.authority && machine.ns.zone == ".") {
@@ -649,13 +652,13 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 		}
 		//entry in db.zona e named.conf per le altre macchine
 		for (let machine of netkit) {
-if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
-if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
-if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
-if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
-if(machine.type == "laser"){ lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
-if(machine.type == "conveyor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
-if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
+			if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
+			if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
+			if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
+			if (machine.type == "apg") { lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
+			if (machine.type == "laser") { lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
+			if (machine.type == "conveyor") { lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
+			if (machine.type == "plc") { lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
 			if (machine.name && machine.name != "" && machine.type == "ns" && machine.ns.authority) {
 				authority[machine.ns.zone] = machine;
 				if (machine.ns.zone != ".") {
@@ -666,13 +669,13 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 		}
 		//entry per l'alberatura delle zone (. conosce .com, .com conosce pippo.com, ecc)
 		for (let machine of netkit) {
-if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
-if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
-if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
-if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
-if(machine.type == "laser"){ lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
-if(machine.type == "conveyor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
-if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
+			if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
+			if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
+			if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
+			if (machine.type == "apg") { lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
+			if (machine.type == "laser") { lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
+			if (machine.type == "conveyor") { lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
+			if (machine.type == "plc") { lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
 			if (machine.name && machine.name != "") {
 				for (let f in machine.interfaces.if) {
 					let ip;
@@ -722,7 +725,7 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 
 									}
 									//e poi inserisco anche il record A, altrimenti solo A
-									if(machine.type == "ns" && machine.ns.authority){
+									if (machine.type == "ns" && machine.ns.authority) {
 										lab.file[authority[a].name + "/etc/bind/db" + fileExt] += machine.ns.zone.substring(1) + "    IN NS " + machine.interfaces.if[f].name + "\n";
 									}
 									lab.file[authority[a].name + "/etc/bind/db" + fileExt] += machine.interfaces.if[f].name + "    IN A " + ip + "\n";
@@ -740,13 +743,13 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 
 function makeOVSwitch(netkit, lab) {
 	for (let machine of netkit) {
-if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
-if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
-if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
-if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
-if(machine.type == "laser"){ lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
-if(machine.type == "conveyor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
-if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
+		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
+		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
+		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
+		if (machine.type == "apg") { lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
+		if (machine.type == "laser") { lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
+		if (machine.type == "conveyor") { lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
+		if (machine.type == "plc") { lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
 		if (machine.name && machine.name != "" && machine.type == "switch") {
 			lab.file["lab.conf"] += machine.name + '[image]="kathara/sdn"\n';
 			lab.file[machine.name + ".startup"] +=
@@ -770,13 +773,13 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 function makeRyuController(netkit, lab) {
 	let isSDN = false;
 	for (let machine of netkit) {
-if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
-if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
-if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
-if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
-if(machine.type == "laser"){ lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
-if(machine.type == "conveyor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
-if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
+		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
+		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
+		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
+		if (machine.type == "apg") { lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
+		if (machine.type == "laser") { lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
+		if (machine.type == "conveyor") { lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
+		if (machine.type == "plc") { lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
 		if (machine.name && machine.name != "" && machine.type == "controller") {
 			lab.file["lab.conf"] += machine.name + '[image]="kathara/sdn"\n';
 			isSDN = true;
@@ -875,24 +878,24 @@ function makeZip(lab) {
 	for (let fileName in lab.file) {
 		zip.file(fileName, lab.file[fileName]);
 	}
-	let content = zip.generateAsync({ type: "blob" }).then(function(content) {
+	let content = zip.generateAsync({ type: "blob" }).then(function (content) {
 		saveAs(content, "lab.zip");
 	})
 }
 
 export const makeDownload = (text, filename) => {
-    var blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-    saveAs(blob, filename);
-  };
+	var blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+	saveAs(blob, filename);
+};
 
 export const generateScript = (netkitData, labInfoData) => {
-  return makeScript(makeFilesStructure(netkitData, labInfoData));
+	return makeScript(makeFilesStructure(netkitData, labInfoData));
 };
 
 export const generateConfig = (netkitData, labInfoData) => {
-    var all = [{ labInfo: labInfoData, netkit: netkitData }];
-    return JSON.stringify(all, undefined, 4);
-  };
+	var all = [{ labInfo: labInfoData, netkit: netkitData }];
+	return JSON.stringify(all, undefined, 4);
+};
 
 export const generateZip = (netkitData, labInfoData) => {
 	return makeZip(makeFilesStructure(netkitData, labInfoData));

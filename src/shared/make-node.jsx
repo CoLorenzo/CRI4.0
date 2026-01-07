@@ -41,49 +41,49 @@ function makeStartupFiles(netkit, lab) {
   lab.file["collector.startup"] = "";
   lab.file["collector.startup"] = "";
   lab.file["collectordb.startup"] = "";
-      let collectorIpCounter = 1; // New counter for 20.0.0.X subnet
-    for (let machine of netkit) {
-      const rawName = machine.type === "attacker" ? "attacker" : machine.name;
-      const machineName = String(rawName || "node").replace(/[^\w.-]/g, "_");
-  
-      // prendi lo script dal nuovo campo, fallback al vecchio
-      const userScript =
-        (machine.scripts && typeof machine.scripts.startup === "string"
-          ? machine.scripts.startup
-          : "") ||
-        (machine.interfaces && typeof machine.interfaces.free === "string"
-          ? machine.interfaces.free
-          : "");
-  
-      // header sicuro
-      let header = "#!/bin/bash\nset -euo pipefail\n\n";
-      let ipSetup = "";
-  
-      // Assign IP to eth0 from 20.0.0.0/24 subnet
-      let eth0Ip;
-      if (machineName === "collector") {
-        eth0Ip = "20.0.0.254/24"; // Dedicated IP for the collector
-      } else {
-        eth0Ip = `20.0.0.${collectorIpCounter}/24`;
-        collectorIpCounter++;
-      }
-      ipSetup += `ip addr add ${eth0Ip} dev eth0\nip link set eth0 up\n`;
-  
-      // Assign IPs to eth1 and subsequent interfaces from frontend
-      if (machine.interfaces && Array.isArray(machine.interfaces.if)) {
-        for (const iface of machine.interfaces.if) {
-          if (iface && iface.eth && iface.eth.number >= 1 && typeof iface.ip === "string" && iface.ip.trim() !== "") {
-            const interfaceNumber = iface.eth.number;
-            const ipAddress = String(iface.ip).trim();
-            ipSetup += `ip addr add ${ipAddress} dev eth${interfaceNumber}\nip link set eth${interfaceNumber} up\n`;
-          }
+  let collectorIpCounter = 1; // New counter for 20.0.0.X subnet
+  for (let machine of netkit) {
+    const rawName = machine.type === "attacker" ? "attacker" : machine.name;
+    const machineName = String(rawName || "node").replace(/[^\w.-]/g, "_");
+
+    // prendi lo script dal nuovo campo, fallback al vecchio
+    const userScript =
+      (machine.scripts && typeof machine.scripts.startup === "string"
+        ? machine.scripts.startup
+        : "") ||
+      (machine.interfaces && typeof machine.interfaces.free === "string"
+        ? machine.interfaces.free
+        : "");
+
+    // header sicuro
+    let header = "#!/bin/bash\nset -euo pipefail\n\n";
+    let ipSetup = "";
+
+    // Assign IP to eth0 from 20.0.0.0/24 subnet
+    let eth0Ip;
+    if (machineName === "collector") {
+      eth0Ip = "20.0.0.254/24"; // Dedicated IP for the collector
+    } else {
+      eth0Ip = `20.0.0.${collectorIpCounter}/24`;
+      collectorIpCounter++;
+    }
+    ipSetup += `ip addr add ${eth0Ip} dev eth0\nip link set eth0 up\n`;
+
+    // Assign IPs to eth1 and subsequent interfaces from frontend
+    if (machine.interfaces && Array.isArray(machine.interfaces.if)) {
+      for (const iface of machine.interfaces.if) {
+        if (iface && iface.eth && iface.eth.number >= 1 && typeof iface.ip === "string" && iface.ip.trim() !== "") {
+          const interfaceNumber = iface.eth.number;
+          const ipAddress = String(iface.ip).trim();
+          ipSetup += `ip addr add ${ipAddress} dev eth${interfaceNumber}\nip link set eth${interfaceNumber} up\n`;
         }
       }
-      const body = (userScript || "").trim();
-  
-      if (machine.type === "tls_termination_proxy") {
-        const { in_addr = "0.0.0.0:50000", out_addr = "10.0.0.2:50001", verify = "0" } = machine.tls || {};
-        const tlsScript = `
+    }
+    const body = (userScript || "").trim();
+
+    if (machine.type === "tls_termination_proxy") {
+      const { in_addr = "0.0.0.0:50000", out_addr = "10.0.0.2:50001", verify = "0" } = machine.tls || {};
+      const tlsScript = `
 cd /etc/stunnel
 mkcert -cert-file server.crt -key-file server.key "localhost" "127.0.0.1" $(hostname -I)
 
@@ -107,11 +107,12 @@ __EOF__
 
 stunnel
 `;
-        lab.file[`${machineName}.startup`] = header + ipSetup + tlsScript;
-      } else {
-        lab.file[`${machineName}.startup`] = header + ipSetup + (body ? body + "\n\n" : "");
-      }
-    }}
+      lab.file[`${machineName}.startup`] = header + ipSetup + tlsScript;
+    } else {
+      lab.file[`${machineName}.startup`] = header + ipSetup + (body ? body + "\n\n" : "");
+    }
+  }
+}
 
 /* -------------------- LAB CONF -------------------- */
 
@@ -137,10 +138,10 @@ function makeLabConfFile(netkit, lab) {
 
   //lab.file["lab.conf"] += "collector[bridged]=true\n";
   //lab.file["lab.conf"] += 'collector[port]="1337:80"\n';
-  
+
   //QUESTA NON NA RIMESSA
   // collector[0]=_collector → vedi bug #230, quindi non lo aggiungiamo
-  
+
   //lab.file["lab.conf"] += "collector[image]=icr/collector\n";
   //lab.file["lab.conf"] += "collectordb[0]=_collector\n";
   //lab.file["lab.conf"] += "collectordb[image]=icr/collector-db\n";
@@ -151,19 +152,20 @@ function makeLabConfFile(netkit, lab) {
   lab.file["lab.conf"] += 'collector[port]="3100:3100/tcp"\n';
   lab.file["lab.conf"] += 'collector[0]="_collector"\n';
   lab.file["lab.conf"] += "collector[image]=\"icr/collector\"\n";
-  lab.file["collector.startup"] = `#!/bin/sh
-  echo "nameserver 8.8.8.8" > /etc/resolv.conf
-  loki -config.file=/etc/loki/config.yml
-  `;
+  lab.file["collector.startup"] += '#!/bin/sh\n'
+  lab.file["collector.startup"] += 'echo "nameserver 8.8.8.8" > /etc/resolv.conf\n'
+  lab.file["collector.startup"] += 'loki -config.file=/etc/loki/config.yml &\n'
+  lab.file["collector.startup"] += 'ip addr add 20.0.0.254/24 dev eth0\n'
+  lab.file["collector.startup"] += 'ip link set eth0 up\n'
 
-// PER BUG MAC
+  // PER BUG MAC
 
-//lab.file["lab.conf"] += "collector[bridged]=true\n";
-//  lab.file["lab.conf"] += 'collector[port]="3100:3100/tcp"\n';
-//  lab.file["lab.conf"] += "collector[image]=\"icr/collector\"\n";
+  //lab.file["lab.conf"] += "collector[bridged]=true\n";
+  //  lab.file["lab.conf"] += 'collector[port]="3100:3100/tcp"\n';
+  //  lab.file["lab.conf"] += "collector[image]=\"icr/collector\"\n";
   //kathara lconfig -n collector --add "_collector"
-//tramite docker exec nel main, lanciare
-//ip addr add 20.0.0.254/24 dev eth1
+  //tramite docker exec nel main, lanciare
+  //ip addr add 20.0.0.254/24 dev eth1
   //ip link set eth1 up
 
 
@@ -173,10 +175,10 @@ function makeLabConfFile(netkit, lab) {
   //quando partito, fare NEL MAIN lconfig .... e poi eseguire all'interno i due comandi ip addr ed ip link
 
   for (let machine of netkit) {
-   // Nome “forzato” e sanificato per evitare slash ecc.
+    // Nome “forzato” e sanificato per evitare slash ecc.
     const rawName =
       machine.type === "attacker" ? "attacker" :
-      machine.name || "node";
+        machine.name || "node";
     const machineName = String(rawName).replace(/[^\w.-]/g, "_");
 
     for (let machineInterface of machine.interfaces.if) {
@@ -191,13 +193,13 @@ function makeLabConfFile(netkit, lab) {
     lab.file["lab.conf"] += `${machineName}[bridged]=true\n`;
 
     // image per tipo
-if(machine.type == "tls_termination_proxy"){ lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
-if(machine.type == "rejector"){ lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
-if(machine.type == "scada"){ lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
-if(machine.type == "apg"){ lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
-if(machine.type == "laser"){ lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
-if(machine.type == "conveyor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
-if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
+    if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
+    if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
+    if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
+    if (machine.type == "apg") { lab.file["lab.conf"] += machine.name + "[image]=icr/apg"; }
+    if (machine.type == "laser") { lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
+    if (machine.type == "conveyor") { lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
+    if (machine.type == "plc") { lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
     if (machine.type == "router") {
       if (machine.routingSoftware == "frr") {
         //lab.file["lab.conf"] += `${machine.name}[image]=kathara/frr`;
@@ -282,7 +284,7 @@ export function toNetkitFormat(machines) {
 export async function generateZipNode(machines, labInfo, outPath) {
   const netkit = toNetkitFormat(machines);
 
-    // 🟢 Log per controllare cosa arriva
+  // 🟢 Log per controllare cosa arriva
   const attackers = (netkit || []).filter(m => m.type === "attacker");
   console.log("🧪 attackers in input:", attackers.map(a => ({
     name: a.name,
