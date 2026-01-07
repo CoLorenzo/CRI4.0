@@ -112,7 +112,12 @@ stunnel
 `;
       lab.file[`${machineName}.startup`] = header + ipSetup + tlsScript;
     } else {
-      lab.file[`${machineName}.startup`] = header + ipSetup + (body ? body + "\n\n" : "");
+      let extraCommands = "";
+      if (machine.type === "scada") {
+        extraCommands += "export PATH=$PATH:$(npm config get prefix)/bin\n";
+        extraCommands += "fuxa > /var/log/fuxa.log 2>&1 & disown\n";
+      }
+      lab.file[`${machineName}.startup`] = header + ipSetup + (body ? body + "\n\n" : "") + extraCommands;
     }
   }
 }
