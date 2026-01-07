@@ -62,7 +62,6 @@ export function MachineInfo({ id, machine, machines, setMachines }) {
         <div className="row-span-7">
           <Accordion
             selectionMode="multiple"
-            defaultExpandedKeys={["general", "attack", "defense", "industrial", "other"]}
             className="mt-2"
           >
             {/* GENERAL */}
@@ -130,7 +129,7 @@ export function MachineInfo({ id, machine, machines, setMachines }) {
                   })
                 }
               >
-		<Radio value="tls_termination_proxy">TLS termination proxy</Radio>
+                <Radio value="tls_termination_proxy">TLS termination proxy</Radio>
                 <Radio value="rejector">Rejector</Radio>
                 <Radio value="scada">Scada controller</Radio>
                 <Radio value="apg">Abstract piece generator</Radio>
