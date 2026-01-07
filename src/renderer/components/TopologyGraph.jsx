@@ -49,6 +49,16 @@ function TopologyGraph({ machines }) {
 	};
 
 	const options = {
+		edges: {
+			arrows: {
+				to: { enabled: false }
+			},
+			smooth: {
+				enabled: true,
+				type: "dynamic",
+				roundness: 0.5
+			}
+		},
 		nodes: {
 			scaling: {
 				min: 16,
