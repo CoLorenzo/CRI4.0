@@ -62,7 +62,7 @@ export function MachineInfo({ id, machine, machines, setMachines }) {
         <div className="row-span-7">
           <Accordion
             selectionMode="multiple"
-            defaultExpandedKeys={["general", "attack", "defence", "industrial", "other"]}
+            defaultExpandedKeys={["general", "attack", "defense", "industrial", "other"]}
             className="mt-2"
           >
             {/* GENERAL */}
@@ -102,8 +102,8 @@ export function MachineInfo({ id, machine, machines, setMachines }) {
               </RadioGroup>
             </AccordionItem>
 
-            {/* DEFENCE */}
-            <AccordionItem key="defence" aria-label="Defence" title="Defence">
+            {/* DEFENSE */}
+            <AccordionItem key="defense" aria-label="Defense" title="Defense">
               <RadioGroup
                 color="primary"
                 value={machine.type}
