@@ -74,7 +74,10 @@ function makeStartupFiles(netkit, lab) {
       for (const iface of machine.interfaces.if) {
         if (iface && iface.eth && iface.eth.number >= 1 && typeof iface.ip === "string" && iface.ip.trim() !== "") {
           const interfaceNumber = iface.eth.number;
-          const ipAddress = String(iface.ip).trim();
+          let ipAddress = String(iface.ip).trim();
+          if (!ipAddress.includes("/")) {
+            ipAddress += "/24";
+          }
           ipSetup += `ip addr add ${ipAddress} dev eth${interfaceNumber}\nip link set eth${interfaceNumber} up\n`;
         }
       }
