@@ -57,9 +57,10 @@ export const buildDockerImage = async (req: Request, res: Response) => {
     if (!name) return res.status(400).json({ error: 'Image name required' });
 
     console.log("BUILDING:", name);
-    exec(`docker compose -f ./containers/docker-compose.yaml build ${name}`, (error, stdout, stderr) => {
+    exec(`docker compose -f ./containers/docker-compose.yaml build ${name}`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
         if (error) {
-            res.json([]); // mimicking original behavior, though maybe 500 would be better
+            console.error("Build failed:", stderr);
+            res.json([]);
         } else {
             res.json(stdout.split("\n"));
         }
@@ -100,20 +101,33 @@ export const simulateAttack = async (req: Request, res: Response) => {
 
     try {
         const containerName = await new Promise<string>((resolve, reject) => {
+            // First try finding by ancestor (image)
             exec(`docker ps --filter ancestor=${container} --format "{{.Names}}"`, (err, stdout, stderr) => {
-                if (err) {
-                    const msg = `❌ Error looking for container: ${stderr || err.message}`;
-                    sendLog('error', msg);
-                    return reject(msg);
+                const nameByAncestor = stdout ? stdout.trim().split("\n")[0] : null;
+
+                if (nameByAncestor) {
+                    sendLog('log', `✅ Using container (by image): ${nameByAncestor}`);
+                    return resolve(nameByAncestor);
                 }
-                const name = stdout.trim().split("\n")[0];
-                if (!name) {
-                    const msg = `⚠️ No running container found for image: ${container}`;
-                    sendLog('warn', msg);
-                    return reject(msg);
-                }
-                sendLog('log', `✅ Using container: ${name}`);
-                resolve(name);
+
+                // Fallback: try finding by name (matches *container*)
+                // Kathara containers are typically: kathara_<user>_<labhash>_<machinename>_<uid>
+                // So checking if name contains `_${container}_` covers it.
+                exec(`docker ps --filter name=_${container}_ --format "{{.Names}}"`, (err2, stdout2, stderr2) => {
+                    if (err2) {
+                        const msg = `❌ Error looking for container: ${stderr2 || err2.message}`;
+                        sendLog('error', msg);
+                        return reject(msg);
+                    }
+                    const nameByName = stdout2.trim().split("\n")[0];
+                    if (!nameByName) {
+                        const msg = `⚠️ No running container found for image/name: ${container}`;
+                        sendLog('warn', msg);
+                        return reject(msg);
+                    }
+                    sendLog('log', `✅ Using container (by name): ${nameByName}`);
+                    resolve(nameByName);
+                });
             });
         });
 

@@ -137,8 +137,10 @@ function Topology() {
       }
     }, 1000);
 
+    // Fix: attacker machine is always named "attacker" in Kathara, but state might have image name.
+    const targetContainer = attacker.type === "attacker" ? "attacker" : attacker.name;
     try {
-      await api.simulateAttack(attacker.name, commandArgs);
+      await api.simulateAttack(targetContainer, commandArgs);
     } catch (e) {
       console.error("Attack error", e);
       // opzionale: mostra notifica / alert a utente
