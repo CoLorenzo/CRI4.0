@@ -117,6 +117,9 @@ stunnel
         extraCommands += "export PATH=$PATH:$(npm config get prefix)/bin\n";
         extraCommands += "fuxa > /var/log/fuxa.log 2>&1 & disown\n";
       }
+      if (machine.type === "plc") {
+        extraCommands += "/opt/OpenPLC_v3/start_openplc.sh & disown\n";
+      }
       lab.file[`${machineName}.startup`] = header + ipSetup + (body ? body + "\n\n" : "") + extraCommands;
     }
   }
