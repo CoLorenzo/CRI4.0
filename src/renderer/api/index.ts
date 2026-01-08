@@ -100,9 +100,6 @@ export const api = {
 
     // --- Terminal API ---
     async terminalCreate(container: string): Promise<string> {
-        console.log('terminalCreate called');
-        console.log('window.electron:', window.electron);
-        console.log('isElectron():', isElectron());
         if (isElectron()) {
             return window.electron.ipcRenderer.invoke('terminal.create', container);
         }
@@ -111,11 +108,6 @@ export const api = {
         const socket = getSocket();
         return new Promise((resolve, reject) => {
             socket.emit('terminal.create', container, (response: any) => {
-                console.log('Socket terminal.create response:', response);
-                if (!response) {
-                    reject('No response from server');
-                    return;
-                }
                 if (response.error) {
                     reject(response.error);
                 } else {

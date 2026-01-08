@@ -56,26 +56,20 @@ io.on('connection', (socket) => {
             containerName = containerName.substring(8);
         }
 
-        console.log(`terminal.create request for: "${containerNameInput}" -> "${containerName}"`);
         try {
             const ancestorName = await new Promise<string>((resolve, reject) => {
                 const cmd1 = `docker ps --filter ancestor=${containerName} --format "{{.Names}}"`;
-                console.log(`Running: ${cmd1}`);
                 exec(cmd1, (err, stdout) => {
                     const name = stdout ? stdout.trim().split("\n")[0] : null;
                     if (name) {
-                        console.log(`Found via ancestor: ${name}`);
                         resolve(name);
                     } else {
                         const cmd2 = `docker ps --filter name=_${containerName}_ --format "{{.Names}}"`;
-                        console.log(`Running: ${cmd2}`);
                         exec(cmd2, (err2, stdout2) => {
                             const name2 = stdout2 ? stdout2.trim().split("\n")[0] : null;
                             if (name2) {
-                                console.log(`Found via name: ${name2}`);
                                 resolve(name2);
                             } else {
-                                console.log(`Failed to find container. containerName="${containerName}"`);
                                 reject('Container not found');
                             }
                         });
