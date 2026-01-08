@@ -24,6 +24,10 @@ import fs from 'fs';
 import { promises as fsp } from "fs";
 import AdmZip from 'adm-zip';
 import { generateZipNode } from '../shared/make-node';
+import * as pty from 'node-pty';
+import { IPty } from 'node-pty';
+
+
 
 
 // In cima al file main (scope modulo)
@@ -375,7 +379,7 @@ ipcMain.handle("simulate-attack", async (event, { container, command }) => {
 ipcMain.handle('run-simulation', async (event, { machines, labInfo }) => {
   sendLog('log', `machines? ${Array.isArray(machines)} ${machines?.length}`);
   sendLog('log', `labInfo? ${JSON.stringify(labInfo)}`);
-  
+
   const LAB_NAME = labInfo?.name || 'default-lab';
   const LABS_DIR = path.join(os.homedir(), 'kathara-labs');
   const ZIP_PATH = path.join(LABS_DIR, `${LAB_NAME}.zip`);
@@ -440,7 +444,7 @@ ipcMain.handle('stop-simulation', async () => {
       }
       sendLog('log', stdout);
       await emptyKatharaLabs(labsDir);
-      
+
       sendLog('log', "✅ lclean done.");
       resolve(stdout.trim());
     });
@@ -448,9 +452,86 @@ ipcMain.handle('stop-simulation', async () => {
 });
 
 
+// --- Terminal IPC ---
+
+const terminals = new Map<string, IPty>();
+
+ipcMain.handle('terminal.create', async (event, containerName: string) => {
+  const shell = 'docker';
+  let targetContainer = '';
+  try {
+    const ancestorName = await new Promise<string>((resolve, reject) => {
+      exec(`docker ps --filter ancestor=${containerName} --format "{{.Names}}"`, (err, stdout) => {
+        const name = stdout ? stdout.trim().split("\n")[0] : null;
+        if (name) resolve(name);
+        else {
+          exec(`docker ps --filter name=_${containerName}_ --format "{{.Names}}"`, (err2, stdout2) => {
+            const name2 = stdout2 ? stdout2.trim().split("\n")[0] : null;
+            if (name2) resolve(name2);
+            else reject('Container not found');
+          });
+        }
+      });
+    });
+    targetContainer = ancestorName;
+  } catch (e) {
+    sendLog('error', `Terminal creation failed: ${e}`);
+    throw e;
+  }
+
+  const ptyProcess = pty.spawn(shell, ['exec', '-it', targetContainer, '/bin/bash'], {
+    name: 'xterm-color',
+    cols: 80,
+    rows: 30,
+    cwd: process.env.HOME,
+    env: process.env as any
+  });
+
+  const id = Date.now().toString();
+  terminals.set(id, ptyProcess);
+
+  ptyProcess.onData((data) => {
+    if (mainWindow) {
+      mainWindow.webContents.send('terminal.incoming', { id, data });
+    }
+  });
+
+  ptyProcess.onExit(() => {
+    terminals.delete(id);
+    if (mainWindow) {
+      mainWindow.webContents.send('terminal.incoming', { id, data: '\r\n[Process exited]\r\n' });
+    }
+  });
+
+  return id;
+});
+
+ipcMain.on('terminal.input', (event, { id, data }) => {
+  const term = terminals.get(id);
+  if (term) {
+    term.write(data);
+  }
+});
+
+ipcMain.on('terminal.resize', (event, { id, cols, rows }) => {
+  const term = terminals.get(id);
+  if (term) {
+    term.resize(cols, rows);
+  }
+});
+
+ipcMain.handle('terminal.kill', (event, id) => {
+  const term = terminals.get(id);
+  if (term) {
+    term.kill();
+    terminals.delete(id);
+  }
+});
+
+
 
 // --- helper per eseguire comandi in modo sicuro (no shell injection) ---
-function runCmd(cmd: string, args: string[], opts: {cwd?: string, timeoutMs?: number} = {}) {
+function runCmd(cmd: string, args: string[], opts: { cwd?: string, timeoutMs?: number } = {}) {
   return new Promise<string>((resolve, reject) => {
     const child = spawn(cmd, args, {
       cwd: opts.cwd || process.cwd(),
@@ -463,9 +544,9 @@ function runCmd(cmd: string, args: string[], opts: {cwd?: string, timeoutMs?: nu
 
     const timer = opts.timeoutMs
       ? setTimeout(() => {
-          timedOut = true;
-          try { child.kill('SIGKILL'); } catch {}
-        }, opts.timeoutMs)
+        timedOut = true;
+        try { child.kill('SIGKILL'); } catch { }
+      }, opts.timeoutMs)
       : null;
 
     child.stdout.on('data', d => (out += d.toString()));

@@ -25,7 +25,7 @@ const BLACK = '#2B1B17';
 import { api } from '../api';
 const DIR = api.assetsUrl;
 
-function TopologyGraph({ machines }) {
+function TopologyGraph({ machines, onOpenTerminal }) {
 	const [ifNameAt, setIfNameAt] = useState({ checked: false });
 	const [ifOspfCost, setIfOspfCost] = useState({ checked: false });
 	const [routingLabel, setRoutingLabel] = useState({ checked: false });
@@ -154,48 +154,93 @@ function TopologyGraph({ machines }) {
 		}
 	};
 
+	const [contextMenu, setContextMenu] = useState(null);
+
 	const events = {
 		select: function (event) {
+			setContextMenu(null);
 			var { nodes, edges } = event;
 		},
+		oncontext: function (event) {
+			const { nodes } = event;
+			if (nodes.length > 0) {
+				event.event.preventDefault();
+				setContextMenu({
+					x: event.pointer.DOM.x,
+					y: event.pointer.DOM.y,
+					nodeId: nodes[0]
+				});
+			} else {
+				setContextMenu(null);
+			}
+		},
+		click: function () {
+			setContextMenu(null);
+		}
+	};
+
+	const handleOpenTerminal = () => {
+		if (contextMenu && onOpenTerminal) {
+			// Find machine name from ID or lookup
+			// In makeGraph, IDs are usually machine names or indices. 
+			// Assuming node ID is the machine name or we can find it.
+			// nodes are created from machine names usually.
+			onOpenTerminal(contextMenu.nodeId);
+			setContextMenu(null);
+		}
 	};
 
 	return (
-		<Graph
-			graph={graph}
-			options={options}
-			events={events}
-			getNetwork={(network) => {
-				let edges = {};
-				let physics = {};
+		<div className="relative h-full w-full" onContextMenu={(e) => e.preventDefault()}>
+			<Graph
+				graph={graph}
+				options={options}
+				events={events}
+				getNetwork={(network) => {
+					let edges = {};
+					let physics = {};
 
-				if (smoothEnabled.checked) {
-					edges = {
-						smooth: {
-							type: smoothEnabled.value,
-						},
-					};
-				} else {
-					edges = {
-						smooth: false,
-					};
-				}
+					if (smoothEnabled.checked) {
+						edges = {
+							smooth: {
+								type: smoothEnabled.value,
+							},
+						};
+					} else {
+						edges = {
+							smooth: false,
+						};
+					}
 
-				if (physicsEnabled.checked) {
-					physics = {
-						enabled: true,
-						barnesHut: {
-							gravitationalConstant: parseInt(physicsEnabled.value),
-						},
-					};
-				} else {
-					physics = {
-						enabled: false,
-					};
-				}
-				network.setOptions({ edges, physics });
-			}}
-		/>
+					if (physicsEnabled.checked) {
+						physics = {
+							enabled: true,
+							barnesHut: {
+								gravitationalConstant: parseInt(physicsEnabled.value),
+							},
+						};
+					} else {
+						physics = {
+							enabled: false,
+						};
+					}
+					network.setOptions({ edges, physics });
+				}}
+			/>
+			{contextMenu && (
+				<div
+					className="absolute bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-lg rounded-md py-1 z-50 min-w-[150px]"
+					style={{ top: contextMenu.y, left: contextMenu.x }}
+				>
+					<button
+						className="w-full text-left px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
+						onClick={handleOpenTerminal}
+					>
+						Open Terminal
+					</button>
+				</div>
+			)}
+		</div>
 	);
 }
 

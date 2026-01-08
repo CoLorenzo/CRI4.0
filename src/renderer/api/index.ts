@@ -1,9 +1,19 @@
-import { Channels } from '../../main/preload';
+import type { Channels } from '../../main/preload';
 
 const BASE_URL = 'http://localhost:3001';
 export const API_BASE_URL = `${BASE_URL}/api`;
 
 const isElectron = () => !!(window.electron);
+
+import { io, Socket } from 'socket.io-client';
+let socket: Socket | null = null;
+
+function getSocket() {
+    if (!socket) {
+        socket = io(BASE_URL);
+    }
+    return socket;
+}
 
 export const api = {
     isElectron: isElectron(),
@@ -86,5 +96,75 @@ export const api = {
                 eventSource.close();
             };
         }
+    },
+
+    // --- Terminal API ---
+    async terminalCreate(container: string): Promise<string> {
+        console.log('terminalCreate called');
+        console.log('window.electron:', window.electron);
+        console.log('isElectron():', isElectron());
+        if (isElectron()) {
+            return window.electron.ipcRenderer.invoke('terminal.create', container);
+        }
+
+        // Web Mode: Use Socket.io
+        const socket = getSocket();
+        return new Promise((resolve, reject) => {
+            socket.emit('terminal.create', container, (response: any) => {
+                console.log('Socket terminal.create response:', response);
+                if (!response) {
+                    reject('No response from server');
+                    return;
+                }
+                if (response.error) {
+                    reject(response.error);
+                } else {
+                    resolve(response.id);
+                }
+            });
+        });
+    },
+
+    terminalInput(id: string, data: string): void {
+        if (isElectron()) {
+            window.electron.ipcRenderer.sendMessage('terminal.input', { id, data });
+        } else {
+            getSocket().emit('terminal.input', { id, data });
+        }
+    },
+
+    terminalResize(id: string, cols: number, rows: number): void {
+        if (isElectron()) {
+            window.electron.ipcRenderer.sendMessage('terminal.resize', { id, cols, rows });
+        } else {
+            getSocket().emit('terminal.resize', { id, cols, rows });
+        }
+    },
+
+    terminalKill(id: string): void {
+        if (isElectron()) {
+            window.electron.ipcRenderer.invoke('terminal.kill', id);
+        } else {
+            getSocket().emit('terminal.kill', id);
+        }
+    },
+
+    onTerminalData(callback: (id: string, data: string) => void): () => void {
+        if (isElectron()) {
+            return window.electron.ipcRenderer.on('terminal.incoming', (arg: any) => {
+                const { id, data } = arg;
+                callback(id, data);
+            });
+        }
+
+        const socket = getSocket();
+        const handler = (arg: any) => {
+            const { id, data } = arg;
+            callback(id, data);
+        };
+        socket.on('terminal.incoming', handler);
+        return () => {
+            socket.off('terminal.incoming', handler);
+        };
     }
 };

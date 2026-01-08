@@ -10,6 +10,7 @@ import { Checkbox, CheckboxGroup } from "@nextui-org/react";
 import { Select, SelectItem } from "@nextui-org/react";
 import { Slider } from "@nextui-org/react";
 import TopologyGraph from "../components/TopologyGraph";
+import TerminalModal from "../components/TerminalModal";
 import { useContext } from "react";
 import { NotificationContext } from "../contexts/NotificationContext";
 import { api } from "../api";
@@ -20,6 +21,10 @@ function Topology() {
   const [attackInProgress, setAttackInProgress] = useState(false);
   const [showTimer, setShowTimer] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  // Terminal Modal State
+  const [terminalModalOpen, setTerminalModalOpen] = useState(false);
+  const [terminalNode, setTerminalNode] = useState(null);
 
   const [simulationRun, setSimulationRun] = useState(() => {
     try { return JSON.parse(localStorage.getItem('simulationRun') || 'false'); }
@@ -215,7 +220,13 @@ function Topology() {
             </div>
           ) || (
               <div className="h-full">
-                <TopologyGraph machines={machines} />
+                <TopologyGraph
+                  machines={machines}
+                  onOpenTerminal={(nodeId) => {
+                    setTerminalNode(nodeId);
+                    setTerminalModalOpen(true);
+                  }}
+                />
               </div>
             )}
         </div>
@@ -353,6 +364,11 @@ function Topology() {
                         </AccordionItem>
                     </Accordion>
                 </div> */}
+      <TerminalModal
+        isOpen={terminalModalOpen}
+        onClose={() => setTerminalModalOpen(false)}
+        containerName={terminalNode}
+      />
     </div>
   );
 }
