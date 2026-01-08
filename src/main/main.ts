@@ -183,6 +183,51 @@ ipcMain.handle('docker-build', async (event, arg) => {
 });*/
 
 
+ipcMain.handle('docker-inspect', async (event, machineName) => {
+  return new Promise((resolve, reject) => {
+    // 1. Find the container by name pattern (Kathara: _machineName_)
+    const findCmd = `docker ps --filter name=_${machineName}_ --format "{{.Names}}"`;
+
+    exec(findCmd, (findErr, findStdout) => {
+      if (findErr) {
+        sendLog('error', `❌ Error searching for container ${machineName}: ${findErr.message}`);
+        return resolve([]);
+      }
+
+      const containerName = findStdout.trim().split("\n")[0];
+      if (!containerName) {
+        // Fallback: try exact match just in case
+        exec(`docker inspect ${machineName}`, (inspectErr, inspectStdout) => {
+          if (inspectErr) {
+            sendLog('warn', `⚠️ Could not find container for ${machineName}`);
+            resolve([]);
+          } else {
+            try { resolve(JSON.parse(inspectStdout)); }
+            catch (e) { resolve([]); }
+          }
+        });
+        return;
+      }
+
+      // 2. Inspect the found container
+      exec(`docker inspect ${containerName}`, (inspectErr, inspectStdout) => {
+        if (inspectErr) {
+          sendLog('error', `❌ docker inspect failed for ${containerName}: ${inspectErr.message}`);
+          resolve([]);
+        } else {
+          try {
+            resolve(JSON.parse(inspectStdout));
+          } catch (e) {
+            sendLog('error', `❌ Failed to parse docker inspect output: ${e}`);
+            resolve([]);
+          }
+        }
+      });
+    });
+  });
+});
+
+
 import { spawn } from 'child_process'; // metti questa importazione vicino a `import { exec } from 'child_process';`
 
 // ...

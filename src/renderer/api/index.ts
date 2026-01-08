@@ -39,6 +39,18 @@ export const api = {
         return response.json();
     },
 
+    async getContainerInspect(containerName: string): Promise<any[]> {
+        if (isElectron()) {
+            return window.electron.ipcRenderer.invoke('docker-inspect', containerName);
+        }
+        const response = await fetch(`${API_BASE_URL}/docker-inspect`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ containerName }),
+        });
+        return response.json();
+    },
+
     async simulateAttack(container: string, command: string | string[]): Promise<string> {
         if (isElectron()) {
             return window.electron.ipcRenderer.invoke('simulate-attack', { container, command });

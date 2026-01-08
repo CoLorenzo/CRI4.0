@@ -25,7 +25,7 @@ const BLACK = '#2B1B17';
 import { api } from '../api';
 const DIR = api.assetsUrl;
 
-function TopologyGraph({ machines, onOpenTerminal }) {
+function TopologyGraph({ machines, onOpenTerminal, onOpenUI }) {
 	const [ifNameAt, setIfNameAt] = useState({ checked: false });
 	const [ifOspfCost, setIfOspfCost] = useState({ checked: false });
 	const [routingLabel, setRoutingLabel] = useState({ checked: false });
@@ -181,14 +181,24 @@ function TopologyGraph({ machines, onOpenTerminal }) {
 
 	const handleOpenTerminal = () => {
 		if (contextMenu && onOpenTerminal) {
-			// Find machine name from ID or lookup
-			// In makeGraph, IDs are usually machine names or indices. 
-			// Assuming node ID is the machine name or we can find it.
-			// nodes are created from machine names usually.
 			onOpenTerminal(contextMenu.nodeId);
 			setContextMenu(null);
 		}
 	};
+
+	const handleOpenUI = () => {
+		if (contextMenu && onOpenUI) {
+			onOpenUI(contextMenu.nodeId);
+			setContextMenu(null);
+		}
+	};
+
+	const showOpenUI = contextMenu && machines.find(m => {
+		// Find the machine corresponding to the clicked node ID
+		// Note: ID format is "machine-" + name
+		const machineName = contextMenu.nodeId.replace("machine-", "");
+		return m.name === machineName && (m.type === "plc" || m.type === "scada");
+	});
 
 	return (
 		<div className="relative h-full w-full" onContextMenu={(e) => e.preventDefault()}>
@@ -238,6 +248,14 @@ function TopologyGraph({ machines, onOpenTerminal }) {
 					>
 						Open Terminal
 					</button>
+					{showOpenUI && (
+						<button
+							className="w-full text-left px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
+							onClick={handleOpenUI}
+						>
+							Open UI
+						</button>
+					)}
 				</div>
 			)}
 		</div>

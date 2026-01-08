@@ -67,6 +67,49 @@ export const buildDockerImage = async (req: Request, res: Response) => {
     });
 };
 
+export const getContainerInspect = async (req: Request, res: Response) => {
+    const { containerName } = req.body;
+    if (!containerName) return res.status(400).json({ error: 'Container name required' });
+
+    // 1. Find the container by name pattern (Kathara: _machineName_)
+    exec(`docker ps --filter name=_${containerName}_ --format "{{.Names}}"`, (findErr, findStdout) => {
+        if (findErr) {
+            console.error(`Error searching for container ${containerName}: ${findErr.message}`);
+            return res.json([]);
+        }
+
+        const resolvedName = findStdout.trim().split("\n")[0];
+        if (!resolvedName) {
+            // Fallback: exact match
+            exec(`docker inspect ${containerName}`, (inspectErr, inspectStdout) => {
+                if (inspectErr) {
+                    console.warn(`Could not find container for ${containerName}`);
+                    res.json([]);
+                } else {
+                    try { res.json(JSON.parse(inspectStdout)); }
+                    catch (e) { res.json([]); }
+                }
+            });
+            return;
+        }
+
+        // 2. Inspect the found container
+        exec(`docker inspect ${resolvedName}`, (inspectErr, inspectStdout) => {
+            if (inspectErr) {
+                console.error("Inspect failed:", inspectErr.message);
+                res.json([]);
+            } else {
+                try {
+                    res.json(JSON.parse(inspectStdout));
+                } catch (e) {
+                    console.error("JSON parse error:", e);
+                    res.json([]);
+                }
+            }
+        });
+    });
+};
+
 export const simulateAttack = async (req: Request, res: Response) => {
     const { container, command } = req.body;
     const timestamp = new Date().toLocaleString();

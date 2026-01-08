@@ -11,6 +11,8 @@ import { Select, SelectItem } from "@nextui-org/react";
 import { Slider } from "@nextui-org/react";
 import TopologyGraph from "../components/TopologyGraph";
 import TerminalModal from "../components/TerminalModal";
+import UIModal from "../components/UIModal";
+import { getMachineIps } from "../utils/ipUtils";
 import { useContext } from "react";
 import { NotificationContext } from "../contexts/NotificationContext";
 import { api } from "../api";
@@ -25,6 +27,9 @@ function Topology() {
   // Terminal Modal State
   const [terminalModalOpen, setTerminalModalOpen] = useState(false);
   const [terminalNode, setTerminalNode] = useState(null);
+
+  // UI Modal State
+  const [uiModal, setUiModal] = useState({ isOpen: false, url: "", title: "" });
 
   const [simulationRun, setSimulationRun] = useState(() => {
     try { return JSON.parse(localStorage.getItem('simulationRun') || 'false'); }
@@ -226,6 +231,75 @@ function Topology() {
                     setTerminalNode(nodeId);
                     setTerminalModalOpen(true);
                   }}
+                  onOpenUI={async (nodeId) => {
+                    // machine-name -> name
+                    const machineName = nodeId.replace("machine-", "");
+                    const machine = machines.find((m) => m.name === machineName);
+                    if (!machine) return;
+
+                    // OLD LOGIC (internal IP):
+                    // const machineIps = getMachineIps(machines);
+                    // const ip = machineIps[machineName];
+
+                    try {
+                      // NEW LOGIC: Fetch runtime IP from Docker
+                      // Note: Kathara usually names containers as kathara_<user>_<hash>_<machineName>...
+                      // but we can try searching by the image or just pass the machine name
+                      // assuming the backend logic locates the correct container (it does ancestor/name lookup).
+
+                      const inspectData = await api.getContainerInspect(machineName);
+                      // inspectData is an array [ { ... } ]
+
+                      let ip = "127.0.0.1";
+
+                      if (inspectData && inspectData.length > 0) {
+                        const settings = inspectData[0].NetworkSettings;
+                        // Determine which network IP to use. 
+                        // Usually 'bridge' is the one accessible from host if exposed, 
+                        // or the specific kathara network if using a routed setup.
+                        // However, Kathara often maps ports to localhost. 
+
+                        // If we want the container IP reachable from host (linux), 
+                        // we generally look for the IP in 'bridge' or the main network.
+                        // Let's try to find an IPAddress in any network that isn't empty.
+
+                        if (settings.Networks) {
+                          const netKeys = Object.keys(settings.Networks);
+                          for (const key of netKeys) {
+                            const net = settings.Networks[key];
+                            if (net.IPAddress) {
+                              ip = net.IPAddress;
+                              // Prefer 'bridge' if available as it's the default docker network
+                              if (key === 'bridge') break;
+                            }
+                          }
+                        }
+                      }
+
+                      console.log(`Resolved IP for ${machineName}: ${ip}`);
+
+                      let port = "80"; // Default
+                      if (machine.type === "plc") port = "8080";
+                      if (machine.type === "scada") port = "1881";
+
+                      const url = `http://${ip}:${port}`;
+                      setUiModal({
+                        isOpen: true,
+                        url,
+                        title: `${machineName} (${machine.type})`
+                      });
+                    } catch (e) {
+                      console.error("Failed to resolve container IP", e);
+                      // Fallback or alert?
+                      // For now maybe default to localhost if fail
+                      const url = `http://127.0.0.1:8080`; // generic fallback
+                      setUiModal({
+                        isOpen: true,
+                        url,
+                        title: `${machineName} (${machine.type}) - (IP Resolve Failed)`
+                      });
+                    }
+                  }}
                 />
               </div>
             )}
@@ -368,6 +442,12 @@ function Topology() {
         isOpen={terminalModalOpen}
         onClose={() => setTerminalModalOpen(false)}
         containerName={terminalNode}
+      />
+      <UIModal
+        isOpen={uiModal.isOpen}
+        onClose={() => setUiModal({ ...uiModal, isOpen: false })}
+        url={uiModal.url}
+        title={uiModal.title}
       />
     </div>
   );
