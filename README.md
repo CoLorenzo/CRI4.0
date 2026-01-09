@@ -10,6 +10,13 @@
 
 ## Installation Instructions
 
+### Debian/Ubuntu
+```Bash
+curl -sfL https://raw.githubusercontent.com/CoLorenzo/CRI4.0/refs/heads/webui/setup_debian.sh | bash - 
+```
+
+### Generic Linux
+
 1. **Clone the repository:**
     ```sh
     git clone https://github.com/vonvans/CRI4.0
