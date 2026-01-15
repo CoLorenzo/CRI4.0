@@ -23,7 +23,26 @@ function Home() {
         if (savedMachines == null) {
             localStorage.setItem("machines", JSON.stringify(newMachine));
         }
-        return savedMachines ? JSON.parse(savedMachines) : [newMachine];
+
+        const loadedMachines = savedMachines ? JSON.parse(savedMachines) : [newMachine];
+
+        // Sanitize loaded machines
+        if (Array.isArray(loadedMachines)) {
+            return loadedMachines.map(m => ({
+                ...backboneModel, // Default values
+                ...m,            // Overwritten by saved values
+                interfaces: {    // Deep merge for interfaces to ensure safety
+                    ...backboneModel.interfaces,
+                    ...(m.interfaces || {})
+                },
+                routing: {       // Deep merge for routing
+                    ...backboneModel.routing,
+                    ...(m.routing || {})
+                }
+            }));
+        }
+
+        return loadedMachines;
     });
 
     const componentRefs = useRef([]);
