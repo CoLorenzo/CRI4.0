@@ -53,7 +53,7 @@ npm run build:dll
 cd containers/
 docker compose --profile collector --profile kathara build
 
-tee /etc/systemd/system/icr.service <<EOF
+sudo tee /etc/systemd/system/icr.service <<EOF
 [Unit]
 Description=ICR
 After=network.target
