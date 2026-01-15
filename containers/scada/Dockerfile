@@ -10,8 +10,8 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/* \
  && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash \
  && source "$NVM_DIR/nvm.sh" \
- && nvm install v22.21.0 \
- && nvm use v22.21.0 \
+ && nvm install v25.3.0 \
+ && nvm use v25.3.0 \
  && ln -sf "$NVM_DIR/versions/node/$(nvm current)/bin/"{node,npm,npx} /usr/local/bin/
 
 #install fuxa

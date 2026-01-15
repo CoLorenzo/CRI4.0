@@ -82,6 +82,7 @@
     "filereader": "^0.10.3",
     "framer-motion": "^11.3.31",
     "node-fetch": "^3.3.2",
+    "node-pty": "^1.1.0",
     "os-browserify": "^0.3.0",
     "overlayscrollbars-react": "^0.5.6",
     "path-browserify": "^1.0.1",
@@ -245,8 +246,8 @@
     ]
   },
   "engines": {
-    "node": ">=14.x",
-    "npm": ">=7.x"
+    "node": "25.3.0",
+    "npm": "11.6.2"
   },
   "electronmon": {
     "patterns": [

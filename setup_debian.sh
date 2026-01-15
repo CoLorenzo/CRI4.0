@@ -7,8 +7,8 @@ if ! command -v nvm >/dev/null 2>&1; then
 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 	source ~/.bashrc
 fi
-nvm install 18
-nvm use 18
+nvm install 25.3.0
+nvm use 25.3.0
 
 #Install docker if not exists
 if ! command -v docker >/dev/null 2>&1; then
