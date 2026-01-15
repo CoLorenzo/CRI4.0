@@ -1,18 +1,14 @@
 #! /bin/bash
 
-# install nvm if is not present
-if ! command -v nvm >/dev/null 2>&1; then
-    touch ~/.bashrc
-	sudo apt update
-	sudo apt install -y curl
-	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
-	source ~/.bashrc
-fi
-
 # Install node 25.3.0
-nvm use 25.3.0
+NODE_VERSION="v25.3.0"
+sudo apt update
+sudo apt install -y wget tar
+wget https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.xz
+tar xf ./node-${NODE_VERSION}-linux-x64.tar.xz
+mv node-${NODE_VERSION}-linux-x64/bin/* /usr/local/bin/
 
-#install kathara if not present
+#install kathara if not presentz
 if ! command -v kathara >/dev/null 2>&1; then
 	sudo apt update
 	sudo apt install -y wget apparmor tmux
