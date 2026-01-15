@@ -8,9 +8,10 @@ if [ "$EUID" -eq 0 ]; then
         REAL_USER="$SUDO_USER"
         REAL_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
     else
-        echo "Error: Please run this script with sudo so permissions can be set, but do not run as root directly."
-        echo "Usage: sudo ./setup_debian.sh"
-        exit 1
+        # Check if we are truly root (not just via sudo) and allow it
+        REAL_USER="root"
+        REAL_HOME="/root"
+        echo "Warning: Running as root directly. This is allowed but verify safety."
     fi
 else
    # If not running as root, we will need sudo later.
