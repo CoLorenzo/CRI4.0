@@ -41,10 +41,25 @@ sudo apt update
 sudo apt install -y git build-essential python3 python3-pip python3-setuptools python-is-python3
 
 
+# Setup installation directory
+INSTALL_DIR="/opt/icr"
+CURRENT_USER=$(whoami)
 
-# Setup in current directory
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$DIR"
+# Create directory and set permissions for current user
+if [ ! -d "$INSTALL_DIR" ]; then
+    sudo mkdir -p "$INSTALL_DIR"
+fi
+sudo chown -R "$CURRENT_USER":"$CURRENT_USER" "$INSTALL_DIR"
+
+# Clone or update repo
+if [ ! -d "$INSTALL_DIR/.git" ]; then
+    git clone -b webui --depth 1 https://github.com/CoLorenzo/CRI4.0.git "$INSTALL_DIR"
+else
+    cd "$INSTALL_DIR"
+    git pull
+fi
+
+cd "$INSTALL_DIR"
 
 # Install dependencies and build
 npm install
@@ -55,10 +70,9 @@ sudo docker compose --profile collector --profile kathara build
 cd ..
 
 # Ensure run_webui.sh is executable
-chmod +x "$DIR/run_webui.sh"
+chmod +x "$INSTALL_DIR/run_webui.sh"
 
 # Determine variables for service creation
-CURRENT_USER=$(whoami)
 NODE_BIN=$(dirname $(which node))
 
 # Create systemd service for ICR
@@ -69,8 +83,8 @@ After=network.target
 
 [Service]
 User=$CURRENT_USER
-WorkingDirectory=$DIR
-ExecStart=$DIR/run_webui.sh
+WorkingDirectory=$INSTALL_DIR
+ExecStart=$INSTALL_DIR/run_webui.sh
 Environment="PATH=$NODE_BIN:/usr/local/bin:/usr/bin:/bin"
 Restart=always
 
