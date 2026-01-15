@@ -10,4 +10,5 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 nvm use --silent default >/dev/null 2>&1 || true
 cd /opt/icr
-npm run web:dev
+
+npm run web:dev -- --host 127.0.0.1 --port 1212
