@@ -38,7 +38,7 @@ fi
 
 # Install ICR
 sudo apt update
-sudo apt install -y git build-essential
+sudo apt install -y git build-essential python3 python3-pip python3-setuptools python-is-python3
 git clone -b webui --depth 1 https://github.com/CoLorenzo/CRI4.0.git
 cd CRI4.0
 npm install

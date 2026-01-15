@@ -16,6 +16,6 @@ RUN apt-get update \
 
 #install fuxa
 RUN apt-get update && \
-    apt-get install -y curl jq iproute2&& \
+    apt-get install -y curl jq iproute2 libatomic1 build-essential python3 && \
     npm install -g --unsafe-perm @frangoteam/fuxa
 
