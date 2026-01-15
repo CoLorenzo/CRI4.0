@@ -40,29 +40,42 @@ fi
 sudo apt update
 sudo apt install -y git build-essential python3 python3-pip python3-setuptools python-is-python3
 
-# Create icr user if not exists
-if ! id -u icr >/dev/null 2>&1; then
-    sudo useradd -m -s /bin/bash icr
-fi
 
-# Clone into /home/icr/CRI4.0 if not present
-if [ ! -d "/home/icr/CRI4.0" ]; then
-    sudo -u icr git clone -b webui --depth 1 https://github.com/CoLorenzo/CRI4.0.git /home/icr/CRI4.0
-else
-    # Verify/update if already exists
-    cd /home/icr/CRI4.0
-    sudo -u icr git pull
-fi
 
-cd /home/icr/CRI4.0
-sudo -u icr npm install
-sudo -u icr npm run build:dll
+# Setup in current directory
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$DIR"
+
+# Install dependencies and build
+npm install
+npm run build:dll
 
 cd containers
 sudo docker compose --profile collector --profile kathara build
 cd ..
 
-#Create systemd service for ICR
-sudo cp icr.service /etc/systemd/system/icr.service
+# Ensure run_webui.sh is executable
+chmod +x "$DIR/run_webui.sh"
+
+# Determine variables for service creation
+CURRENT_USER=$(whoami)
+NODE_BIN=$(dirname $(which node))
+
+# Create systemd service for ICR
+cat <<EOF | sudo tee /etc/systemd/system/icr.service
+[Unit]
+Description=ICR
+After=network.target
+
+[Service]
+User=$CURRENT_USER
+WorkingDirectory=$DIR
+ExecStart=$DIR/run_webui.sh
+Environment="PATH=$NODE_BIN:/usr/local/bin:/usr/bin:/bin"
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
 sudo systemctl daemon-reload
 sudo systemctl enable --now icr.service
