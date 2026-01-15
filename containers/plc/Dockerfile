@@ -13,9 +13,8 @@ RUN apt update && \
     apt install -y git sudo && \
     git clone https://github.com/thiagoralves/OpenPLC_v3.git /opt/OpenPLC_v3 && \
     cd /opt/OpenPLC_v3 && \
-    git checkout 9c246ca23651c6d1e64552e387221d873cf0a0ce && \
+    git checkout f0d627a7f810865d58e8c4ce3ca01ef160286e85 && \
     ./install.sh linux
-
 
 #install OpenPLC-CLI
 RUN apt update && \

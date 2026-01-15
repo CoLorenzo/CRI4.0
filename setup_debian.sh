@@ -44,3 +44,7 @@ cd CRI4.0
 npm install
 npm run build:dll
 cd containers
+sudo docker compose --profile collector --profile kathara build
+
+#Create systemd service for ICR
+cp icr.service /etc/systemd/system/icr.service

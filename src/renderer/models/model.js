@@ -58,7 +58,7 @@ export const backboneModel = {
     fileCounter: 0,
   },
 
- scripts: {
+  scripts: {
     startup: "",   // qui metteremo le righe di scripting
   },
 
@@ -89,8 +89,8 @@ export const backboneModel = {
       rip: false,
       bgp: false,
       if: [{
-          cost: 0,
-          interface: null
+        cost: 0,
+        interface: null
       }],
       network: [""],
       area: [""],
@@ -130,7 +130,7 @@ export const attacksModel = [
       argsBeforeTargets: [],    // nessun flag prima degli IP
       argsAfterTargets: []      // nessun flag dopo gli IP
     }
-    
+
   },
   {
     name: "icmp-scanning",
@@ -260,7 +260,7 @@ export const attacksModel = [
     }
   },
 
-{
+  {
     name: "icmp-floodlite",
     displayName: "ICMP Flood lite",
     category: "dos",
@@ -346,7 +346,7 @@ export const attacksModel = [
     }
   },
 
-{
+  {
     name: "icmp-pinglite",
     displayName: "ICMP Ping lite",
     category: "ping",
@@ -388,7 +388,7 @@ export const attacksModel = [
       argsAfterTargets: []      // nessun flag dopo gli IP
     }
   },
-  
+
   {
     name: "modbus-writecoil",
     displayName: "Modbus Write Coil",
@@ -417,15 +417,15 @@ export const attacksModel = [
       argsAfterTargets: []      // nessun flag dopo gli IP
     }
   },
-   {
+  {
     name: "packet-sniffing",
     displayName: "Packet Sniffing",
     category: "sniffing",
     attackLoaded: false,
     image: "",
     isImage: false,
-    script: "",
-    entrypoint: "",
+    script: "/usr/local/bin/sniffing.sh",
+    entrypoint: "bash",
     parameters: {
       argsBeforeTargets: [],    // nessun flag prima degli IP
       argsAfterTargets: []      // nessun flag dopo gli IP

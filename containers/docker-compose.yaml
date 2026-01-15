@@ -187,3 +187,12 @@ services:
   tls_termination_proxy:
     build: ./tls_termination_proxy
     image: icr/tls_termination_proxy
+
+  sniffing-packet-sniffing:
+    build: ./sniffing/packet-sniffing
+    image: icr/sniffing-packet-sniffing
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    profiles: [kali]
+
