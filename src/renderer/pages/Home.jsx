@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable prettier/prettier */
+import { v4 as uuidv4 } from 'uuid';
 import { Textarea } from "@nextui-org/react";
 import { useRef, useState } from "react";
 import { LabInfo } from "../components/LabInfo";
@@ -18,34 +19,34 @@ function Home() {
 
     const [machines, setMachines] = useState(() => {
         const savedMachines = localStorage.getItem("machines");
-        const newMachine = [{id: crypto.randomUUID(), ...backboneModel}]
-        if (savedMachines == null){
-          localStorage.setItem("machines", JSON.stringify(newMachine));
+        const newMachine = [{ id: uuidv4(), ...backboneModel }]
+        if (savedMachines == null) {
+            localStorage.setItem("machines", JSON.stringify(newMachine));
         }
         return savedMachines ? JSON.parse(savedMachines) : [newMachine];
     });
 
     const componentRefs = useRef([]);
 
-    return(
+    return (
         <div className="min-h-[calc(100vh-4rem)] grid grid-cols-6">
             <div className="col-span-5 grid">
                 <div className="p-4 px-2">
-                    <LabInfo labInfo={labInfo} setLabInfo={setLabInfo}/>
+                    <LabInfo labInfo={labInfo} setLabInfo={setLabInfo} />
                 </div>
                 <div className="grid p-4 gap-2">
                     <div>
                         <Machines machines={machines} setMachines={setMachines} componentRefs={componentRefs} />
                     </div>
                     <div>
-                    <Textarea
-                        label="Bash file preview:"
-                        labelPlacement="outside"
-                        minRows={6}
-                        maxRows={8}
-                        readOnly
-                        value={machines && labInfo && generateScript(machines, labInfo)}
-                    />
+                        <Textarea
+                            label="Bash file preview:"
+                            labelPlacement="outside"
+                            minRows={6}
+                            maxRows={8}
+                            readOnly
+                            value={machines && labInfo && generateScript(machines, labInfo)}
+                        />
                     </div>
                 </div>
             </div>
@@ -54,7 +55,7 @@ function Home() {
                     <div>
                         <Mock machines={machines} componentRefs={componentRefs} />
                         <Download machines={machines} labInfo={labInfo} />
-                        <Configuration machines={machines} labInfo={labInfo} setMachines={setMachines} setLabInfo={setLabInfo}/>
+                        <Configuration machines={machines} labInfo={labInfo} setMachines={setMachines} setLabInfo={setLabInfo} />
                     </div>
                 </div>
             </div>

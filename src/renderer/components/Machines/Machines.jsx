@@ -7,6 +7,7 @@
 /* eslint-disable import/no-duplicates */
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import { v4 as uuidv4 } from 'uuid';
 import { useMemo, useState, useEffect } from "react";
 import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@nextui-org/table";
 import { Skeleton } from '@nextui-org/react'
@@ -36,7 +37,7 @@ export function Machines({ machines, setMachines, componentRefs }) {
     setMachines(() => ([
       ...machines,
       {
-        id: crypto.randomUUID(),
+        id: uuidv4(),
         ...backboneModel
       }
     ]))
@@ -45,7 +46,7 @@ export function Machines({ machines, setMachines, componentRefs }) {
   function removeMachine(machine) {
     if (machines.length === 1) {
       setMachines([{
-        id: crypto.randomUUID(),
+        id: uuidv4(),
         ...backboneModel
       }])
     } else {
@@ -77,7 +78,7 @@ export function Machines({ machines, setMachines, componentRefs }) {
                 }> Add Machine </Button>
               <Button isDisabled={machines.length > 0 ? false : true} aria-label="Clear all machine"
                 onClick={() => setMachines([{
-                  id: crypto.randomUUID(),
+                  id: uuidv4(),
                   ...backboneModel
                 }])}
                 size="sm" color="danger" endContent={<XSymbol size={22} />}>
