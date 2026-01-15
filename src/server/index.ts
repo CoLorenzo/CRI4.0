@@ -24,7 +24,7 @@ app.use('/api', router);
 // Serve static assets if needed, similar to how Electron does it
 app.use('/assets', express.static(path.join(__dirname, '../../assets')));
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '127.0.0.1', () => {
     console.log(`Server running on port ${PORT}`);
 });
 server.setTimeout(300000); // 5 minutes timeout for long docker builds
