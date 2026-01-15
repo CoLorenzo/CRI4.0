@@ -2,6 +2,7 @@
 
 # install nvm if is not present
 if ! command -v nvm >/dev/null 2>&1; then
+    touch ~/.bashrc
 	sudo apt update
 	sudo apt install -y curl
 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
