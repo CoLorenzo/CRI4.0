@@ -2,7 +2,6 @@
 
 # Install node 25.3.0
 NODE_VERSION="v25.3.0"
-
 apt update
 apt install -y wget tar xz-utils
 cd /tmp
@@ -19,7 +18,7 @@ mv "node-${NODE_VERSION}-linux-x64" "$INSTALL_DIR"
 ln -sf "${INSTALL_DIR}/bin/node" /usr/local/bin/node
 ln -sf "${INSTALL_DIR}/bin/npm"  /usr/local/bin/npm
 ln -sf "${INSTALL_DIR}/bin/npx"  /usr/local/bin/npx
-
+rm "$TARBALL"
 
 #install kathara if not presentz
 if ! command -v kathara >/dev/null 2>&1; then
