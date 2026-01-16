@@ -2,11 +2,24 @@
 
 # Install node 25.3.0
 NODE_VERSION="v25.3.0"
-sudo apt update
-sudo apt install -y wget tar
-wget https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.xz
-tar xf ./node-${NODE_VERSION}-linux-x64.tar.xz
-mv node-${NODE_VERSION}-linux-x64/bin/* /usr/local/bin/
+
+apt update
+apt install -y wget tar xz-utils
+cd /tmp
+TARBALL="node-${NODE_VERSION}-linux-x64.tar.xz"
+URL="https://nodejs.org/dist/${NODE_VERSION}/${TARBALL}"
+rm -f "$TARBALL"
+wget -q "$URL"
+rm -rf "node-${NODE_VERSION}-linux-x64"
+tar -xf "$TARBALL"
+INSTALL_DIR="/usr/local/lib/nodejs/node-${NODE_VERSION}"
+rm -rf "$INSTALL_DIR"
+mkdir -p /usr/local/lib/nodejs
+mv "node-${NODE_VERSION}-linux-x64" "$INSTALL_DIR"
+ln -sf "${INSTALL_DIR}/bin/node" /usr/local/bin/node
+ln -sf "${INSTALL_DIR}/bin/npm"  /usr/local/bin/npm
+ln -sf "${INSTALL_DIR}/bin/npx"  /usr/local/bin/npx
+
 
 #install kathara if not presentz
 if ! command -v kathara >/dev/null 2>&1; then
