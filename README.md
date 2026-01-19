@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - [Docker](https://www.docker.com/) installed and available in your system's `PATH`
-- [Node.js v18.20.8](https://nodejs.org/en/download/) installed
+- [Node.js v25.3.0](https://nodejs.org/en/download/) installed
 - [Docker Compose Plugin](https://docs.docker.com/compose/install/) installed
 - [Kathará](https://www.kathara.org/) installed
 
