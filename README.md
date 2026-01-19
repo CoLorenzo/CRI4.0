@@ -23,7 +23,7 @@ curl -sfL https://raw.githubusercontent.com/CoLorenzo/CRI4.0/refs/heads/webui/se
     cd CRI4.0
     ```
 
-2. **Install Node.js dependencies (ensure you are using Node.js v18.20.8):**
+2. **Install Node.js dependencies (ensure you are using Node.js v25.3.0):**
     ```sh
     npm install
     ```
