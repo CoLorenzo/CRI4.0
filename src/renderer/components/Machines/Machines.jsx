@@ -34,11 +34,43 @@ export function Machines({ machines, setMachines, componentRefs }) {
   }, [machines]);
 
   function addMachine() {
+    // Calculate the next progressive IP address
+    let nextIpHost = 0;
+
+    // Find the highest IP address currently in use
+    machines.forEach(machine => {
+      if (machine.interfaces && machine.interfaces.if) {
+        machine.interfaces.if.forEach(iface => {
+          if (iface.ip) {
+            // Extract IP from format like "10.0.0.X/24"
+            const match = iface.ip.match(/^10\.0\.0\.(\d+)\/24$/);
+            if (match) {
+              const hostPart = parseInt(match[1], 10);
+              if (hostPart >= nextIpHost) {
+                nextIpHost = hostPart + 1;
+              }
+            }
+          }
+        });
+      }
+    });
+
+    const newIp = `10.0.0.${nextIpHost}/24`;
+
     setMachines(() => ([
       ...machines,
       {
         id: uuidv4(),
-        ...backboneModel
+        ...backboneModel,
+        interfaces: {
+          ...backboneModel.interfaces,
+          if: [
+            {
+              ...backboneModel.interfaces.if[0],
+              ip: newIp,
+            }
+          ]
+        }
       }
     ]))
   }

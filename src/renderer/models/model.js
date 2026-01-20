@@ -25,7 +25,7 @@ export const backboneModel = {
           number: 0,
           domain: "",
         },
-        ip: "",
+        ip: "10.0.0.0/24",
         name: "",
       },
     ],
