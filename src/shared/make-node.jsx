@@ -57,6 +57,7 @@ function makeStartupFiles(netkit, lab) {
 
     // header sicuro
     let header = "#!/bin/bash\nset -euo pipefail\n\n";
+    header += "echo \"nameserver 8.8.8.8\" > /etc/resolv.conf\n";
     let ipSetup = "";
 
     // Assign IP to eth0 from 20.0.0.0/24 subnet
@@ -204,9 +205,9 @@ function makeLabConfFile(netkit, lab) {
     lab.file["lab.conf"] += `${machineName}[bridged]=true\n`;
 
     // image per tipo
-if(machine.type == "engine"){ lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
-if(machine.type == "fan"){ lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
-if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+    if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+    if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+    if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
     if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
     if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
     if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }

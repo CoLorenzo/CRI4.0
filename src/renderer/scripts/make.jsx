@@ -553,8 +553,10 @@ function makeStaticRouting(netkit, lab) {
 
 	let collector_db = availableIPs.shift();
 
+	lab.file["collector.startup"] += "echo \"nameserver 8.8.8.8\" > /etc/resolv.conf\n";
 	lab.file["collector.startup"] += "ip address add " + collector_host + "/" + availableSubnet.split("/")[1] + " dev eth0\n";
 	lab.file["collector.startup"] += "COLLECTORDB_HOST=" + collector_db + " /app/collector\n";
+	lab.file["collectordb.startup"] += "echo \"nameserver 8.8.8.8\" > /etc/resolv.conf\n";
 	lab.file["collectordb.startup"] += "ip address add " + collector_db + "/" + availableSubnet.split("/")[1] + " dev eth0\n";
 
 	let switchCounter = 2;
@@ -563,6 +565,7 @@ function makeStaticRouting(netkit, lab) {
 		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
 		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
 		if (machine.name && machine.name != "") {
+			lab.file[machine.name + ".startup"] += "echo \"nameserver 8.8.8.8\" > /etc/resolv.conf\n";
 			for (let machineInterface of machine.interfaces.if) {
 				if (machineInterface.eth.number == 0) {
 					if (machine.type == "switch") {
