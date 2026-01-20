@@ -16,6 +16,7 @@ import { OpenFlowRyu } from "./OpenFlowRyu";
 import { OtherFunctions } from "./OtherFunctions";
 import { TlsTerminationProxyFunctions } from "./TlsTerminationProxyFunctions";
 import { NGFWFunctions } from "./NGFWFunctions";
+import { IndustrialFunctions } from "./IndustrialFunctions";
 
 export function AdditionalFunctions({ machine, machines, setMachines }) {
     return (
@@ -67,6 +68,13 @@ export function AdditionalFunctions({ machine, machines, setMachines }) {
                         />
                     case 'ngfw':
                         return <NGFWFunctions
+                            machine={machine}
+                            machines={machines}
+                            setMachines={setMachines}
+                        />
+                    case 'fan':
+                    case 'temperature_sensor':
+                        return <IndustrialFunctions
                             machine={machine}
                             machines={machines}
                             setMachines={setMachines}

@@ -32,9 +32,9 @@ function makeStartupFiles(netkit, lab) {
 	lab.file["collector.startup"] = "";
 	lab.file["collectordb.startup"] = "";
 	for (let machine of netkit) {
-if(machine.type == "engine"){ lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
-if(machine.type == "fan"){ lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
-if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
 		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
@@ -85,9 +85,9 @@ function makeLabConfFile(netkit, lab) {
 	lab.file["lab.conf"] += "collectordb[image]=icr/collector-db\n";
 
 	for (let machine of netkit) {
-if(machine.type == "engine"){ lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
-if(machine.type == "fan"){ lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
-if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
 		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
@@ -153,9 +153,9 @@ if(machine.type == "plc"){ lab.file["lab.conf"] += machine.name + "[image]=icr/p
 */
 function makeTerminal(netkit, lab) {
 	for (let machine of netkit) {
-if(machine.type == "engine"){ lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
-if(machine.type == "fan"){ lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
-if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
 		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
@@ -172,9 +172,9 @@ if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name +
 
 function makeAttacker(netkit, lab) {
 	for (let machine of netkit) {
-if(machine.type == "engine"){ lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
-if(machine.type == "fan"){ lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
-if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
 		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
@@ -198,9 +198,9 @@ if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name +
 
 function makeRouter(netkit, lab) {
 	for (let machine of netkit) {
-if(machine.type == "engine"){ lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
-if(machine.type == "fan"){ lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
-if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
 		if (machine.name && machine.name != "" && machine.type == "router") {
 			if (machine.routingSoftware == "frr") {
 				makeRouterFrr(machine, lab);
@@ -503,9 +503,9 @@ function makeBgpConfQuagga(router, lab) {
 
 function makeWebserver(netkit, lab) {
 	for (let machine of netkit) {
-if(machine.type == "engine"){ lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
-if(machine.type == "fan"){ lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
-if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
 		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
@@ -531,9 +531,9 @@ if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name +
 function makeStaticRouting(netkit, lab) {
 	let networks = [];
 	for (let machine of netkit) {
-if(machine.type == "engine"){ lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
-if(machine.type == "fan"){ lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
-if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
 		for (let machineInterface of machine.interfaces.if) {
 			if (machineInterface.ip && machineInterface.ip != "") {
 				networks.push(machineInterface.ip);
@@ -559,9 +559,9 @@ if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name +
 
 	let switchCounter = 2;
 	for (let machine of netkit) {
-if(machine.type == "engine"){ lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
-if(machine.type == "fan"){ lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
-if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
 		if (machine.name && machine.name != "") {
 			for (let machineInterface of machine.interfaces.if) {
 				if (machineInterface.eth.number == 0) {
@@ -599,9 +599,9 @@ if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name +
 
 function makeOther(netkit, lab) {
 	for (let machine of netkit) {
-if(machine.type == "engine"){ lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
-if(machine.type == "fan"){ lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
-if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
 		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
@@ -619,6 +619,43 @@ if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name +
 }
 
 /*---------------------------------------------*/
+/*---------- INDUSTRIAL DEVICES CONFIG --------*/
+/*---------------------------------------------*/
+
+function makeIndustrialDevices(netkit, lab) {
+	for (let machine of netkit) {
+		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+
+		if (machine.name && machine.name != "" && (machine.type == "fan" || machine.type == "temperature_sensor")) {
+			let endpoint = "http://localhost:8000/";
+
+			// If an engine is selected, find its IP address
+			if (machine.industrial && machine.industrial.selectedEngineId) {
+				const selectedEngine = netkit.find(m => m.id === machine.industrial.selectedEngineId);
+				if (selectedEngine && selectedEngine.interfaces && selectedEngine.interfaces.if && selectedEngine.interfaces.if[0]) {
+					const engineIp = selectedEngine.interfaces.if[0].ip;
+					if (engineIp) {
+						// Remove the subnet mask (e.g., "192.168.1.1/24" -> "192.168.1.1")
+						const ipWithoutMask = engineIp.split("/")[0];
+						endpoint = `http://${ipWithoutMask}:8000/`;
+					}
+				}
+			}
+
+			// Add the startup command with the endpoint parameter
+			if (machine.type == "fan") {
+				lab.file[machine.name + ".startup"] += `uv run /fan.py -e ${endpoint}\n`;
+			} else if (machine.type == "temperature_sensor") {
+				lab.file[machine.name + ".startup"] += `uv run /tsens.py -e ${endpoint}\n`;
+			}
+		}
+	}
+}
+
+
+/*---------------------------------------------*/
 /*------------- NAMESERVER CONFIG -------------*/
 /*---------------------------------------------*/
 
@@ -630,9 +667,9 @@ function makeNameserver(netkit, lab) {
 
 	// generazione file e cartelle comuni
 	for (let machine of netkit) {
-if(machine.type == "engine"){ lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
-if(machine.type == "fan"){ lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
-if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
 		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
@@ -660,9 +697,9 @@ if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name +
 	//db.root in ogni macchina dns
 	if (nsroot) {
 		for (let machine of netkit) {
-if(machine.type == "engine"){ lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
-if(machine.type == "fan"){ lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
-if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+			if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+			if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+			if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
 			if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 			if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 			if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
@@ -688,9 +725,9 @@ if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name +
 		}
 		//entry in db.zona e named.conf per le altre macchine
 		for (let machine of netkit) {
-if(machine.type == "engine"){ lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
-if(machine.type == "fan"){ lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
-if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+			if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+			if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+			if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
 			if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 			if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 			if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
@@ -708,9 +745,9 @@ if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name +
 		}
 		//entry per l'alberatura delle zone (. conosce .com, .com conosce pippo.com, ecc)
 		for (let machine of netkit) {
-if(machine.type == "engine"){ lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
-if(machine.type == "fan"){ lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
-if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+			if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+			if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+			if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
 			if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 			if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 			if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
@@ -785,9 +822,9 @@ if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name +
 
 function makeOVSwitch(netkit, lab) {
 	for (let machine of netkit) {
-if(machine.type == "engine"){ lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
-if(machine.type == "fan"){ lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
-if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
 		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
@@ -818,9 +855,9 @@ if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name +
 function makeRyuController(netkit, lab) {
 	let isSDN = false;
 	for (let machine of netkit) {
-if(machine.type == "engine"){ lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
-if(machine.type == "fan"){ lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
-if(machine.type == "temperature_sensor"){ lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
 		if (machine.type == "tls_termination_proxy") { lab.file["lab.conf"] += machine.name + "[image]=icr/tls_termination_proxy"; }
 		if (machine.type == "rejector") { lab.file["lab.conf"] += machine.name + "[image]=icr/rejector"; }
 		if (machine.type == "scada") { lab.file["lab.conf"] += machine.name + "[image]=icr/scada"; }
@@ -883,6 +920,7 @@ function makeFilesStructure(netkit, labInfo) {
 	makeRouter(netkit, lab);
 	makeWebserver(netkit, lab);
 	makeNameserver(netkit, lab);
+	makeIndustrialDevices(netkit, lab);
 	makeOther(netkit, lab);
 	makeOVSwitch(netkit, lab);
 	makeRyuController(netkit, lab);
