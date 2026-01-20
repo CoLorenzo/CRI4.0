@@ -66,6 +66,9 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI }) {
 			},
 		},
 		groups: {
+"engine": { image: DIR + "engine.png", shape: "image", },
+"fan": { image: DIR + "fan.png", shape: "image", },
+"temperature_sensor": { image: DIR + "temperature_sensor.png", shape: "image", },
 			"ngfw": {
 				image: DIR + "ngfw_appliance.png",
 				shape: "image",

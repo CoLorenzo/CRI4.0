@@ -114,6 +114,9 @@ export function MachineInfo({ id, machine, machines, setMachines }) {
                 }
               >
                 <Radio value="ngfw">NGFW Appliance</Radio>
+                <Radio value="tls_termination_proxy">TLS termination proxy</Radio>
+
+
               </RadioGroup>
             </AccordionItem>
 
@@ -129,7 +132,9 @@ export function MachineInfo({ id, machine, machines, setMachines }) {
                   })
                 }
               >
-                <Radio value="tls_termination_proxy">TLS termination proxy</Radio>
+                <Radio value="engine">Engine</Radio>
+                <Radio value="fan">Fan</Radio>
+                <Radio value="temperature_sensor">Temperature sensor</Radio>
                 <Radio value="rejector">Rejector</Radio>
                 <Radio value="scada">Scada controller</Radio>
                 <Radio value="apg">Abstract piece generator</Radio>
