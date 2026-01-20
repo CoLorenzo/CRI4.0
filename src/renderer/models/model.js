@@ -23,7 +23,7 @@ export const backboneModel = {
       {
         eth: {
           number: 0,
-          domain: "",
+          domain: "A",
         },
         ip: "10.0.0.0/24",
         name: "",

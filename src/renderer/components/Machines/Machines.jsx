@@ -67,6 +67,10 @@ export function Machines({ machines, setMachines, componentRefs }) {
           if: [
             {
               ...backboneModel.interfaces.if[0],
+              eth: {
+                ...backboneModel.interfaces.if[0].eth,
+                domain: "A",
+              },
               ip: newIp,
             }
           ]
