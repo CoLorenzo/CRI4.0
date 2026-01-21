@@ -114,6 +114,14 @@ stunnel
       lab.file[`${machineName}.startup`] = header + ipSetup + tlsScript;
     } else {
       let extraCommands = "";
+      if (machine.type === "engine") {
+        // Default values matching engine.py defaults
+        let args = "";
+        // If properties existed in machine model, we would map them here:
+        // if (machine.engine?.temperatureStep) args += ` -t ${machine.engine.temperatureStep}`;
+
+        extraCommands += `uv run /engine.py${args} > /var/log/engine.log 2>&1 & disown\n`;
+      }
       if (machine.type === "scada") {
         extraCommands += "export PATH=$PATH:$(npm config get prefix)/bin\n";
         extraCommands += "fuxa > /var/log/fuxa.log 2>&1 & disown\n";

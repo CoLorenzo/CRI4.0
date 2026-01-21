@@ -1,5 +1,7 @@
 FROM debian:trixie
 
+RUN apt-get update && apt-get install -y iproute2
+
 #Install UV
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl ca-certificates \
@@ -11,7 +13,6 @@ RUN uv venv
 
 COPY requirements.txt /requirements.txt
 RUN uv pip install -r requirements.txt
-
 COPY tsens.py /tsens.py
 RUN chmod +x /tsens.py
 

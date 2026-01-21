@@ -72,15 +72,6 @@ def set_engine_temperature(update: TemperatureUpdate):
 def root():
     return get_engine_status()
 
-
-def heartbeat(context):
-    slave_id = 0x00
-    StartTcpServer(context,address=("0.0.0.0", 1502))
-    while True:
-        context[slave_id].setValues(4, 0, [1])  # HR0
-        print(f"[update] HR0 = {1}")
-        time.sleep(2)
-
 def main():
     global engine
     parser = argparse.ArgumentParser(description="Engine Simulator")
@@ -92,18 +83,24 @@ def main():
     args = parser.parse_args()
 
     # start modbus server
-    DISCRETE_INPUTS=16
-    COILS=16
-    HOLDING_REGS=16
-    INPUT_REGS=16
     store = ModbusDeviceContext(
-        di=ModbusSequentialDataBlock(0, [0]*DISCRETE_INPUTS),  # Discrete Inputs
-        co=ModbusSequentialDataBlock(0, [0]*COILS),  # Coils
-        hr=ModbusSequentialDataBlock(0, [0]*HOLDING_REGS),  # Holding Registers
-        ir=ModbusSequentialDataBlock(0, [0]*INPUT_REGS)   # Input Registers
+        hr=ModbusSequentialDataBlock(0, [0]*100),
+        co=ModbusSequentialDataBlock(0, [0]*100),
+        di=ModbusSequentialDataBlock(0, [0]*100),
+        ir=ModbusSequentialDataBlock(0, [0]*100),
     )
-    context = ModbusServerContext(devices=store, single=True) 
-    threading.Thread(target=heartbeat, args=(context,), daemon=True).start()
+
+    context = ModbusServerContext(
+        devices={1: store},   # <-- Unit ID 1
+        single=False
+    )
+
+    threading.Thread(
+        target=StartTcpServer,
+        args=(context,),
+        kwargs={"address": ("0.0.0.0", 502)},
+        daemon=False
+    ).start()
 
     # start API REST
     engine = Engine(args.temperature_step, args.seconds, args.temperature_start)
