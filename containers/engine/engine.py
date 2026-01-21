@@ -5,6 +5,15 @@ import argparse
 import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel
+from pymodbus.server import StartTcpServer
+from pymodbus.datastore import ModbusServerContext, ModbusDeviceContext, ModbusSequentialDataBlock
+from pymodbus.pdu.device import ModbusDeviceIdentification
+import logging
+import random
+import time
+import threading
+import argparse
+
 
 class TemperatureUpdate(BaseModel):
     temperature: float
@@ -63,6 +72,15 @@ def set_engine_temperature(update: TemperatureUpdate):
 def root():
     return get_engine_status()
 
+
+def heartbeat(context):
+    slave_id = 0x00
+    StartTcpServer(context,address=("0.0.0.0", 1502))
+    while True:
+        context[slave_id].setValues(4, 0, [1])  # HR0
+        print(f"[update] HR0 = {1}")
+        time.sleep(2)
+
 def main():
     global engine
     parser = argparse.ArgumentParser(description="Engine Simulator")
@@ -71,13 +89,25 @@ def main():
     parser.add_argument("-t", "--temperature-step", type=float, required=False, default=+1, help="Temperature increase step")
     parser.add_argument("-s", "--seconds", type=float, required=False, default=1, help="Time interval in seconds")
     parser.add_argument("-ts", "--temperature-start", type=float, required=False, default=30, help="Temperature start value")
-
-
     args = parser.parse_args()
-    
+
+    # start modbus server
+    DISCRETE_INPUTS=16
+    COILS=16
+    HOLDING_REGS=16
+    INPUT_REGS=16
+    store = ModbusDeviceContext(
+        di=ModbusSequentialDataBlock(0, [0]*DISCRETE_INPUTS),  # Discrete Inputs
+        co=ModbusSequentialDataBlock(0, [0]*COILS),  # Coils
+        hr=ModbusSequentialDataBlock(0, [0]*HOLDING_REGS),  # Holding Registers
+        ir=ModbusSequentialDataBlock(0, [0]*INPUT_REGS)   # Input Registers
+    )
+    context = ModbusServerContext(devices=store, single=True) 
+    threading.Thread(target=heartbeat, args=(context,), daemon=True).start()
+
+    # start API REST
     engine = Engine(args.temperature_step, args.seconds, args.temperature_start)
     engine.start()
-    
     print(f"Starting Engine with step={args.temperature_step}, interval={args.seconds}, start_temp={args.temperature_start}")
     uvicorn.run(app, host=args.interface, port=args.port)
 
