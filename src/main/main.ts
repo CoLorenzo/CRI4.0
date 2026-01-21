@@ -227,6 +227,69 @@ ipcMain.handle('docker-inspect', async (event, machineName) => {
   });
 });
 
+ipcMain.handle('docker-logs', async (event, machineName) => {
+  return new Promise((resolve, reject) => {
+    sendLog('log', `🔍 docker-logs called for: ${machineName}`);
+
+    // Try to find container using the same logic as terminal.create
+    // 1. First try by ancestor (image name)
+    const ancestorCmd = `docker ps --filter ancestor=${machineName} --format "{{.Names}}"`;
+    sendLog('log', `Trying ancestor: ${ancestorCmd}`);
+
+    exec(ancestorCmd, (err1, stdout1) => {
+      const nameByAncestor = stdout1 ? stdout1.trim().split("\n")[0] : null;
+
+      if (nameByAncestor) {
+        sendLog('log', `✅ Found by ancestor: ${nameByAncestor}`);
+        exec(`docker logs ${nameByAncestor}`, (logsErr, logsStdout) => {
+          if (logsErr) {
+            sendLog('error', `❌ docker logs failed: ${logsErr.message}`);
+            resolve('');
+          } else {
+            sendLog('log', `✅ Got logs: ${logsStdout.length} chars`);
+            resolve(logsStdout);
+          }
+        });
+        return;
+      }
+
+      // 2. Fallback: try by name pattern (Kathara: _machineName_)
+      const nameCmd = `docker ps --filter name=_${machineName}_ --format "{{.Names}}"`;
+      sendLog('log', `Trying name pattern: ${nameCmd}`);
+
+      exec(nameCmd, (err2, stdout2) => {
+        const nameByPattern = stdout2 ? stdout2.trim().split("\n")[0] : null;
+
+        if (nameByPattern) {
+          sendLog('log', `✅ Found by pattern: ${nameByPattern}`);
+          exec(`docker logs ${nameByPattern}`, (logsErr, logsStdout) => {
+            if (logsErr) {
+              sendLog('error', `❌ docker logs failed: ${logsErr.message}`);
+              resolve('');
+            } else {
+              sendLog('log', `✅ Got logs: ${logsStdout.length} chars`);
+              resolve(logsStdout);
+            }
+          });
+          return;
+        }
+
+        // 3. Last resort: try exact name
+        sendLog('warn', `⚠️ Container not found by ancestor or pattern, trying exact: ${machineName}`);
+        exec(`docker logs ${machineName}`, (logsErr, logsStdout) => {
+          if (logsErr) {
+            sendLog('error', `❌ Could not get logs: ${logsErr.message}`);
+            resolve('');
+          } else {
+            sendLog('log', `✅ Got logs (exact): ${logsStdout.length} chars`);
+            resolve(logsStdout);
+          }
+        });
+      });
+    });
+  });
+});
+
 
 import { spawn } from 'child_process'; // metti questa importazione vicino a `import { exec } from 'child_process';`
 

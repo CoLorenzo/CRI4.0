@@ -12,6 +12,7 @@ import { Slider } from "@nextui-org/react";
 import TopologyGraph from "../components/TopologyGraph";
 import TerminalModal from "../components/TerminalModal";
 import UIModal from "../components/UIModal";
+import LogsModal from "../components/LogsModal";
 import { getMachineIps } from "../utils/ipUtils";
 import { useContext } from "react";
 import { NotificationContext } from "../contexts/NotificationContext";
@@ -30,6 +31,9 @@ function Topology() {
 
   // UI Modal State
   const [uiModal, setUiModal] = useState({ isOpen: false, url: "", title: "" });
+
+  // Logs Modal State
+  const [logsModal, setLogsModal] = useState({ isOpen: false, containerName: "" });
 
   const [simulationRun, setSimulationRun] = useState(() => {
     try { return JSON.parse(localStorage.getItem('simulationRun') || 'false'); }
@@ -300,6 +304,10 @@ function Topology() {
                       });
                     }
                   }}
+                  onOpenLogs={(nodeId) => {
+                    const machineName = nodeId.replace("machine-", "");
+                    setLogsModal({ isOpen: true, containerName: machineName });
+                  }}
                 />
               </div>
             )}
@@ -448,6 +456,11 @@ function Topology() {
         onClose={() => setUiModal({ ...uiModal, isOpen: false })}
         url={uiModal.url}
         title={uiModal.title}
+      />
+      <LogsModal
+        isOpen={logsModal.isOpen}
+        onClose={() => setLogsModal({ ...logsModal, isOpen: false })}
+        containerName={logsModal.containerName}
       />
     </div>
   );

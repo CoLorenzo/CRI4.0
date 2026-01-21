@@ -110,6 +110,64 @@ export const getContainerInspect = async (req: Request, res: Response) => {
     });
 };
 
+export const getContainerLogs = async (req: Request, res: Response) => {
+    const { containerName } = req.body;
+    if (!containerName) return res.status(400).json({ error: 'Container name required' });
+
+    console.log(`🔍 getContainerLogs called for: ${containerName}`);
+
+    // Try to find container using the same logic as terminal and Electron handler
+    // 1. First try by ancestor (image name)
+    exec(`docker ps --filter ancestor=${containerName} --format "{{.Names}}"`, (err1, stdout1) => {
+        const nameByAncestor = stdout1 ? stdout1.trim().split("\n")[0] : null;
+
+        if (nameByAncestor) {
+            console.log(`✅ Found by ancestor: ${nameByAncestor}`);
+            exec(`docker logs ${nameByAncestor}`, (logsErr, logsStdout) => {
+                if (logsErr) {
+                    console.error("Docker logs failed:", logsErr.message);
+                    res.json({ logs: '' });
+                } else {
+                    console.log(`✅ Got logs: ${logsStdout.length} chars`);
+                    res.json({ logs: logsStdout });
+                }
+            });
+            return;
+        }
+
+        // 2. Fallback: try by name pattern (Kathara: _containerName_)
+        exec(`docker ps --filter name=_${containerName}_ --format "{{.Names}}"`, (err2, stdout2) => {
+            const nameByPattern = stdout2 ? stdout2.trim().split("\n")[0] : null;
+
+            if (nameByPattern) {
+                console.log(`✅ Found by pattern: ${nameByPattern}`);
+                exec(`docker logs ${nameByPattern}`, (logsErr, logsStdout) => {
+                    if (logsErr) {
+                        console.error("Docker logs failed:", logsErr.message);
+                        res.json({ logs: '' });
+                    } else {
+                        console.log(`✅ Got logs: ${logsStdout.length} chars`);
+                        res.json({ logs: logsStdout });
+                    }
+                });
+                return;
+            }
+
+            // 3. Last resort: try exact name
+            console.warn(`⚠️ Container not found by ancestor or pattern, trying exact: ${containerName}`);
+            exec(`docker logs ${containerName}`, (logsErr, logsStdout) => {
+                if (logsErr) {
+                    console.error(`❌ Could not get logs: ${logsErr.message}`);
+                    res.json({ logs: '' });
+                } else {
+                    console.log(`✅ Got logs (exact): ${logsStdout.length} chars`);
+                    res.json({ logs: logsStdout });
+                }
+            });
+        });
+    });
+};
+
 export const simulateAttack = async (req: Request, res: Response) => {
     const { container, command } = req.body;
     const timestamp = new Date().toLocaleString();

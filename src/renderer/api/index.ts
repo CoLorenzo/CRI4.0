@@ -51,6 +51,29 @@ export const api = {
         return response.json();
     },
 
+    async getContainerLogs(containerName: string): Promise<string> {
+        console.log('getContainerLogs called with:', containerName);
+        console.log('isElectron:', isElectron());
+
+        if (isElectron()) {
+            try {
+                const result = await window.electron.ipcRenderer.invoke('docker-logs', containerName);
+                console.log('IPC result:', result);
+                return result;
+            } catch (error) {
+                console.error('IPC error:', error);
+                throw error;
+            }
+        }
+        const response = await fetch(`${API_BASE_URL}/docker-logs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ containerName }),
+        });
+        const data = await response.json();
+        return data.logs || '';
+    },
+
     async simulateAttack(container: string, command: string | string[]): Promise<string> {
         if (isElectron()) {
             return window.electron.ipcRenderer.invoke('simulate-attack', { container, command });

@@ -25,7 +25,7 @@ const BLACK = '#2B1B17';
 import { api } from '../api';
 const DIR = api.assetsUrl;
 
-function TopologyGraph({ machines, onOpenTerminal, onOpenUI }) {
+function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs }) {
 	const [ifNameAt, setIfNameAt] = useState({ checked: false });
 	const [ifOspfCost, setIfOspfCost] = useState({ checked: false });
 	const [routingLabel, setRoutingLabel] = useState({ checked: false });
@@ -66,9 +66,9 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI }) {
 			},
 		},
 		groups: {
-"engine": { image: DIR + "engine.png", shape: "image", },
-"fan": { image: DIR + "fan.png", shape: "image", },
-"temperature_sensor": { image: DIR + "temperature_sensor.png", shape: "image", },
+			"engine": { image: DIR + "engine.png", shape: "image", },
+			"fan": { image: DIR + "fan.png", shape: "image", },
+			"temperature_sensor": { image: DIR + "temperature_sensor.png", shape: "image", },
 			"ngfw": {
 				image: DIR + "ngfw_appliance.png",
 				shape: "image",
@@ -196,6 +196,13 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI }) {
 		}
 	};
 
+	const handleOpenLogs = () => {
+		if (contextMenu && onOpenLogs) {
+			onOpenLogs(contextMenu.nodeId);
+			setContextMenu(null);
+		}
+	};
+
 	const showOpenUI = contextMenu && machines.find(m => {
 		// Find the machine corresponding to the clicked node ID
 		// Note: ID format is "machine-" + name
@@ -259,6 +266,12 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI }) {
 							Open UI
 						</button>
 					)}
+					<button
+						className="w-full text-left px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
+						onClick={handleOpenLogs}
+					>
+						Logs
+					</button>
 				</div>
 			)}
 		</div>
