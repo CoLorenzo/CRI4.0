@@ -820,7 +820,22 @@ app.on('window-all-closed', () => {
 
 app
   .whenReady()
-  .then(() => {
+  .then(async () => {
+    // STARTUP CLEANUP: Stop any running kathara labs and remove the directory
+    const labsDir = path.join(os.homedir(), 'kathara-labs');
+    try {
+      console.log('🧹 Startup: cleaning previous labs...');
+      // 1. Stop simulations
+      await runCmd('kathara', ['lclean', '-d', labsDir], { timeoutMs: 20_000 });
+
+      // 2. Remove directory
+      await fsp.rm(labsDir, { recursive: true, force: true });
+      console.log('✅ Startup: removed labs directory');
+    } catch (e) {
+      console.error('❌ Startup cleanup failed:', e);
+      // We continue anyway, so the app doesn't crash if cleanup fails
+    }
+
     createWindow();
     app.on('activate', () => {
       // On macOS it's common to re-create a window in the app when the
