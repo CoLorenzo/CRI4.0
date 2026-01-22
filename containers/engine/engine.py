@@ -91,8 +91,8 @@ def main():
     )
 
     context = ModbusServerContext(
-        devices={1: store},   # <-- Unit ID 1
-        single=False
+        devices=store,
+        single=True
     )
 
     threading.Thread(
