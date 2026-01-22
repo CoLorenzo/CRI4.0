@@ -16,7 +16,7 @@ RUN apt-get update \
 
 #install fuxa
 RUN apt-get update && \
-    apt-get install -y curl jq iproute2 libatomic1 build-essential python3 && \
+    apt-get install -y curl jq iproute2 libatomic1 build-essential python3 socat&& \
     npm install -g --unsafe-perm @frangoteam/fuxa
 
 CMD ["/root/.nvm/versions/node/v18.20.5/bin/fuxa"]
