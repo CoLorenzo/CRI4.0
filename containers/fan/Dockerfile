@@ -15,4 +15,9 @@ RUN uv pip install -r requirements.txt
 COPY fan.py /fan.py
 RUN chmod +x /fan.py
 
-CMD ["uv", "run", "/fan.py"]
+# Copy and set up the startup wrapper script
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
+CMD ["/start.sh"]
+

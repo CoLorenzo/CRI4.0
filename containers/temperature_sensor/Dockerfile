@@ -16,4 +16,8 @@ RUN uv pip install -r requirements.txt
 COPY tsens.py /tsens.py
 RUN chmod +x /tsens.py
 
-CMD ["uv", "run", "/tsens.py"]
+# Copy and set up the startup wrapper script
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
+CMD ["/start.sh"]

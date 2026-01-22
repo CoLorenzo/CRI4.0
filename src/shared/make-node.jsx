@@ -244,6 +244,27 @@ function makeLabConfFile(netkit, lab) {
       }
     }
     lab.file["lab.conf"] += "\n";
+
+    // Set ENDPOINT environment variable for industrial devices (fan, temperature_sensor)
+    if (machine.type === "fan" || machine.type === "temperature_sensor") {
+      let endpoint = "http://localhost:8000/";
+
+      // If an engine is selected, find its IP address
+      if (machine.industrial && machine.industrial.selectedEngineId) {
+        const selectedEngine = netkit.find(m => m.id === machine.industrial.selectedEngineId);
+        if (selectedEngine && selectedEngine.interfaces && selectedEngine.interfaces.if && selectedEngine.interfaces.if[0]) {
+          const engineIp = selectedEngine.interfaces.if[0].ip;
+          if (engineIp) {
+            // Remove the subnet mask (e.g., "192.168.1.1/24" -> "192.168.1.1")
+            const ipWithoutMask = engineIp.split("/")[0];
+            endpoint = `http://${ipWithoutMask}:8000/`;
+          }
+        }
+      }
+
+      // Set the ENDPOINT environment variable in lab.conf
+      lab.file["lab.conf"] += `${machineName}[env]="ENDPOINT=${endpoint}"\n`;
+    }
   }
 }
 

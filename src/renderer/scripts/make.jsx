@@ -627,9 +627,9 @@ function makeOther(netkit, lab) {
 
 function makeIndustrialDevices(netkit, lab) {
 	for (let machine of netkit) {
-		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
-		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
-		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine\n"; }
+		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan\n"; }
+		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor\n"; }
 
 		if (machine.name && machine.name != "" && (machine.type == "fan" || machine.type == "temperature_sensor")) {
 			let endpoint = "http://localhost:8000/";
@@ -647,15 +647,12 @@ function makeIndustrialDevices(netkit, lab) {
 				}
 			}
 
-			// Add the startup command with the endpoint parameter
-			if (machine.type == "fan") {
-				lab.file[machine.name + ".startup"] += `uv run /fan.py -e ${endpoint}\n`;
-			} else if (machine.type == "temperature_sensor") {
-				lab.file[machine.name + ".startup"] += `uv run /tsens.py -e ${endpoint}\n`;
-			}
+			// Set the ENDPOINT environment variable in lab.conf
+			lab.file["lab.conf"] += machine.name + `[env]="ENDPOINT=${endpoint}"\n`;
 		}
 	}
 }
+
 
 
 /*---------------------------------------------*/

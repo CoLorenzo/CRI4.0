@@ -13,7 +13,7 @@ import threading
 # Argument parsing
 parser = argparse.ArgumentParser(description="modbusTCP")
 parser.add_argument("-a", "--address", required=False, default="0.0.0.0", help="ModbusTCP Address")
-parser.add_argument("-p", "--port", required=False, default=1502, type=int, help="ModbusTCP port")
+parser.add_argument("-p", "--port", required=False, default=502, type=int, help="ModbusTCP port")
 parser.add_argument("-ft", "--fetch-time", required=False, default=1.0, type=float, help="Fetch time seconds")
 parser.add_argument("-e", "--endpoint", required=False, default="http://localhost:8000/", help="Endpoint API REST")
 args = parser.parse_args()

@@ -1,22 +1,3 @@
-FROM debian:trixie
-SHELL ["/bin/bash", "-lc"]
-ENV DEBIAN_FRONTEND=noninteractive
+FROM frangoteam/fuxa:latest
 
-#install node v22.21.0
-ENV NVM_DIR=/root/.nvm
-RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-      curl ca-certificates gnupg uuid-runtime \
- && rm -rf /var/lib/apt/lists/* \
- && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash \
- && source "$NVM_DIR/nvm.sh" \
- && nvm install v18.20.5 \
- && nvm use v18.20.5 \
- && ln -sf "$NVM_DIR/versions/node/$(nvm current)/bin/"{node,npm,npx} /usr/local/bin/
-
-#install fuxa
-RUN apt-get update && \
-    apt-get install -y curl jq iproute2 libatomic1 build-essential python3 socat&& \
-    npm install -g --unsafe-perm @frangoteam/fuxa
-
-CMD ["/root/.nvm/versions/node/v18.20.5/bin/fuxa"]
+RUN apt update && apt install -y iproute2
