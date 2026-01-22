@@ -17,6 +17,7 @@ import { OtherFunctions } from "./OtherFunctions";
 import { TlsTerminationProxyFunctions } from "./TlsTerminationProxyFunctions";
 import { NGFWFunctions } from "./NGFWFunctions";
 import { IndustrialFunctions } from "./IndustrialFunctions";
+import { ScadaFunctions } from "./ScadaFunctions";
 
 export function AdditionalFunctions({ machine, machines, setMachines }) {
     return (
@@ -79,6 +80,12 @@ export function AdditionalFunctions({ machine, machines, setMachines }) {
                             machines={machines}
                             setMachines={setMachines}
                         />
+                    case 'scada':
+                        return <ScadaFunctions
+                            machine={machine}
+                            machines={machines}
+                            setMachines={setMachines}
+                        />
                     default:
                         return null
                 }
@@ -86,3 +93,4 @@ export function AdditionalFunctions({ machine, machines, setMachines }) {
         </div>
     )
 }
+
