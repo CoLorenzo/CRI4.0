@@ -1,9 +1,12 @@
 FROM debian:trixie
 
+RUN apt update && apt install -y iproute2
+
 # set root password
 USER root
 WORKDIR /root
 RUN echo "root:cri40" | chpasswd
+
 
 # install docker-systemctl-replacement
 RUN apt-get update \
