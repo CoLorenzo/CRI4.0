@@ -68,6 +68,7 @@ function makeStartupFiles(netkit, lab) {
       eth0Ip = `20.0.0.${collectorIpCounter}/24`;
       collectorIpCounter++;
     }
+    machine.computedEth0Ip = eth0Ip; // Store for later use in makeLabConfFile
     ipSetup += `ip addr add ${eth0Ip} dev eth0\nip link set eth0 up\n`;
 
     // Assign IPs to eth1 and subsequent interfaces from frontend
@@ -252,18 +253,31 @@ function makeLabConfFile(netkit, lab) {
       // If an engine is selected, find its IP address
       if (machine.industrial && machine.industrial.selectedEngineId) {
         const selectedEngine = netkit.find(m => m.id === machine.industrial.selectedEngineId);
-        if (selectedEngine && selectedEngine.interfaces && selectedEngine.interfaces.if && selectedEngine.interfaces.if[0]) {
-          const engineIp = selectedEngine.interfaces.if[0].ip;
-          if (engineIp) {
-            // Remove the subnet mask (e.g., "192.168.1.1/24" -> "192.168.1.1")
-            const ipWithoutMask = engineIp.split("/")[0];
+        if (selectedEngine) {
+          // Prefer the auto-assigned 20.x IP (Control Network)
+          if (selectedEngine.computedEth0Ip) {
+            const ipWithoutMask = selectedEngine.computedEth0Ip.split("/")[0];
             endpoint = `http://${ipWithoutMask}:8000/`;
+          }
+          // Fallback to the first configured interface (User Network) if for some reason eth0 wasn't assigned
+          else if (selectedEngine.interfaces && selectedEngine.interfaces.if && selectedEngine.interfaces.if[0]) {
+            const engineIp = selectedEngine.interfaces.if[0].ip;
+            if (engineIp) {
+              // Remove the subnet mask (e.g., "192.168.1.1/24" -> "192.168.1.1")
+              const ipWithoutMask = engineIp.split("/")[0];
+              endpoint = `http://${ipWithoutMask}:8000/`;
+            }
           }
         }
       }
 
       // Set the ENDPOINT environment variable in lab.conf
       lab.file["lab.conf"] += `${machineName}[env]="ENDPOINT=${endpoint}"\n`;
+
+      if (machine.type === "fan") {
+        const capacity = machine.industrial?.capacity || "2.0";
+        lab.file["lab.conf"] += `${machineName}[env]="CAPACITY=${capacity}"\n`;
+      }
     }
   }
 }

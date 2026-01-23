@@ -10,12 +10,14 @@ import random
 import time
 import threading
 
+import os
+
 # Argument parsing
 parser = argparse.ArgumentParser(description="modbusTCP")
 parser.add_argument("-a", "--address", required=False, default="0.0.0.0", help="ModbusTCP Address")
-parser.add_argument("-p", "--port", required=False, default=1502, type=int, help="ModbusTCP port")
-parser.add_argument("-c", "--capacity", required=False, default=1.0, type=float, help="Fan capacity")
-parser.add_argument("-e", "--endpoint", required=False, default="http://localhost:8000/", help="Endpoint API REST")
+parser.add_argument("-p", "--port", required=False, default=502, type=int, help="ModbusTCP port")
+parser.add_argument("-c", "--capacity", required=False, default=float(os.environ.get("CAPACITY", 2.0)), type=float, help="Fan capacity")
+parser.add_argument("-e", "--endpoint", required=False, default=os.environ.get("ENDPOINT", "http://localhost:8000/"), help="Endpoint API REST")
 parser.add_argument("-ft", "--fetch-time", required=False, default=1.0, type=float, help="Fetch time in seconds")
 args = parser.parse_args()
 

@@ -2,6 +2,7 @@
 /* eslint-disable import/prefer-default-export */
 /* eslint-disable prettier/prettier */
 import { RadioGroup, Radio } from "@nextui-org/radio";
+import { Input } from "@nextui-org/input";
 
 export function IndustrialFunctions({ machine, machines, setMachines }) {
     // Find all engines on the same subnet (same eth0 domain)
@@ -24,6 +25,21 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
                     industrial: {
                         ...(m.industrial || {}),
                         selectedEngineId: selectedEngineId || null
+                    }
+                };
+            }
+            return m;
+        }));
+    }
+
+    function handleCapacityChange(capacity) {
+        setMachines(machines.map((m) => {
+            if (m.id === machine.id) {
+                return {
+                    ...m,
+                    industrial: {
+                        ...(m.industrial || {}),
+                        capacity: capacity
                     }
                 };
             }
@@ -57,6 +73,19 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
                 <div className="text-sm text-text/50 p-2 bg-default-100 rounded">
                     No engines available on the same subnet (eth0).
                     Add an engine and connect it to the same collision domain.
+                </div>
+            )}
+
+            {machine.type === "fan" && (
+                <div className="mt-4">
+                    <Input
+                        type="number"
+                        label="Capacity"
+                        placeholder="2.0"
+                        value={machine.industrial?.capacity || ""}
+                        onChange={(e) => handleCapacityChange(e.target.value)}
+                        description="Fan capacity value"
+                    />
                 </div>
             )}
         </div>

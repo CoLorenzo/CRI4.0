@@ -34,6 +34,11 @@ class Engine:
             self._thread = threading.Thread(target=self._run_loop, daemon=True)
             self._thread.start()
 
+    def stop(self):
+        if self.running:
+            self.running = False
+            self.status = "stopped"
+
     def _run_loop(self):
         while self.running:
             time.sleep(self.interval_seconds)
@@ -72,6 +77,39 @@ def set_engine_temperature(update: TemperatureUpdate):
 def root():
     return get_engine_status()
 
+def monitor_modbus(context):
+    global engine
+    
+    slave_id = 0x00
+    address = 0x00
+    
+    while True:
+        try:
+            # Read holding register 0
+            # getValues returns a list
+            values = context[slave_id].getValues(3, address, count=1)
+            val = values[0]
+            
+            if engine:
+                if val == 1 and not engine.running:
+                    engine.start()
+                elif val == 0 and engine.running:
+                    engine.stop()
+                    
+        except Exception as e:
+            print(f"Error in modbus monitor: {e}")
+            
+        time.sleep(0.5)
+
+def run_modbus_server(context):
+    # Retry loop for Modbus server
+    while True:
+        try:
+            StartTcpServer(context=context, address=("0.0.0.0", 502))
+        except Exception as e:
+            print(f"Modbus server failed to start or crashed: {e}. Retrying in 2 seconds...")
+            time.sleep(2)
+
 def main():
     global engine
     parser = argparse.ArgumentParser(description="Engine Simulator")
@@ -96,15 +134,17 @@ def main():
     )
 
     threading.Thread(
-        target=StartTcpServer,
+        target=run_modbus_server,
         args=(context,),
-        kwargs={"address": ("0.0.0.0", 502)},
-        daemon=False
+        daemon=True
     ).start()
 
     # start API REST
     engine = Engine(args.temperature_step, args.seconds, args.temperature_start)
-    engine.start()
+    
+    # Start Modbus monitor thread
+    threading.Thread(target=monitor_modbus, args=(context,), daemon=True).start()
+
     print(f"Starting Engine with step={args.temperature_step}, interval={args.seconds}, start_temp={args.temperature_start}")
     uvicorn.run(app, host=args.interface, port=args.port)
 
