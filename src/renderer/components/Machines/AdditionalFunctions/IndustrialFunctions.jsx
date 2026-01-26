@@ -4,6 +4,64 @@
 import { RadioGroup, Radio } from "@nextui-org/radio";
 import { Input } from "@nextui-org/input";
 
+function SineWaveGraph({ period, amplitude, tempOffset }) {
+    const p = parseFloat(period) || 10;
+    const a = parseFloat(amplitude) || 10;
+    const o = parseFloat(tempOffset) || 20;
+
+    const width = 120;
+    const height = 60;
+    const padding = 10;
+
+    const points = [];
+    // Draw 2 full periods
+    for (let i = 0; i <= width; i++) {
+        const xPct = i / width;
+        const angle = xPct * 4 * Math.PI; // 0 to 4PI (2 cycles)
+        const rawY = Math.sin(angle); // -1 to 1
+
+        // Invert Y for SVG (0 is top)
+        // Map -1..1 to height-padding..padding
+        const y = ((-rawY + 1) / 2) * (height - 2 * padding) + padding;
+        points.push(`${i},${y}`);
+    }
+
+    const minTemp = (o - a).toFixed(1);
+    const maxTemp = (o + a).toFixed(1);
+    const meanTemp = o.toFixed(1);
+
+    return (
+        <div className="mt-2 p-3 border rounded-medium border-default-200 bg-content2/20 flex flex-col items-center">
+            <div className="flex w-full justify-between px-1 mb-1 text-[10px] text-default-500 font-mono">
+                <span>Min: {minTemp}°C</span>
+                <span>Max: {maxTemp}°C</span>
+            </div>
+            <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+                {/* Midline (Mean) */}
+                <line
+                    x1="0" y1={height / 2}
+                    x2={width} y2={height / 2}
+                    stroke="currentColor"
+                    strokeOpacity={0.2}
+                    strokeDasharray="4 4"
+                />
+
+                {/* Sine Path */}
+                <path
+                    d={`M ${points.join(" L ")}`}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="text-primary"
+                />
+            </svg>
+            <div className="w-full text-center mt-1 text-[10px] text-default-400">
+                Visualization (2 cycles ~ {2 * p}s)
+            </div>
+        </div>
+    );
+}
+
 export function IndustrialFunctions({ machine, machines, setMachines }) {
     // Find all engines on the same subnet (same eth0 domain)
     const machineEth0Domain = machine.interfaces?.if?.[0]?.eth?.domain;
@@ -149,6 +207,11 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
                         value={machine.industrial?.tempOffset || ""}
                         onChange={(e) => handleSineWaveParamChange("tempOffset", e.target.value)}
                         description="Temperature offset (C)"
+                    />
+                    <SineWaveGraph
+                        period={machine.industrial?.period}
+                        amplitude={machine.industrial?.amplitude}
+                        tempOffset={machine.industrial?.tempOffset}
                     />
                 </div>
             )}
