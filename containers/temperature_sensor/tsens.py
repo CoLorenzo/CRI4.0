@@ -26,6 +26,16 @@ parser.add_argument("--offset", type=float, default=25.0, help="Vertical offset 
 
 args = parser.parse_args()
 
+# Auto-adjust fetch time for sine wave to avoid aliasing
+if args.sine:
+    # We want at least 10 samples per period for a smooth wave
+    max_fetch_time = args.period / 10.0
+    if args.fetch_time > max_fetch_time:
+        # Limit the minimum fetch time to avoid CPU hogging, e.g., 0.01s
+        new_fetch_time = max(max_fetch_time, 0.01)
+        print(f"WARNING: Fetch time {args.fetch_time}s is too slow for sine period {args.period}s. Auto-adjusting to {new_fetch_time:.3f}s.")
+        args.fetch_time = new_fetch_time
+
 # Enable logging
 logging.basicConfig()
 log = logging.getLogger()

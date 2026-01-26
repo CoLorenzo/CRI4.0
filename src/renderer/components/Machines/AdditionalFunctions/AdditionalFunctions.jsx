@@ -73,6 +73,7 @@ export function AdditionalFunctions({ machine, machines, setMachines }) {
                             machines={machines}
                             setMachines={setMachines}
                         />
+                    case 'engine':
                     case 'fan':
                     case 'temperature_sensor':
                         return <IndustrialFunctions

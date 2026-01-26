@@ -116,12 +116,16 @@ stunnel
     } else {
       let extraCommands = "";
       if (machine.type === "engine") {
-        // Default values matching engine.py defaults
-        let args = "";
-        // If properties existed in machine model, we would map them here:
-        // if (machine.engine?.temperatureStep) args += ` -t ${machine.engine.temperatureStep}`;
+        const opMode = machine.industrial?.operationalMode || "engine";
 
-        extraCommands += `uv run /engine.py${args} > /var/log/engine.log 2>&1 & disown\n`;
+        if (opMode === "engine") {
+          // Default values matching engine.py defaults
+          let args = "";
+          // If properties existed in machine model, we would map them here:
+          // if (machine.engine?.temperatureStep) args += ` -t ${machine.engine.temperatureStep}`;
+
+          extraCommands += `uv run /engine.py${args} > /var/log/engine.log 2>&1 & disown\n`;
+        }
       }
       lab.file[`${machineName}.startup`] = header + ipSetup + (body ? body + "\n\n" : "") + extraCommands;
     }

@@ -135,8 +135,37 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
         }));
     }
 
+    function handleOperationalModeChange(mode) {
+        setMachines(machines.map((m) => {
+            if (m.id === machine.id) {
+                return {
+                    ...m,
+                    industrial: {
+                        ...(m.industrial || {}),
+                        operationalMode: mode
+                    }
+                };
+            }
+            return m;
+        }));
+    }
+
     return (
         <div>
+            {machine.type === "engine" && (
+                <div className="mb-4">
+                    <label className="text-sm font-semibold">Operational Mode</label>
+                    <RadioGroup
+                        orientation="horizontal"
+                        value={machine.industrial?.operationalMode || "engine"}
+                        onValueChange={handleOperationalModeChange}
+                    >
+                        <Radio value="engine">Engine</Radio>
+                        <Radio value="none">None</Radio>
+                    </RadioGroup>
+                </div>
+            )}
+
             {machine.type === "temperature_sensor" && (
                 <div className="mb-4">
                     <label className="text-sm font-semibold">Operation Mode</label>
