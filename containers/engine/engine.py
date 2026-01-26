@@ -26,6 +26,7 @@ class Engine:
         self.interval_seconds = interval_seconds
         self.running = False
         self._thread = None
+        threading.Thread(target=self._cooling_loop, daemon=True).start()
 
     def start(self):
         if not self.running:
@@ -38,11 +39,18 @@ class Engine:
         if self.running:
             self.running = False
             self.status = "stopped"
+            threading.Thread(target=self._cooling_loop, daemon=True).start()
 
     def _run_loop(self):
         while self.running:
             time.sleep(self.interval_seconds)
             self.temperature += self.temp_step
+
+    def _cooling_loop(self):
+        while not self.running:
+            time.sleep(self.interval_seconds)
+            if self.temperature > 0:
+                self.temperature = max(0.0, self.temperature - self.temp_step)
 
     def get_state(self):
         return {

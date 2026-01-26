@@ -46,6 +46,8 @@ def update_values(context):
             time.sleep(1)
             continue
         power = context[0].getValues(3, 0, count=1)[0]
+        if power == 0:
+            power = 1
         log.info(f"Read power: {power}")
 
 
