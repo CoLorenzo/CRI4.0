@@ -649,6 +649,15 @@ function makeIndustrialDevices(netkit, lab) {
 
 			// Set the ENDPOINT environment variable in lab.conf
 			lab.file["lab.conf"] += machine.name + `[env]="ENDPOINT=${endpoint}"\n`;
+
+			if (machine.type === "temperature_sensor") {
+				if (machine.industrial && machine.industrial.sineWave) {
+					lab.file["lab.conf"] += machine.name + `[env]="SINE_WAVE=true"\n`;
+					if (machine.industrial.period) lab.file["lab.conf"] += machine.name + `[env]="SINE_PERIOD=${machine.industrial.period}"\n`;
+					if (machine.industrial.amplitude) lab.file["lab.conf"] += machine.name + `[env]="SINE_AMPLITUDE=${machine.industrial.amplitude}"\n`;
+					if (machine.industrial.tempOffset) lab.file["lab.conf"] += machine.name + `[env]="SINE_OFFSET=${machine.industrial.tempOffset}"\n`;
+				}
+			}
 		}
 	}
 }

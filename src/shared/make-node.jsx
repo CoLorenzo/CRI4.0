@@ -278,6 +278,15 @@ function makeLabConfFile(netkit, lab) {
         const capacity = machine.industrial?.capacity || "2.0";
         lab.file["lab.conf"] += `${machineName}[env]="CAPACITY=${capacity}"\n`;
       }
+
+      if (machine.type === "temperature_sensor") {
+        if (machine.industrial?.sineWave) {
+          lab.file["lab.conf"] += `${machineName}[env]="SINE_WAVE=true"\n`;
+          if (machine.industrial.period) lab.file["lab.conf"] += `${machineName}[env]="SINE_PERIOD=${machine.industrial.period}"\n`;
+          if (machine.industrial.amplitude) lab.file["lab.conf"] += `${machineName}[env]="SINE_AMPLITUDE=${machine.industrial.amplitude}"\n`;
+          if (machine.industrial.tempOffset) lab.file["lab.conf"] += `${machineName}[env]="SINE_OFFSET=${machine.industrial.tempOffset}"\n`;
+        }
+      }
     }
   }
 }
