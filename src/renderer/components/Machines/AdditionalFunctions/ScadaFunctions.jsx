@@ -2,6 +2,7 @@
 /* eslint-disable import/prefer-default-export */
 /* eslint-disable prettier/prettier */
 import { CheckboxGroup, Checkbox } from "@nextui-org/react";
+import { Input } from "@nextui-org/input";
 
 export function ScadaFunctions({ machine, machines, setMachines }) {
     // Find all industrial machines on the same subnet (same eth0 domain)
@@ -75,6 +76,45 @@ export function ScadaFunctions({ machine, machines, setMachines }) {
                     Add industrial machines and connect them to the same collision domain.
                 </div>
             )}
+
+            <div className="mt-4">
+                <label className="text-sm font-semibold">Upload Configuration</label>
+                <div className="mt-1">
+                    <Input
+                        type="file"
+                        size="sm"
+                        onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                                const base64Content = reader.result;
+                                setMachines(machines.map(m => {
+                                    if (m.id === machine.id) {
+                                        return {
+                                            ...m,
+                                            scada: {
+                                                ...(m.scada || {}),
+                                                scadaProgramName: file.name,
+                                                scadaProgramContent: base64Content
+                                            }
+                                        };
+                                    }
+                                    return m;
+                                }));
+                                alert(`Configuration "${file.name}" selected.`);
+                            };
+                            reader.readAsDataURL(file);
+                        }}
+                    />
+                    {machine.scada?.scadaProgramName && (
+                        <div className="mt-1 text-xs text-success">
+                            Selected: {machine.scada.scadaProgramName}
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }
