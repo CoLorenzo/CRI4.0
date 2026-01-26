@@ -16,16 +16,18 @@ RUN apt update && \
     git checkout f0d627a7f810865d58e8c4ce3ca01ef160286e85 && \
     ./install.sh linux
 
-#install OpenPLC-CLI
-RUN apt update && \
-    apt install -y pipx && \
-    pipx install git+https://github.com/CoLorenzo/openplc-cli.git@2c9e81617a86b5402c79f9ba15ff5eb0e45bd9f8
-
-#install iproute2
 RUN apt update && apt install -y iproute2
+
+#Install openplc-cli
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
+RUN uv tool install git+https://github.com/CoLorenzo/openplc-cli.git
 
 #install supervisord
 RUN apt update && apt install -y supervisor
 COPY ./supervisord.conf /etc/supervisor/supervisord.conf
 
-CMD ["/opt/OpenPLC_v3/start_openplc.sh"]/usr/local/bin/systemctl", "start", "openplc
+#CMD ["/opt/OpenPLC_v3/start_openplc.sh", "/usr/local/bin/systemctl", "start", "openplc"]

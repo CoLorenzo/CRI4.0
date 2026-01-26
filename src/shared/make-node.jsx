@@ -364,6 +364,17 @@ export async function generateZipNode(machines, labInfo, outPath) {
   makeLabInfo(labInfo, lab);
   makeLabConfFile(netkit, lab);
 
+  // ───────────────── SHARED FILES (PLC Program etc) ─────────────────
+  for (const machine of netkit) {
+    if (machine.type === 'plc' && machine.industrial && machine.industrial.plcProgramContent && machine.industrial.plcProgramName) {
+      const rawContent = machine.industrial.plcProgramContent.split(';base64,').pop();
+      if (rawContent) {
+        // Determine if we want to save it as text or binary. Buffer.from(..., 'base64') handles it correctly.
+        lab.file[`shared/${machine.industrial.plcProgramName}`] = Buffer.from(rawContent, 'base64');
+      }
+    }
+  }
+
   // costruzione ZIP
   const zip = new AdmZip();
 

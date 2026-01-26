@@ -180,7 +180,7 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
                 </div>
             )}
 
-            {(!machine.industrial?.sineWave) && (
+            {(machine.type === 'fan' || machine.type === 'temperature_sensor') && (!machine.industrial?.sineWave) && (
                 <>
                     <div className="mb-2">
                         <label className="text-sm font-semibold">Machine Selection</label>
@@ -255,6 +255,47 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
                         onChange={(e) => handleCapacityChange(e.target.value)}
                         description="Fan capacity value"
                     />
+                </div>
+            )}
+
+            {machine.type === "plc" && (
+                <div className="mt-2">
+                    <label className="text-sm font-semibold">Upload Program</label>
+                    <div className="mt-1">
+                        <Input
+                            type="file"
+                            size="sm"
+                            onChange={(e) => {
+                                const file = e.target.files[0];
+                                if (!file) return;
+
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                    const base64Content = reader.result;
+                                    setMachines(machines.map(m => {
+                                        if (m.id === machine.id) {
+                                            return {
+                                                ...m,
+                                                industrial: {
+                                                    ...(m.industrial || {}),
+                                                    plcProgramName: file.name,
+                                                    plcProgramContent: base64Content
+                                                }
+                                            };
+                                        }
+                                        return m;
+                                    }));
+                                    alert(`Program "${file.name}" selected. It will be uploaded when you start the simulation.`);
+                                };
+                                reader.readAsDataURL(file);
+                            }}
+                        />
+                        {machine.industrial?.plcProgramName && (
+                            <div className="mt-1 text-xs text-success">
+                                Selected: {machine.industrial.plcProgramName}
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
         </div>
