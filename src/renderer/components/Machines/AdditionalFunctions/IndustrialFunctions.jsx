@@ -3,6 +3,7 @@
 /* eslint-disable prettier/prettier */
 import { RadioGroup, Radio } from "@nextui-org/radio";
 import { Input } from "@nextui-org/input";
+import { CheckboxGroup, Checkbox } from "@nextui-org/react";
 
 function SineWaveGraph({ period, amplitude, tempOffset }) {
     const p = parseFloat(period) || 10;
@@ -74,6 +75,27 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
         const engineEth0Domain = m.interfaces?.if?.[0]?.eth?.domain;
         return engineEth0Domain && engineEth0Domain === machineEth0Domain;
     });
+
+    const industrialTypes = [
+        "engine",
+        "fan",
+        "temperature_sensor",
+        "rejector",
+        "scada",
+        "apg",
+        "laser",
+        "conveyor",
+        "plc"
+    ];
+
+    const availableMachinesForPlc = machines.filter((m) => {
+        if (!industrialTypes.includes(m.type)) return false;
+        if (m.id === machine.id) return false;
+
+        const mEth0Domain = m.interfaces?.if?.[0]?.eth?.domain;
+        return mEth0Domain && mEth0Domain === machineEth0Domain;
+    });
+
 
     function handleMachineModeChange(isSineWave) {
         setMachines(machines.map((m) => {
@@ -149,6 +171,22 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
             return m;
         }));
     }
+
+    function handlePlcSelectionChange(values) {
+        setMachines(machines.map((m) => {
+            if (m.id === machine.id) {
+                return {
+                    ...m,
+                    industrial: {
+                        ...(m.industrial || {}),
+                        monitored_machines: values
+                    }
+                };
+            }
+            return m;
+        }));
+    }
+
 
     return (
         <div>
@@ -260,6 +298,31 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
 
             {machine.type === "plc" && (
                 <div className="mt-2">
+                    <div className="mb-2">
+                        <label className="text-sm font-semibold">Monitored Machines</label>
+                        <p className="text-xs text-text/50">
+                            Select industrial machines in the same subnet (eth0)
+                        </p>
+                    </div>
+
+                    {availableMachinesForPlc.length > 0 ? (
+                        <CheckboxGroup
+                            color="primary"
+                            value={machine.industrial?.monitored_machines || []}
+                            onValueChange={handlePlcSelectionChange}
+                        >
+                            {availableMachinesForPlc.map((m) => (
+                                <Checkbox key={m.id} value={m.id}>
+                                    {m.name} ({m.interfaces?.if?.[0]?.ip || "no IP"})
+                                </Checkbox>
+                            ))}
+                        </CheckboxGroup>
+                    ) : (
+                        <div className="text-sm text-text/50 p-2 bg-default-100 rounded mb-2">
+                            No industrial machines available on the same subnet (eth0).
+                        </div>
+                    )}
+
                     <label className="text-sm font-semibold">Upload Program</label>
                     <div className="mt-1">
                         <Input
