@@ -13,9 +13,38 @@ const ProjectService = {
     },
 
     saveProject: async (labInfo, machines, filename) => {
+        // Prepare machines by fetching content from containers if currently running
+        const processedMachines = await Promise.all(machines.map(async (m) => {
+            if (m.type === 'scada' || m.type === 'plc') {
+                try {
+                    const res = await fetch(`${API_URL}/machine-content`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ machineName: m.name, type: m.type })
+                    });
+
+                    if (res.ok) {
+                        const { output } = await res.json();
+                        if (output) {
+                            return {
+                                ...m,
+                                industrial: {
+                                    ...(m.industrial || {}),
+                                    [m.type === 'scada' ? 'scadaProjectContent' : 'plcProgramContent']: output
+                                }
+                            };
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`Failed to fetch content for ${m.name}`, e);
+                }
+            }
+            return m;
+        }));
+
         const projectData = {
             labInfo,
-            machines,
+            machines: processedMachines,
             meta: {
                 version: "1.0",
                 createdAt: new Date().toISOString(),

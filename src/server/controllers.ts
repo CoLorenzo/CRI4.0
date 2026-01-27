@@ -396,11 +396,11 @@ export const stopSimulation = async (req: Request, res: Response) => {
     }
 };
 
-export const saveScadaProject = async (req: Request, res: Response) => {
-    const { machineName } = req.body;
+export const getMachineContent = async (req: Request, res: Response) => {
+    const { machineName, type } = req.body;
     if (!machineName) return res.status(400).json({ error: 'Machine name required' });
 
-    sendLog('log', `💾 saveScadaProject called for: ${machineName}`);
+    sendLog('log', `💾 getMachineContent called for: ${machineName} (${type})`);
 
     // Try to find container by name pattern (Kathara: _machineName_)
     const nameCmd = `docker ps --filter name=_${machineName}_ --format "{{.Names}}"`;
@@ -413,17 +413,29 @@ export const saveScadaProject = async (req: Request, res: Response) => {
 
         let containerName = stdout ? stdout.trim().split("\n")[0] : null;
 
-        const runBase64 = (targetContainer: string) => {
-            const filePath = "/usr/src/app/FUXA/server/_appdata/project.fuxap.db";
-            // Use base64 to safeguard binary data
-            const cmd = `docker exec ${targetContainer} base64 "${filePath}"`;
+        const fetchContent = (targetContainer: string) => {
+            let cmd = "";
+            if (type === 'scada') {
+                const filePath = "/usr/src/app/FUXA/server/_appdata/project.fuxap.db";
+                cmd = `docker exec ${targetContainer} base64 "${filePath}"`;
+            } else if (type === 'plc') {
+                // For PLC, we need to find the ST file in /shared/
+                // We'll use a shell command to find the .st file and base64 it
+                cmd = `docker exec ${targetContainer} sh -c 'find /shared -name "*.st" -print -quit | xargs base64'`;
+            } else {
+                return res.status(400).json({ error: "Invalid machine type for content fetching" });
+            }
+
             exec(cmd, { maxBuffer: 1024 * 1024 * 50 }, (error, stdout, stderr) => {
                 if (error) {
-                    sendLog('error', `❌ Failed to read project file: ${stderr || error.message}`);
-                    return res.status(500).json({ error: stderr || error.message });
+                    // It's possible the file doesn't exist yet (not started or no program)
+                    sendLog('warn', `⚠️ Failed to read content for ${machineName}: ${stderr || error.message}`);
+                    return res.json({ output: "" }); // Return empty string instead of erroring out entire save
                 } else {
-                    sendLog('log', `✅ Project file read (${stdout.length} chars)`);
-                    res.json({ output: stdout.trim() });
+                    // SANITIZE: Remove any non-base64 characters (e.g., shell noise, headers)
+                    const cleanOutput = stdout.replace(/[^A-Za-z0-9+/=]/g, '');
+                    sendLog('log', `✅ Content read for ${machineName} (${cleanOutput.length} chars)`);
+                    res.json({ output: cleanOutput });
                 }
             });
         };
@@ -433,13 +445,15 @@ export const saveScadaProject = async (req: Request, res: Response) => {
             exec(`docker ps --filter ancestor=${machineName} --format "{{.Names}}"`, (err2, stdout2) => {
                 containerName = stdout2 ? stdout2.trim().split("\n")[0] : null;
                 if (containerName) {
-                    runBase64(containerName);
+                    fetchContent(containerName);
                 } else {
-                    res.status(404).json({ error: "Container not found" });
+                    // Container not running, just return empty content (maybe not started yet)
+                    sendLog('warn', `⚠️ Container not found for ${machineName}. Skipping content fetch.`);
+                    res.json({ output: "" });
                 }
             });
         } else {
-            runBase64(containerName);
+            fetchContent(containerName);
         }
     });
 };
@@ -448,9 +462,18 @@ export const saveScadaProject = async (req: Request, res: Response) => {
 
 export const listSaves = async (req: Request, res: Response) => {
     try {
-        const files = await fsp.readdir(SAVES_DIR);
-        const jsonFiles = files.filter(file => file.endsWith('.json'));
-        res.json(jsonFiles);
+        const entries = await fsp.readdir(SAVES_DIR, { withFileTypes: true });
+        const projectFolders = [];
+
+        for (const entry of entries) {
+            if (entry.isDirectory()) {
+                const projectPath = path.join(SAVES_DIR, entry.name, 'project.json');
+                if (fs.existsSync(projectPath)) {
+                    projectFolders.push(entry.name);
+                }
+            }
+        }
+        res.json(projectFolders);
     } catch (err: any) {
         res.status(500).json({ error: err.message });
     }
@@ -462,14 +485,40 @@ export const saveProject = async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Filename and data are required' });
     }
 
-    // specific sanitize for filename to avoid directory traversal
-    const safeFilename = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
-    const filePath = path.join(SAVES_DIR, safeFilename.endsWith('.json') ? safeFilename : `${safeFilename}.json`);
+    // specific sanitize for filename (used as folder name)
+    const safeFolderName = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
+    const projectDir = path.join(SAVES_DIR, safeFolderName);
 
     try {
-        await fsp.writeFile(filePath, JSON.stringify(data, null, 2));
-        sendLog('log', `💾 Project saved: ${safeFilename}`);
-        res.json({ success: true, filename: safeFilename });
+        if (!fs.existsSync(projectDir)) {
+            await fsp.mkdir(projectDir, { recursive: true });
+        }
+
+        // Process machines to extract binary content
+        if (data.machines && Array.isArray(data.machines)) {
+            for (const m of data.machines) {
+                if (m.industrial) {
+                    // Handle SCADA content
+                    if (m.type === 'scada' && m.industrial.scadaProjectContent) {
+                        const content = m.industrial.scadaProjectContent;
+                        const dbFilename = `${m.name}.db`;
+                        await fsp.writeFile(path.join(projectDir, dbFilename), content, 'base64');
+                        m.industrial.scadaProjectContent = `file:${dbFilename}`;
+                    }
+                    // Handle PLC content
+                    if (m.type === 'plc' && m.industrial.plcProgramContent) {
+                        const content = m.industrial.plcProgramContent;
+                        const stFilename = `${m.name}.st`;
+                        await fsp.writeFile(path.join(projectDir, stFilename), content, 'base64');
+                        m.industrial.plcProgramContent = `file:${stFilename}`;
+                    }
+                }
+            }
+        }
+
+        await fsp.writeFile(path.join(projectDir, 'project.json'), JSON.stringify(data, null, 2));
+        sendLog('log', `💾 Project saved to folder: ${safeFolderName}`);
+        res.json({ success: true, filename: safeFolderName });
     } catch (err: any) {
         sendLog('error', `❌ Error saving project: ${err.message}`);
         res.status(500).json({ error: err.message });
@@ -482,13 +531,42 @@ export const loadProject = async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Filename is required' });
     }
 
-    const safeFilename = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
-    const filePath = path.join(SAVES_DIR, safeFilename);
+    const safeFolderName = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
+    const projectDir = path.join(SAVES_DIR, safeFolderName);
+    const projectJsonPath = path.join(projectDir, 'project.json');
 
     try {
-        const content = await fsp.readFile(filePath, 'utf-8');
-        sendLog('log', `📂 Project loaded: ${safeFilename}`);
-        res.json(JSON.parse(content));
+        const content = await fsp.readFile(projectJsonPath, 'utf-8');
+        const data = JSON.parse(content);
+
+        // Reassemble binary content
+        if (data.machines && Array.isArray(data.machines)) {
+            for (const m of data.machines) {
+                if (m.industrial) {
+                    // Load SCADA content
+                    if (m.type === 'scada' && m.industrial.scadaProjectContent && m.industrial.scadaProjectContent.startsWith('file:')) {
+                        const dbFilename = m.industrial.scadaProjectContent.substring(5);
+                        const dbPath = path.join(projectDir, dbFilename);
+                        if (fs.existsSync(dbPath)) {
+                            const dbContent = await fsp.readFile(dbPath, 'base64');
+                            m.industrial.scadaProjectContent = dbContent;
+                        }
+                    }
+                    // Load PLC content
+                    if (m.type === 'plc' && m.industrial.plcProgramContent && m.industrial.plcProgramContent.startsWith('file:')) {
+                        const stFilename = m.industrial.plcProgramContent.substring(5);
+                        const stPath = path.join(projectDir, stFilename);
+                        if (fs.existsSync(stPath)) {
+                            const stContent = await fsp.readFile(stPath, 'base64');
+                            m.industrial.plcProgramContent = stContent;
+                        }
+                    }
+                }
+            }
+        }
+
+        sendLog('log', `📂 Project loaded from folder: ${safeFolderName}`);
+        res.json(data);
     } catch (err: any) {
         sendLog('error', `❌ Error loading project: ${err.message}`);
         res.status(500).json({ error: err.message });
@@ -501,12 +579,12 @@ export const deleteProject = async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Filename is required' });
     }
 
-    const safeFilename = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
-    const filePath = path.join(SAVES_DIR, safeFilename);
+    const safeFolderName = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
+    const projectDir = path.join(SAVES_DIR, safeFolderName);
 
     try {
-        await fsp.unlink(filePath);
-        sendLog('log', `🗑️ Project deleted: ${safeFilename}`);
+        await fsp.rm(projectDir, { recursive: true, force: true });
+        sendLog('log', `🗑️ Project folder deleted: ${safeFolderName}`);
         res.json({ success: true });
     } catch (err: any) {
         res.status(500).json({ error: err.message });

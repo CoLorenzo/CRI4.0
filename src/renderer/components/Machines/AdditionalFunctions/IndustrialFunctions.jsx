@@ -361,8 +361,15 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
                             }}
                         />
                         {machine.industrial?.plcProgramName && (
-                            <div className="mt-1 text-xs text-success">
-                                Selected: {machine.industrial.plcProgramName}
+                            <div className="mt-1 flex flex-col gap-1">
+                                <div className="text-xs text-success font-semibold">
+                                    Current Program: {machine.industrial.plcProgramName}
+                                </div>
+                                <div className="text-[10px] text-gray-500">
+                                    {machine.industrial.plcProgramContent ?
+                                        `Content loaded (${machine.industrial.plcProgramContent.length} chars)` :
+                                        "No content loaded"}
+                                </div>
                             </div>
                         )}
                     </div>
