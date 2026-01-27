@@ -7,8 +7,7 @@ import { LabInfo } from "../components/LabInfo";
 import { Machines } from "../components/Machines/Machines.jsx"
 import { generateScript } from "../scripts/make";
 import { labInfoModel, backboneModel } from '../models/model.js';
-import { Download } from "../components/Download";
-import { Configuration } from "../components/Configuration";
+
 import { Mock } from "../components/Mock/Mock";
 
 function Home() {
@@ -73,8 +72,7 @@ function Home() {
                 <div className="grid max-h-screen">
                     <div>
                         <Mock machines={machines} componentRefs={componentRefs} />
-                        <Download machines={machines} labInfo={labInfo} />
-                        <Configuration machines={machines} labInfo={labInfo} setMachines={setMachines} setLabInfo={setLabInfo} />
+
                     </div>
                 </div>
             </div>
