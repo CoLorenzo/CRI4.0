@@ -39,9 +39,27 @@ set -euo pipefail
 
 function makeStartupFiles(netkit, lab) {
   lab.file["collector.startup"] = "";
-  lab.file["collector.startup"] = "";
   lab.file["collectordb.startup"] = "";
+
+  // 1. Pre-calculate IPs for all machines (needed for PLC to know other machines' IPs)
   let collectorIpCounter = 1; // New counter for 20.0.0.X subnet
+
+  for (let machine of netkit) {
+    const rawName = machine.type === "attacker" ? "attacker" : machine.name;
+    const machineName = String(rawName || "node").replace(/[^\w.-]/g, "_");
+
+    // Assign IP to eth0 from 20.0.0.0/24 subnet
+    let eth0Ip;
+    if (machineName === "collector") {
+      eth0Ip = "20.0.0.254/24"; // Dedicated IP for the collector
+    } else {
+      eth0Ip = `20.0.0.${collectorIpCounter}/24`;
+      collectorIpCounter++;
+    }
+    machine.computedEth0Ip = eth0Ip; // Store for later use
+  }
+
+  // 2. Generate startup files
   for (let machine of netkit) {
     const rawName = machine.type === "attacker" ? "attacker" : machine.name;
     const machineName = String(rawName || "node").replace(/[^\w.-]/g, "_");
@@ -60,15 +78,8 @@ function makeStartupFiles(netkit, lab) {
     header += "echo \"nameserver 8.8.8.8\" > /etc/resolv.conf\n";
     let ipSetup = "";
 
-    // Assign IP to eth0 from 20.0.0.0/24 subnet
-    let eth0Ip;
-    if (machineName === "collector") {
-      eth0Ip = "20.0.0.254/24"; // Dedicated IP for the collector
-    } else {
-      eth0Ip = `20.0.0.${collectorIpCounter}/24`;
-      collectorIpCounter++;
-    }
-    machine.computedEth0Ip = eth0Ip; // Store for later use in makeLabConfFile
+    // Use pre-calculated IP
+    const eth0Ip = machine.computedEth0Ip;
     ipSetup += `ip addr add ${eth0Ip} dev eth0\nip link set eth0 up\n`;
 
     // Assign IPs to eth1 and subsequent interfaces from frontend
@@ -127,6 +138,29 @@ stunnel
           extraCommands += `uv run /engine.py${args} > /var/log/engine.log 2>&1 & disown\n`;
         }
       }
+
+      if (machine.type === "plc") {
+        // Add monitored machines
+        if (machine.industrial?.monitored_machines && Array.isArray(machine.industrial.monitored_machines)) {
+          for (const monitoredId of machine.industrial.monitored_machines) {
+            const targetMachine = netkit.find(m => m.id === monitoredId);
+            if (targetMachine) {
+              // Determine IP address: prefer Control Network (eth0 aka computedEth0Ip)
+              let targetIp = null;
+              if (targetMachine.computedEth0Ip) {
+                targetIp = targetMachine.computedEth0Ip.split("/")[0];
+              } else if (targetMachine.interfaces?.if?.[0]?.ip) {
+                targetIp = targetMachine.interfaces.if[0].ip.split("/")[0];
+              }
+
+              if (targetIp) {
+                extraCommands += `openplc-cli device add "${targetMachine.name}" "${targetIp}" "502"\n`;
+              }
+            }
+          }
+        }
+      }
+
       lab.file[`${machineName}.startup`] = header + ipSetup + (body ? body + "\n\n" : "") + extraCommands;
     }
   }
@@ -369,8 +403,14 @@ export async function generateZipNode(machines, labInfo, outPath) {
     if (machine.type === 'plc' && machine.industrial && machine.industrial.plcProgramContent && machine.industrial.plcProgramName) {
       const rawContent = machine.industrial.plcProgramContent.split(';base64,').pop();
       if (rawContent) {
+        // Use machine name for the file, keeping the original extension
+        const originalName = machine.industrial.plcProgramName;
+        const extension = originalName.includes('.') ? originalName.split('.').pop() : 'st';
+        const machineName = String(machine.name || "plc").replace(/[^\w.-]/g, "_");
+        const newFileName = `${machineName}.${extension}`;
+
         // Determine if we want to save it as text or binary. Buffer.from(..., 'base64') handles it correctly.
-        lab.file[`shared/${machine.industrial.plcProgramName}`] = Buffer.from(rawContent, 'base64');
+        lab.file[`shared/${newFileName}`] = Buffer.from(rawContent, 'base64');
       }
     }
   }
