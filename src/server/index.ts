@@ -9,7 +9,7 @@ import { promises as fsp } from 'fs';
 import { spawn, exec } from 'child_process';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env.PORT || '3001', 10);
 
 // Helper to run commands
 function runCmd(cmd: string, args: string[], opts: { cwd?: string, timeoutMs?: number } = {}) {
@@ -64,7 +64,8 @@ async function cleanupLabs() {
 }
 
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
 app.use((req, res, next) => {
     console.log(`[${req.method}] ${req.url}`);

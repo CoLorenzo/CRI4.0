@@ -279,6 +279,21 @@ export const simulateAttack = async (req: Request, res: Response) => {
 export const runSimulation = async (req: Request, res: Response) => {
     const { machines, labInfo } = req.body;
     sendLog('log', `machines? ${Array.isArray(machines)} ${machines?.length}`);
+
+    // DEBUG: Check for SCADA payload
+    if (Array.isArray(machines)) {
+        machines.forEach(m => {
+            if (m.type === 'scada') {
+                sendLog('log', `[SERVER] SCADA Machine found: ${m.name}`);
+                sendLog('log', `[SERVER] Industrial prop: ${!!m.industrial}`);
+                if (m.industrial) {
+                    sendLog('log', `[SERVER] scadaProjectName: ${m.industrial.scadaProjectName}`);
+                    sendLog('log', `[SERVER] scadaProjectContent length: ${m.industrial.scadaProjectContent?.length}`);
+                }
+            }
+        });
+    }
+
     sendLog('log', `labInfo? ${JSON.stringify(labInfo)}`);
 
     const LAB_NAME = labInfo?.name || 'default-lab';
@@ -372,5 +387,53 @@ export const stopSimulation = async (req: Request, res: Response) => {
     } catch (err: any) {
         res.status(500).json({ error: err.toString() });
     }
+};
+
+export const saveScadaProject = async (req: Request, res: Response) => {
+    const { machineName } = req.body;
+    if (!machineName) return res.status(400).json({ error: 'Machine name required' });
+
+    sendLog('log', `💾 saveScadaProject called for: ${machineName}`);
+
+    // Try to find container by name pattern (Kathara: _machineName_)
+    const nameCmd = `docker ps --filter name=_${machineName}_ --format "{{.Names}}"`;
+
+    exec(nameCmd, (err, stdout) => {
+        if (err) {
+            sendLog('error', `❌ Error finding container for ${machineName}: ${err.message}`);
+            return res.status(500).json({ error: err.message });
+        }
+
+        let containerName = stdout ? stdout.trim().split("\n")[0] : null;
+
+        const runBase64 = (targetContainer: string) => {
+            const filePath = "/usr/src/app/FUXA/server/_appdata/project.fuxap.db";
+            // Use base64 to safeguard binary data
+            const cmd = `docker exec ${targetContainer} base64 "${filePath}"`;
+            exec(cmd, { maxBuffer: 1024 * 1024 * 50 }, (error, stdout, stderr) => {
+                if (error) {
+                    sendLog('error', `❌ Failed to read project file: ${stderr || error.message}`);
+                    return res.status(500).json({ error: stderr || error.message });
+                } else {
+                    sendLog('log', `✅ Project file read (${stdout.length} chars)`);
+                    res.json({ output: stdout.trim() });
+                }
+            });
+        };
+
+        if (!containerName) {
+            sendLog('warn', `⚠️ Container for ${machineName} not found by name pattern. Trying ancestor...`);
+            exec(`docker ps --filter ancestor=${machineName} --format "{{.Names}}"`, (err2, stdout2) => {
+                containerName = stdout2 ? stdout2.trim().split("\n")[0] : null;
+                if (containerName) {
+                    runBase64(containerName);
+                } else {
+                    res.status(404).json({ error: "Container not found" });
+                }
+            });
+        } else {
+            runBase64(containerName);
+        }
+    });
 };
 

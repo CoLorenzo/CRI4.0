@@ -196,6 +196,29 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs }) {
 		}
 	};
 
+	const handleSaveProject = async () => {
+		if (contextMenu) {
+			const machineName = contextMenu.nodeId.replace("machine-", "");
+			try {
+				const base64Data = await api.saveScadaProject(machineName);
+				if (!base64Data) {
+					alert("Failed to save project or project empty");
+					return;
+				}
+				const link = document.createElement("a");
+				link.href = "data:application/octet-stream;base64," + base64Data;
+				link.download = `${machineName}_project.fuxap.db`;
+				document.body.appendChild(link);
+				link.click();
+				document.body.removeChild(link);
+			} catch (e) {
+				console.error(e);
+				alert("Error saving project: " + e.message);
+			}
+			setContextMenu(null);
+		}
+	};
+
 	const handleOpenLogs = () => {
 		if (contextMenu && onOpenLogs) {
 			onOpenLogs(contextMenu.nodeId);
@@ -208,6 +231,11 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs }) {
 		// Note: ID format is "machine-" + name
 		const machineName = contextMenu.nodeId.replace("machine-", "");
 		return m.name === machineName && (m.type === "plc" || m.type === "scada");
+	});
+
+	const showSaveProject = contextMenu && machines.find(m => {
+		const machineName = contextMenu.nodeId.replace("machine-", "");
+		return m.name === machineName && m.type === "scada";
 	});
 
 	return (
@@ -264,6 +292,14 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs }) {
 							onClick={handleOpenUI}
 						>
 							Open UI
+						</button>
+					)}
+					{showSaveProject && (
+						<button
+							className="w-full text-left px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
+							onClick={handleSaveProject}
+						>
+							Save Project
 						</button>
 					)}
 					<button

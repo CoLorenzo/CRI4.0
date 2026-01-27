@@ -325,9 +325,16 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
 
                     <label className="text-sm font-semibold">Upload Program</label>
                     <div className="mt-1">
-                        <Input
+                        <input
                             type="file"
-                            size="sm"
+                            accept=".st"
+                            className="block w-full text-sm text-slate-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-md file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-primary-50 file:text-primary-700
+                                hover:file:bg-primary-100"
+                            onClick={() => console.log("PLC Input clicked")}
                             onChange={(e) => {
                                 const file = e.target.files[0];
                                 if (!file) return;
@@ -361,6 +368,8 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
                     </div>
                 </div>
             )}
+
+
         </div>
     );
 }

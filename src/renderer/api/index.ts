@@ -111,6 +111,23 @@ export const api = {
         return data.output;
     },
 
+    async saveScadaProject(machineName: string): Promise<string> {
+        if (isElectron()) {
+            return window.electron.ipcRenderer.invoke('save-scada-project', machineName);
+        }
+
+        const response = await fetch(`${API_BASE_URL}/save-scada-project`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ machineName }),
+        });
+        const data = await response.json();
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        return data.output;
+    },
+
     subscribeToLogs(callback: (level: string, message: string) => void): () => void {
         if (isElectron()) {
             return window.electron.ipcRenderer.on('log-message', (arg: any) => {

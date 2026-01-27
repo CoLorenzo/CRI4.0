@@ -32,15 +32,15 @@ export function ScadaFunctions({ machine, machines, setMachines }) {
         return mEth0Domain && mEth0Domain === machineEth0Domain;
     });
 
-    const selectedMachines = machine.scada?.monitored_machines || [];
+    const selectedMachines = machine.industrial?.monitored_machines || [];
 
     function handleSelectionChange(values) {
         setMachines(machines.map((m) => {
             if (m.id === machine.id) {
                 return {
                     ...m,
-                    scada: {
-                        ...(m.scada || {}),
+                    industrial: {
+                        ...(m.industrial || {}),
                         monitored_machines: values
                     }
                 };
@@ -78,11 +78,18 @@ export function ScadaFunctions({ machine, machines, setMachines }) {
             )}
 
             <div className="mt-4">
-                <label className="text-sm font-semibold">Upload Configuration</label>
+                <label className="text-sm font-semibold">Upload Project (.db)</label>
                 <div className="mt-1">
-                    <Input
+                    <input
                         type="file"
-                        size="sm"
+                        accept=".db"
+                        className="block w-full text-sm text-slate-500
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded-md file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-primary-50 file:text-primary-700
+                            hover:file:bg-primary-100"
+                        onClick={() => console.log("SCADA Input clicked")}
                         onChange={(e) => {
                             const file = e.target.files[0];
                             if (!file) return;
@@ -90,27 +97,28 @@ export function ScadaFunctions({ machine, machines, setMachines }) {
                             const reader = new FileReader();
                             reader.onload = () => {
                                 const base64Content = reader.result;
+                                console.log("SCADA File loaded:", file.name);
                                 setMachines(machines.map(m => {
                                     if (m.id === machine.id) {
                                         return {
                                             ...m,
-                                            scada: {
-                                                ...(m.scada || {}),
-                                                scadaProgramName: file.name,
-                                                scadaProgramContent: base64Content
+                                            industrial: {
+                                                ...(m.industrial || {}),
+                                                scadaProjectName: file.name,
+                                                scadaProjectContent: base64Content
                                             }
                                         };
                                     }
                                     return m;
                                 }));
-                                alert(`Configuration "${file.name}" selected.`);
+                                alert(`Project "${file.name}" selected. It will be uploaded when you start the simulation.`);
                             };
                             reader.readAsDataURL(file);
                         }}
                     />
-                    {machine.scada?.scadaProgramName && (
+                    {machine.industrial?.scadaProjectName && (
                         <div className="mt-1 text-xs text-success">
-                            Selected: {machine.scada.scadaProgramName}
+                            Selected: {machine.industrial.scadaProjectName}
                         </div>
                     )}
                 </div>

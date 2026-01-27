@@ -167,6 +167,12 @@ stunnel
         extraCommands += `/opt/OpenPLC_v3/start_openplc.sh\n`;
       }
 
+      if (machine.type === "scada") {
+        if (machine.industrial?.scadaProjectName) {
+          extraCommands += `cp -f "/shared/\${HOSTNAME}.db" "/usr/src/app/FUXA/server/_appdata/project.fuxap.db"\n`;
+        }
+      }
+
       lab.file[`${machineName}.startup`] = header + ipSetup + (body ? body + "\n\n" : "") + extraCommands;
     }
   }
@@ -419,7 +425,34 @@ export async function generateZipNode(machines, labInfo, outPath) {
         lab.file[`shared/${newFileName}`] = Buffer.from(rawContent, 'base64');
       }
     }
+
+
+    if (machine.type === 'scada') {
+      console.log(`[DEBUG] Found SCADA machine: ${machine.name}`);
+      console.log(`[DEBUG] Industrial props:`, machine.industrial ? "present" : "missing");
+      if (machine.industrial) {
+        console.log(`[DEBUG] scadaProjectName: ${machine.industrial.scadaProjectName}`);
+        // console.log(`[DEBUG] scadaProjectContent length: ${machine.industrial.scadaProjectContent?.length}`); 
+      }
+    }
+
+    if (machine.type === 'scada' && machine.industrial && machine.industrial.scadaProjectContent && machine.industrial.scadaProjectName) {
+      const rawContent = machine.industrial.scadaProjectContent.split(';base64,').pop();
+      if (rawContent) {
+        // Save as shared/<machineName>.db
+        const machineName = String(machine.name || "scada").replace(/[^\w.-]/g, "_");
+        const newFileName = `${machineName}.db`;
+
+        console.log(`[DEBUG] Adding SCADA file to zip: shared/${newFileName} (length: ${rawContent.length})`);
+        lab.file[`shared/${newFileName}`] = Buffer.from(rawContent, 'base64');
+      } else {
+        console.log(`[DEBUG] Failed to extract base64 content`);
+      }
+    }
   }
+
+  // Debug: list all files in lab.file
+  console.log("[DEBUG] Files in lab.file:", Object.keys(lab.file));
 
   // costruzione ZIP
   const zip = new AdmZip();

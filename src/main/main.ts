@@ -486,6 +486,21 @@ ipcMain.handle("simulate-attack", async (event, { container, command }) => {
 
 ipcMain.handle('run-simulation', async (event, { machines, labInfo }) => {
   sendLog('log', `machines? ${Array.isArray(machines)} ${machines?.length}`);
+
+  // DEBUG: Check for SCADA payload
+  if (Array.isArray(machines)) {
+    machines.forEach(m => {
+      if (m.type === 'scada') {
+        sendLog('log', `[MAIN] SCADA Machine found: ${m.name}`);
+        sendLog('log', `[MAIN] Industrial prop: ${!!m.industrial}`);
+        if (m.industrial) {
+          sendLog('log', `[MAIN] scadaProjectName: ${m.industrial.scadaProjectName}`);
+          sendLog('log', `[MAIN] scadaProjectContent length: ${m.industrial.scadaProjectContent?.length}`);
+        }
+      }
+    });
+  }
+
   sendLog('log', `labInfo? ${JSON.stringify(labInfo)}`);
 
   const LAB_NAME = labInfo?.name || 'default-lab';
@@ -635,6 +650,60 @@ ipcMain.handle('terminal.kill', (event, id) => {
     terminals.delete(id);
   }
 });
+
+
+ipcMain.handle('save-scada-project', async (event, machineName) => {
+  return new Promise((resolve, reject) => {
+    sendLog('log', `💾 save-scada-project called for: ${machineName}`);
+
+    // Try to find container by name pattern (Kathara: _machineName_)
+    const nameCmd = `docker ps --filter name=_${machineName}_ --format "{{.Names}}"`;
+
+    exec(nameCmd, (err, stdout) => {
+      if (err) {
+        sendLog('error', `❌ Error finding container for ${machineName}: ${err.message}`);
+        return reject(err.message);
+      }
+
+      let containerName = stdout ? stdout.trim().split("\n")[0] : null;
+
+      const runBase64 = (targetContainer: string) => {
+        const filePath = "/usr/src/app/FUXA/server/_appdata/project.fuxap.db";
+        // Use base64 to safeguard binary data
+        const cmd = `docker exec ${targetContainer} base64 "${filePath}"`;
+        exec(cmd, { maxBuffer: 1024 * 1024 * 50 }, (error, stdout, stderr) => {
+          if (error) {
+            sendLog('error', `❌ Failed to read project file: ${stderr || error.message}`);
+            // Resolve empty to indicate failure without crashing logic, or reject?
+            // Alert in frontend handles empty string check.
+            resolve("");
+          } else {
+            sendLog('log', `✅ Project file read (${stdout.length} chars)`);
+            resolve(stdout.trim());
+          }
+        });
+      };
+
+      if (!containerName) {
+        // Fallback: try by ancestor (image name) if machineName is used as image name?
+        // Usually machineName is the hostname.
+        // Let's rely on name pattern first. If not found, log warning.
+        sendLog('warn', `⚠️ Container for ${machineName} not found by name pattern. Trying ancestor...`);
+        exec(`docker ps --filter ancestor=${machineName} --format "{{.Names}}"`, (err2, stdout2) => {
+          containerName = stdout2 ? stdout2.trim().split("\n")[0] : null;
+          if (containerName) {
+            runBase64(containerName);
+          } else {
+            reject("Container not found");
+          }
+        });
+      } else {
+        runBase64(containerName);
+      }
+    });
+  });
+});
+
 
 
 
