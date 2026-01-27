@@ -30,4 +30,6 @@ RUN uv tool install git+https://github.com/CoLorenzo/openplc-cli.git
 RUN apt update && apt install -y supervisor
 COPY ./supervisord.conf /etc/supervisor/supervisord.conf
 
+RUN openplc-cli settings set Start_run_mode true
+
 #CMD ["/opt/OpenPLC_v3/start_openplc.sh", "/usr/local/bin/systemctl", "start", "openplc"]

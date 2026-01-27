@@ -159,6 +159,12 @@ stunnel
             }
           }
         }
+
+        if (machine.industrial?.plcProgramName) {
+          const extension = machine.industrial.plcProgramName.includes('.') ? machine.industrial.plcProgramName.split('.').pop() : 'st';
+          extraCommands += `openplc-cli program add "/shared/\${HOSTNAME}.${extension}" "main" "main program"\n`;
+        }
+        extraCommands += `/opt/OpenPLC_v3/start_openplc.sh\n`;
       }
 
       lab.file[`${machineName}.startup`] = header + ipSetup + (body ? body + "\n\n" : "") + extraCommands;
