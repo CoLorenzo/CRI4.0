@@ -13,7 +13,6 @@ NEW_DEVICE_NAME="$1"
 NEW_DEVICE_ADDRESS="$2"
 NEW_DEVICE_PORT="$3"
 
-
 DEVICE_NUMBERS=$(grep -oP 'Num_Devices\s*=\s*"\K[0-9]+' /opt/OpenPLC_v3/webserver/mbconfig.cfg)
 NEW_DEVICE_ID=${DEVICE_NUMBERS}
 NEW_DEVICES_NUMBER="$((${DEVICE_NUMBERS} + 1))"
