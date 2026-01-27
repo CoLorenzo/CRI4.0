@@ -18,6 +18,13 @@ type CurrentLab = {
 let CURRENT_LAB: CurrentLab | null = null;
 let clients: Response[] = [];
 
+// Ensure saves directory exists
+const SAVES_DIR = path.join(process.cwd(), 'saves');
+if (!fs.existsSync(SAVES_DIR)) {
+    fs.mkdirSync(SAVES_DIR, { recursive: true });
+}
+
+
 // Helper to send logs to all connected clients
 const sendLog = (level: 'log' | 'error' | 'warn' | 'info' | 'debug', message: string) => {
     const logEntry = JSON.stringify({ level, message });
@@ -436,4 +443,74 @@ export const saveScadaProject = async (req: Request, res: Response) => {
         }
     });
 };
+
+// --- Save System Controllers ---
+
+export const listSaves = async (req: Request, res: Response) => {
+    try {
+        const files = await fsp.readdir(SAVES_DIR);
+        const jsonFiles = files.filter(file => file.endsWith('.json'));
+        res.json(jsonFiles);
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+export const saveProject = async (req: Request, res: Response) => {
+    const { filename, data } = req.body;
+    if (!filename || !data) {
+        return res.status(400).json({ error: 'Filename and data are required' });
+    }
+
+    // specific sanitize for filename to avoid directory traversal
+    const safeFilename = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
+    const filePath = path.join(SAVES_DIR, safeFilename.endsWith('.json') ? safeFilename : `${safeFilename}.json`);
+
+    try {
+        await fsp.writeFile(filePath, JSON.stringify(data, null, 2));
+        sendLog('log', `💾 Project saved: ${safeFilename}`);
+        res.json({ success: true, filename: safeFilename });
+    } catch (err: any) {
+        sendLog('error', `❌ Error saving project: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+export const loadProject = async (req: Request, res: Response) => {
+    const { filename } = req.params;
+    if (!filename) {
+        return res.status(400).json({ error: 'Filename is required' });
+    }
+
+    const safeFilename = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
+    const filePath = path.join(SAVES_DIR, safeFilename);
+
+    try {
+        const content = await fsp.readFile(filePath, 'utf-8');
+        sendLog('log', `📂 Project loaded: ${safeFilename}`);
+        res.json(JSON.parse(content));
+    } catch (err: any) {
+        sendLog('error', `❌ Error loading project: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+export const deleteProject = async (req: Request, res: Response) => {
+    const { filename } = req.params;
+    if (!filename) {
+        return res.status(400).json({ error: 'Filename is required' });
+    }
+
+    const safeFilename = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
+    const filePath = path.join(SAVES_DIR, safeFilename);
+
+    try {
+        await fsp.unlink(filePath);
+        sendLog('log', `🗑️ Project deleted: ${safeFilename}`);
+        res.json({ success: true });
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
 

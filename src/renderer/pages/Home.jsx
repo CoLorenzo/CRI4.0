@@ -9,6 +9,7 @@ import { generateScript } from "../scripts/make";
 import { labInfoModel, backboneModel } from '../models/model.js';
 
 import { Mock } from "../components/Mock/Mock";
+import { ProjectManager } from '../components/ProjectManager.jsx';
 
 function Home() {
     const [labInfo, setLabInfo] = useState(() => {
@@ -49,9 +50,6 @@ function Home() {
     return (
         <div className="min-h-[calc(100vh-4rem)] grid grid-cols-6">
             <div className="col-span-5 grid">
-                <div className="p-4 px-2">
-                    <LabInfo labInfo={labInfo} setLabInfo={setLabInfo} />
-                </div>
                 <div className="grid p-4 gap-2">
                     <div>
                         <Machines machines={machines} setMachines={setMachines} componentRefs={componentRefs} />
@@ -69,10 +67,10 @@ function Home() {
                 </div>
             </div>
             <div className="grid gap-2 p-4">
-                <div className="grid max-h-screen">
+                <div className="grid max-h-screen content-start gap-4">
+                    <ProjectManager machines={machines} labInfo={labInfo} setMachines={setMachines} setLabInfo={setLabInfo} />
                     <div>
                         <Mock machines={machines} componentRefs={componentRefs} />
-
                     </div>
                 </div>
             </div>
