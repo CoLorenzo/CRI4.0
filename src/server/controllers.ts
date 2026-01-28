@@ -501,15 +501,21 @@ export const saveProject = async (req: Request, res: Response) => {
                     // Handle SCADA content
                     if (m.type === 'scada' && m.industrial.scadaProjectContent) {
                         const content = m.industrial.scadaProjectContent;
+                        // Strip Data URI prefix if present (e.g. data:application/octet-stream;base64,...)
+                        const rawContent = content.includes(';base64,') ? content.split(';base64,').pop() : content;
+
                         const dbFilename = `${m.name}.db`;
-                        await fsp.writeFile(path.join(projectDir, dbFilename), content, 'base64');
+                        await fsp.writeFile(path.join(projectDir, dbFilename), rawContent, 'base64');
                         m.industrial.scadaProjectContent = `file:${dbFilename}`;
                     }
                     // Handle PLC content
                     if (m.type === 'plc' && m.industrial.plcProgramContent) {
                         const content = m.industrial.plcProgramContent;
+                        // Strip Data URI prefix if present
+                        const rawContent = content.includes(';base64,') ? content.split(';base64,').pop() : content;
+
                         const stFilename = `${m.name}.st`;
-                        await fsp.writeFile(path.join(projectDir, stFilename), content, 'base64');
+                        await fsp.writeFile(path.join(projectDir, stFilename), rawContent, 'base64');
                         m.industrial.plcProgramContent = `file:${stFilename}`;
                     }
                 }
