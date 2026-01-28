@@ -3,4 +3,5 @@ node_modules/
 .erb/dll/
 .DS_Store
 containers/mitm/.DS_Store
-./saves/*
+saves/*
+!saves/.gitkeep
