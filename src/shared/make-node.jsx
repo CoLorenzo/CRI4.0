@@ -168,9 +168,34 @@ stunnel
       }
 
       if (machine.type === "scada") {
-        if (machine.industrial?.scadaProjectName) {
-          extraCommands += `cp -f "/shared/\${HOSTNAME}.db" "/usr/src/app/FUXA/server/_appdata/project.fuxap.db"\n`;
-        }
+        extraCommands += `
+# SCADA Server Wrapper
+COMMAND=(npm run start)
+PATTERN='WebServer is running http://127.0.0.1:1881/'
+
+FIFO=$(mktemp -u)
+mkfifo "$FIFO"
+"\${COMMAND[@]}" >"$FIFO" 2>&1 &
+WRAPPER_PID=$!
+while IFS= read -r line; do
+  echo "$line"
+  if [[ "$line" == *"$PATTERN"* ]]; then
+    LISTENER_PID="$(ss -lptn 'sport = :1881' | sed -n 's/.*pid=\\([0-9]\\+\\).*/\\1/p' | head -n1)"
+    echo "Closing listener on :1881 (PID=$LISTENER_PID), wrapper PID=$WRAPPER_PID"
+    [ -n "$LISTENER_PID" ] && kill -TERM "$LISTENER_PID" 2>/dev/null || true
+    kill -TERM "$WRAPPER_PID" 2>/dev/null || true
+    break
+  fi
+done <"$FIFO"
+rm -f "$FIFO"
+
+if [ -f "/shared/\${HOSTNAME}.db" ]; then
+  rm -f /usr/src/app/FUXA/server/_appdata/project.fuxap.db
+  cp /shared/\${HOSTNAME}.db /usr/src/app/FUXA/server/_appdata/project.fuxap.db
+fi
+
+npm start &
+`;
       }
 
       lab.file[`${machineName}.startup`] = header + ipSetup + (body ? body + "\n\n" : "") + extraCommands;
