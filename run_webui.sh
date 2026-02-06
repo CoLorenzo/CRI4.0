@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
-cd /opt/icr
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+
+
+cd ${SCRIPT_DIR}
 
 npm run web:dev
