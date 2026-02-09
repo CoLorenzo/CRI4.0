@@ -601,3 +601,54 @@ export const deleteProject = async (req: Request, res: Response) => {
 };
 
 
+export const saveScadaProject = async (req: Request, res: Response) => {
+    const { machineName } = req.body;
+    if (!machineName) return res.status(400).json({ error: 'Machine name required' });
+
+    sendLog('log', `💾 saveScadaProject called for: ${machineName}`);
+
+    // Try to find container by name pattern (Kathara: _machineName_)
+    const nameCmd = `docker ps --filter name=_${machineName}_ --format "{{.Names}}"`;
+
+    exec(nameCmd, (err, stdout) => {
+        if (err) {
+            sendLog('error', `❌ Error finding container for ${machineName}: ${err.message}`);
+            return res.status(500).json({ error: err.message });
+        }
+
+        let containerName = stdout ? stdout.trim().split("\n")[0] : null;
+
+        const fetchContent = (targetContainer: string) => {
+            // Path valid for FUXA
+            const filePath = "/usr/src/app/FUXA/server/_appdata/project.fuxap.db";
+            const cmd = `docker exec ${targetContainer} base64 "${filePath}"`;
+
+            exec(cmd, { maxBuffer: 1024 * 1024 * 50 }, (error, stdout, stderr) => {
+                if (error) {
+                    sendLog('warn', `⚠️ Failed to read project db for ${machineName}: ${stderr || error.message}`);
+                    return res.status(500).json({ error: "Failed to read project content" });
+                } else {
+                    // SANITIZE: Remove any non-base64 characters
+                    const cleanOutput = stdout.replace(/[^A-Za-z0-9+/=]/g, '');
+                    sendLog('log', `✅ Project DB read for ${machineName} (${cleanOutput.length} chars)`);
+                    res.json({ output: cleanOutput });
+                }
+            });
+        };
+
+        if (!containerName) {
+            sendLog('warn', `⚠️ Container for ${machineName} not found by name pattern. Trying ancestor...`);
+            exec(`docker ps --filter ancestor=${machineName} --format "{{.Names}}"`, (err2, stdout2) => {
+                containerName = stdout2 ? stdout2.trim().split("\n")[0] : null;
+                if (containerName) {
+                    fetchContent(containerName);
+                } else {
+                    sendLog('warn', `⚠️ Container not found for ${machineName}. Cannot save project.`);
+                    res.status(404).json({ error: "Container not found" });
+                }
+            });
+        } else {
+            fetchContent(containerName);
+        }
+    });
+};

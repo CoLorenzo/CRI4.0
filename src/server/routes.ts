@@ -11,6 +11,7 @@ router.post('/simulate-attack', controllers.simulateAttack);
 router.post('/run-simulation', controllers.runSimulation);
 router.post('/stop-simulation', controllers.stopSimulation);
 router.post('/machine-content', controllers.getMachineContent);
+router.post('/save-scada-project', controllers.saveScadaProject);
 
 // Save System Routes
 router.get('/saves', controllers.listSaves);
