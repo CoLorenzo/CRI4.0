@@ -12,6 +12,7 @@ import { Slider } from "@nextui-org/react";
 import TopologyGraph from "../components/TopologyGraph";
 import TerminalModal from "../components/TerminalModal";
 import UIModal from "../components/UIModal";
+import { toast } from 'react-hot-toast';
 import LogsModal from "../components/LogsModal";
 import { getMachineIps } from "../utils/ipUtils";
 import { useContext } from "react";
@@ -295,6 +296,9 @@ function Topology() {
                     } catch (e) {
                       console.error("Failed to resolve container IP", e);
                       // Fallback or alert?
+                      if (e.message && (e.message.includes('permission denied') || e.message.includes('docker group'))) {
+                        toast.error("Docker permission denied. System fix required (see instructions).");
+                      }
                       // For now maybe default to localhost if fail
                       const url = `http://127.0.0.1:8080`; // generic fallback
                       setUiModal({

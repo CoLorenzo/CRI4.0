@@ -191,6 +191,9 @@ ipcMain.handle('docker-inspect', async (event, machineName) => {
     exec(findCmd, (findErr, findStdout) => {
       if (findErr) {
         sendLog('error', `❌ Error searching for container ${machineName}: ${findErr.message}`);
+        if (findErr.message.includes('permission denied') || findErr.message.includes('connect to the docker API')) {
+          throw new Error("Docker permission denied. Run: sudo usermod -aG docker $USER");
+        }
         return resolve([]);
       }
 
@@ -597,9 +600,13 @@ ipcMain.handle('terminal.create', async (event, containerName: string) => {
       });
     });
     targetContainer = ancestorName;
-  } catch (e) {
+  } catch (e: any) {
     sendLog('error', `Terminal creation failed: ${e}`);
-    throw e;
+    let verifyError = String(e);
+    if (verifyError.includes('permission denied') || verifyError.includes('connect to the docker API')) {
+      verifyError = "Docker permission denied. Please add your user to the docker group: sudo usermod -aG docker $USER";
+    }
+    throw new Error(verifyError);
   }
 
   const ptyProcess = pty.spawn(shell, ['exec', '-it', targetContainer, '/bin/bash'], {

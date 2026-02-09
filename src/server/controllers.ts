@@ -82,6 +82,9 @@ export const getContainerInspect = async (req: Request, res: Response) => {
     exec(`docker ps --filter name=_${containerName}_ --format "{{.Names}}"`, (findErr, findStdout) => {
         if (findErr) {
             console.error(`Error searching for container ${containerName}: ${findErr.message}`);
+            if (findErr.message.includes('permission denied') || findErr.message.includes('connect to the docker API')) {
+                return res.status(500).json({ error: "Docker permission denied. Run: sudo usermod -aG docker $USER" });
+            }
             return res.json([]);
         }
 

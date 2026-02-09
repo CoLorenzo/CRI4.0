@@ -141,9 +141,13 @@ function setupSocketIO(httpServer: any) {
                     });
                 });
                 targetContainer = ancestorName;
-            } catch (e) {
+            } catch (e: any) {
                 console.error(`Terminal creation failed: ${e}`);
-                if (typeof callback === 'function') callback({ error: String(e) });
+                let verifyError = String(e);
+                if (verifyError.includes('permission denied') || verifyError.includes('connect to the docker API')) {
+                    verifyError = "Docker permission denied. Please add your user to the docker group: sudo usermod -aG docker $USER";
+                }
+                if (typeof callback === 'function') callback({ error: verifyError });
                 return;
             }
 
