@@ -5,3 +5,4 @@ node_modules/
 containers/mitm/.DS_Store
 saves/*
 !saves/.gitkeep
+src/node_modules
