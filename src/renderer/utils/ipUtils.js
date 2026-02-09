@@ -8,9 +8,9 @@ export function getMachineIps(machines) {
         let ip = "";
 
         if (machineName === "collector") {
-            ip = "20.0.0.254";
+            ip = "10.0.0.254";
         } else {
-            ip = `20.0.0.${collectorIpCounter}`;
+            ip = `10.0.0.${collectorIpCounter}`;
             collectorIpCounter++;
         }
 

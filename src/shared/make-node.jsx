@@ -42,19 +42,29 @@ function makeStartupFiles(netkit, lab) {
   lab.file["collectordb.startup"] = "";
 
   // 1. Pre-calculate IPs for all machines (needed for PLC to know other machines' IPs)
-  let collectorIpCounter = 1; // New counter for 20.0.0.X subnet
+  let collectorIpCounter = 1; // New counter for 10.0.0.X subnet
 
   for (let machine of netkit) {
     const rawName = machine.type === "attacker" ? "attacker" : machine.name;
     const machineName = String(rawName || "node").replace(/[^\w.-]/g, "_");
 
-    // Assign IP to eth0 from 20.0.0.0/24 subnet
+    // Assign IP to eth0 from 10.0.0.0/24 subnet
     let eth0Ip;
     if (machineName === "collector") {
-      eth0Ip = "20.0.0.254/24"; // Dedicated IP for the collector
+      eth0Ip = "10.0.0.254/24"; // Dedicated IP for the collector
+    } else if (machineName === "collectordb") {
+      eth0Ip = "10.0.0.253/24"; // Dedicated IP for the collector DB
     } else {
-      eth0Ip = `20.0.0.${collectorIpCounter}/24`;
-      collectorIpCounter++;
+      // Check if eth0 is already configured in interfaces
+      const eth0Interface = machine.interfaces?.if?.find(i => i.eth?.number === 0);
+      if (eth0Interface && eth0Interface.ip) {
+        eth0Ip = eth0Interface.ip;
+        // Ensure it has CIDR
+        if (!eth0Ip.includes('/')) eth0Ip += '/24';
+      } else {
+        eth0Ip = `10.0.0.${collectorIpCounter}/24`;
+        collectorIpCounter++;
+      }
     }
     machine.computedEth0Ip = eth0Ip; // Store for later use
   }
@@ -244,7 +254,7 @@ function makeLabConfFile(netkit, lab) {
   lab.file["collector.startup"] += '#!/bin/sh\n'
   lab.file["collector.startup"] += 'echo "nameserver 8.8.8.8" > /etc/resolv.conf\n'
   lab.file["collector.startup"] += 'loki -config.file=/etc/loki/config.yml &\n'
-  lab.file["collector.startup"] += 'ip addr add 20.0.0.254/24 dev eth0\n'
+  lab.file["collector.startup"] += 'ip addr add 10.0.0.254/24 dev eth0\n'
   lab.file["collector.startup"] += 'ip link set eth0 up\n'
 
   // PER BUG MAC
@@ -254,7 +264,7 @@ function makeLabConfFile(netkit, lab) {
   //  lab.file["lab.conf"] += "collector[image]=\"icr/collector\"\n";
   //kathara lconfig -n collector --add "_collector"
   //tramite docker exec nel main, lanciare
-  //ip addr add 20.0.0.254/24 dev eth1
+  //ip addr add 10.0.0.254/24 dev eth1
   //ip link set eth1 up
 
 
