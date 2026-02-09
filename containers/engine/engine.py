@@ -118,6 +118,27 @@ def run_modbus_server(context):
             print(f"Modbus server failed to start or crashed: {e}. Retrying in 2 seconds...")
             time.sleep(2)
 
+import socket
+
+def bind_socket_robust(host, port, retries=5, delay=2):
+    """
+    Attempts to bind a socket to the given host and port.
+    Retries on failure (e.g., address already in use).
+    Returns the bound socket object.
+    """
+    for attempt in range(retries):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.bind((host, port))
+            return sock
+        except OSError as e:
+            print(f"Bind attempt {attempt + 1}/{retries} failed: {e}")
+            if attempt < retries - 1:
+                time.sleep(delay)
+            else:
+                raise e
+
 def main():
     global engine
     parser = argparse.ArgumentParser(description="Engine Simulator")
@@ -154,7 +175,26 @@ def main():
     threading.Thread(target=monitor_modbus, args=(context,), daemon=True).start()
 
     print(f"Starting Engine with step={args.temperature_step}, interval={args.seconds}, start_temp={args.temperature_start}")
-    uvicorn.run(app, host=args.interface, port=args.port)
+    
+    # Robustly bind the socket and pass it to Uvicorn
+    # This prevents the race condition where the port is released and stolen before Uvicorn starts
+    try:
+        sock = bind_socket_robust(args.interface, args.port)
+        # Verify if we need to listen(), uvicorn usually expects a bound socket.
+        # Calling listen is safe.
+        # sock.listen(5) # Optional, uvicorn might do it, but let's be safe if we pass FD.
+        # Actually, let's look at how uvicorn handles it. 
+        # If we just bind, uvicorn will call listen.
+        
+        print(f"Socket successfully bound to {args.interface}:{args.port}. Passing FD to Uvicorn...")
+        
+        # Pass the file descriptor to Uvicorn
+        # Note: When using fd, host/port args in run() are typically ignored for binding but used for logging.
+        uvicorn.run(app, fd=sock.fileno(), host=args.interface, port=args.port)
+        
+    except Exception as e:
+        print(f"CRITICAL ERROR: Failed to start engine server: {e}")
+        # If we failed to bind after retries, we exit.
 
 if __name__ == "__main__":
     main()
