@@ -92,6 +92,38 @@ const ProjectService = {
         } catch (error) {
             return { success: false, error: error.message };
         }
+    },
+
+    uploadProject: async (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async () => {
+                try {
+                    const content = reader.result; // Base64 string
+                    const response = await fetch(`${API_URL}/saves/upload`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ filename: file.name, content })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.json();
+                        resolve({ success: false, error: err.error || "Upload failed" });
+                    } else {
+                        const data = await response.json();
+                        resolve({ success: true, filename: data.filename });
+                    }
+                } catch (e) {
+                    resolve({ success: false, error: e.message });
+                }
+            };
+            reader.onerror = (error) => resolve({ success: false, error: "File reading failed" });
+        });
+    },
+
+    getDownloadUrl: (filename) => {
+        return `${API_URL}/saves/${filename}/download`;
     }
 };
 

@@ -16,7 +16,9 @@ router.post('/save-scada-project', controllers.saveScadaProject);
 // Save System Routes
 router.get('/saves', controllers.listSaves);
 router.post('/saves', controllers.saveProject);
+router.post('/saves/upload', controllers.uploadProject);
 router.get('/saves/:filename', controllers.loadProject);
+router.get('/saves/:filename/download', controllers.downloadProject);
 router.delete('/saves/:filename', controllers.deleteProject);
 
 // SSE for logs

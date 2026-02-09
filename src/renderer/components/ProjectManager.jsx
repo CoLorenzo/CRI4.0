@@ -25,6 +25,21 @@ export function ProjectManager({ machines, labInfo, setMachines, setLabInfo }) {
         if (result.success) {
             toast.success(`Project saved as ${result.filename}`);
             setCurrentProjectName(result.filename);
+
+            // Trigger automatic download
+            try {
+                const downloadUrl = ProjectService.getDownloadUrl(result.filename);
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+                link.setAttribute('download', `${result.filename}.cri`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (e) {
+                console.error("Auto-download failed:", e);
+                toast.error("Auto-download failed");
+            }
+
             onClose();
         } else {
             toast.error("Failed to save project: " + result.error);
@@ -109,6 +124,39 @@ export function ProjectManager({ machines, labInfo, setMachines, setLabInfo }) {
                         <>
                             <ModalHeader>Load Project</ModalHeader>
                             <ModalBody>
+                                <div className="flex justify-end mb-2">
+                                    <input
+                                        type="file"
+                                        accept=".cri"
+                                        style={{ display: 'none' }}
+                                        id="upload-project-input"
+                                        onChange={async (e) => {
+                                            const file = e.target.files[0];
+                                            if (!file) return;
+
+                                            const toastId = toast.loading("Uploading...");
+                                            const result = await ProjectService.uploadProject(file);
+
+                                            if (result.success) {
+                                                toast.success("Upload successful", { id: toastId });
+                                                fetchSaves();
+                                            } else {
+                                                toast.error("Upload failed: " + result.error, { id: toastId });
+                                            }
+                                            // Reset input
+                                            e.target.value = '';
+                                        }}
+                                    />
+                                    <Button
+                                        size="sm"
+                                        color="secondary"
+                                        variant="flat"
+                                        onPress={() => document.getElementById('upload-project-input').click()}
+                                        startContent={<UploadSymbol />}
+                                    >
+                                        Upload .cri
+                                    </Button>
+                                </div>
                                 {savesList.length === 0 ? (
                                     <p className="text-gray-500">No saved projects found.</p>
                                 ) : (

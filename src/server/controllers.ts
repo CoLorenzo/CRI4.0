@@ -466,7 +466,7 @@ export const getMachineContent = async (req: Request, res: Response) => {
 export const listSaves = async (req: Request, res: Response) => {
     try {
         const entries = await fsp.readdir(SAVES_DIR, { withFileTypes: true });
-        const projectFolders = [];
+        const projectFolders: string[] = [];
 
         for (const entry of entries) {
             if (entry.isDirectory()) {
@@ -474,6 +474,9 @@ export const listSaves = async (req: Request, res: Response) => {
                 if (fs.existsSync(projectPath)) {
                     projectFolders.push(entry.name);
                 }
+            } else if (entry.isFile() && entry.name.endsWith('.cri')) {
+                // Return filename without extension for UI consistency
+                projectFolders.push(entry.name.replace('.cri', ''));
             }
         }
         res.json(projectFolders);
@@ -488,14 +491,12 @@ export const saveProject = async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Filename and data are required' });
     }
 
-    // specific sanitize for filename (used as folder name)
-    const safeFolderName = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
-    const projectDir = path.join(SAVES_DIR, safeFolderName);
+    // specific sanitize for filename
+    const safeName = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
+    const criPath = path.join(SAVES_DIR, `${safeName}.cri`);
 
     try {
-        if (!fs.existsSync(projectDir)) {
-            await fsp.mkdir(projectDir, { recursive: true });
-        }
+        const zip = new AdmZip();
 
         // Process machines to extract binary content
         if (data.machines && Array.isArray(data.machines)) {
@@ -506,9 +507,10 @@ export const saveProject = async (req: Request, res: Response) => {
                         const content = m.industrial.scadaProjectContent;
                         // Strip Data URI prefix if present (e.g. data:application/octet-stream;base64,...)
                         const rawContent = content.includes(';base64,') ? content.split(';base64,').pop() : content;
+                        const buffer = Buffer.from(rawContent, 'base64');
 
                         const dbFilename = `${m.name}.db`;
-                        await fsp.writeFile(path.join(projectDir, dbFilename), rawContent, 'base64');
+                        zip.addFile(dbFilename, buffer);
                         m.industrial.scadaProjectContent = `file:${dbFilename}`;
                     }
                     // Handle PLC content
@@ -516,18 +518,24 @@ export const saveProject = async (req: Request, res: Response) => {
                         const content = m.industrial.plcProgramContent;
                         // Strip Data URI prefix if present
                         const rawContent = content.includes(';base64,') ? content.split(';base64,').pop() : content;
+                        const buffer = Buffer.from(rawContent, 'base64');
 
                         const stFilename = `${m.name}.st`;
-                        await fsp.writeFile(path.join(projectDir, stFilename), rawContent, 'base64');
+                        zip.addFile(stFilename, buffer);
                         m.industrial.plcProgramContent = `file:${stFilename}`;
                     }
                 }
             }
         }
 
-        await fsp.writeFile(path.join(projectDir, 'project.json'), JSON.stringify(data, null, 2));
-        sendLog('log', `💾 Project saved to folder: ${safeFolderName}`);
-        res.json({ success: true, filename: safeFolderName });
+        const projectJsonContent = JSON.stringify(data, null, 2);
+        zip.addFile('project.json', Buffer.from(projectJsonContent, 'utf-8'));
+
+        // Write the zip file
+        zip.writeZip(criPath);
+
+        sendLog('log', `💾 Project saved to compressed file: ${safeName}.cri`);
+        res.json({ success: true, filename: safeName });
     } catch (err: any) {
         sendLog('error', `❌ Error saving project: ${err.message}`);
         res.status(500).json({ error: err.message });
@@ -540,13 +548,56 @@ export const loadProject = async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Filename is required' });
     }
 
-    const safeFolderName = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
-    const projectDir = path.join(SAVES_DIR, safeFolderName);
-    const projectJsonPath = path.join(projectDir, 'project.json');
+    const safeName = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
+    const criPath = path.join(SAVES_DIR, `${safeName}.cri`);
+    // Legacy support
+    const legacyProjectDir = path.join(SAVES_DIR, safeName);
+    const legacyProjectJsonPath = path.join(legacyProjectDir, 'project.json');
 
     try {
-        const content = await fsp.readFile(projectJsonPath, 'utf-8');
-        const data = JSON.parse(content);
+        let data: any = null;
+        let getFileContent: (name: string) => Promise<string | null> = async () => null;
+
+        if (fs.existsSync(criPath)) {
+            // Load from .cri zip
+            const zip = new AdmZip(criPath);
+            const projectEntry = zip.getEntry('project.json');
+
+            if (!projectEntry) {
+                throw new Error('Invalid .cri file: project.json not found');
+            }
+
+            const content = zip.readAsText(projectEntry);
+            data = JSON.parse(content);
+
+            getFileContent = async (name: string) => {
+                const entry = zip.getEntry(name);
+                if (entry) {
+                    const buff = zip.readFile(entry);
+                    return buff ? buff.toString('base64') : null;
+                }
+                return null;
+            };
+
+            sendLog('log', `📂 Project loaded from compressed file: ${safeName}.cri`);
+
+        } else if (fs.existsSync(legacyProjectJsonPath)) {
+            // Load from legacy folder
+            const content = await fsp.readFile(legacyProjectJsonPath, 'utf-8');
+            data = JSON.parse(content);
+
+            getFileContent = async (name: string) => {
+                const filePath = path.join(legacyProjectDir, name);
+                if (fs.existsSync(filePath)) {
+                    return await fsp.readFile(filePath, 'base64');
+                }
+                return null;
+            };
+
+            sendLog('log', `📂 Project loaded from legacy folder: ${safeName}`);
+        } else {
+            return res.status(404).json({ error: 'Project not found' });
+        }
 
         // Reassemble binary content
         if (data.machines && Array.isArray(data.machines)) {
@@ -555,18 +606,16 @@ export const loadProject = async (req: Request, res: Response) => {
                     // Load SCADA content
                     if (m.type === 'scada' && m.industrial.scadaProjectContent && m.industrial.scadaProjectContent.startsWith('file:')) {
                         const dbFilename = m.industrial.scadaProjectContent.substring(5);
-                        const dbPath = path.join(projectDir, dbFilename);
-                        if (fs.existsSync(dbPath)) {
-                            const dbContent = await fsp.readFile(dbPath, 'base64');
+                        const dbContent = await getFileContent(dbFilename);
+                        if (dbContent) {
                             m.industrial.scadaProjectContent = dbContent;
                         }
                     }
                     // Load PLC content
                     if (m.type === 'plc' && m.industrial.plcProgramContent && m.industrial.plcProgramContent.startsWith('file:')) {
                         const stFilename = m.industrial.plcProgramContent.substring(5);
-                        const stPath = path.join(projectDir, stFilename);
-                        if (fs.existsSync(stPath)) {
-                            const stContent = await fsp.readFile(stPath, 'base64');
+                        const stContent = await getFileContent(stFilename);
+                        if (stContent) {
                             m.industrial.plcProgramContent = stContent;
                         }
                     }
@@ -574,7 +623,6 @@ export const loadProject = async (req: Request, res: Response) => {
             }
         }
 
-        sendLog('log', `📂 Project loaded from folder: ${safeFolderName}`);
         res.json(data);
     } catch (err: any) {
         sendLog('error', `❌ Error loading project: ${err.message}`);
@@ -588,18 +636,84 @@ export const deleteProject = async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Filename is required' });
     }
 
-    const safeFolderName = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
-    const projectDir = path.join(SAVES_DIR, safeFolderName);
+    const safeName = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
+    const criPath = path.join(SAVES_DIR, `${safeName}.cri`);
+    const legacyProjectDir = path.join(SAVES_DIR, safeName);
 
     try {
-        await fsp.rm(projectDir, { recursive: true, force: true });
-        sendLog('log', `🗑️ Project folder deleted: ${safeFolderName}`);
+        if (fs.existsSync(criPath)) {
+            await fsp.unlink(criPath);
+            sendLog('log', `🗑️ Project file deleted: ${safeName}.cri`);
+        } else if (fs.existsSync(legacyProjectDir)) {
+            await fsp.rm(legacyProjectDir, { recursive: true, force: true });
+            sendLog('log', `🗑️ Legacy project folder deleted: ${safeName}`);
+        } else {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
         res.json({ success: true });
     } catch (err: any) {
         res.status(500).json({ error: err.message });
     }
 };
 
+
+
+export const downloadProject = async (req: Request, res: Response) => {
+    const { filename } = req.params;
+    if (!filename) {
+        return res.status(400).json({ error: 'Filename is required' });
+    }
+
+    const safeName = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
+    const criPath = path.join(SAVES_DIR, `${safeName}.cri`);
+
+    if (fs.existsSync(criPath)) {
+        res.download(criPath, `${safeName}.cri`, (err) => {
+            if (err) {
+                sendLog('error', `❌ Error downloading file: ${err.message}`);
+                if (!res.headersSent) {
+                    res.status(500).json({ error: "Failed to download file" });
+                }
+            } else {
+                sendLog('log', `⬇️ Project downloaded: ${safeName}.cri`);
+            }
+        });
+    } else {
+        res.status(404).json({ error: 'File not found' });
+    }
+};
+
+
+export const uploadProject = async (req: Request, res: Response) => {
+    const { filename, content } = req.body;
+    if (!filename || !content) {
+        return res.status(400).json({ error: 'Filename and content are required' });
+    }
+
+    // Sanitize filename
+    const safeName = filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
+    let targetFilename = safeName;
+    if (!targetFilename.endsWith('.cri')) {
+        targetFilename += '.cri';
+    }
+
+    const criPath = path.join(SAVES_DIR, targetFilename);
+
+    try {
+        // Content is expected to be base64 string
+        // If it comes with data URI prefix (e.g., "data:application/zip;base64,..."), strip it
+        const rawContent = content.includes(';base64,') ? content.split(';base64,').pop() : content;
+        const buffer = Buffer.from(rawContent, 'base64');
+
+        await fsp.writeFile(criPath, buffer as any);
+        sendLog('log', `⬆️ Project uploaded: ${targetFilename}`);
+        res.json({ success: true, filename: targetFilename });
+    } catch (err: any) {
+        sendLog('error', `❌ Error uploading file: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+};
 
 export const saveScadaProject = async (req: Request, res: Response) => {
     const { machineName } = req.body;
