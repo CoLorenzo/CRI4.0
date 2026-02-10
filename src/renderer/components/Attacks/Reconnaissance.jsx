@@ -13,6 +13,7 @@ import { LogContext } from "../../contexts/LogContext";
 import MachineSelector from "./MachineSelector";
 import AttackSelector from "./AttackSelector";
 import { attacksModel } from "../../models/model";
+import { extractTargetIPs, computeSubnetFromIp } from "../../utils/ipUtils";
 
 
 function Reconnaissance({ attacker, attacks, isLoading, machines, setMachines, handleRefresh }) {
@@ -996,6 +997,8 @@ function Reconnaissance({ attacker, attacks, isLoading, machines, setMachines, h
     setExtraText(tokens.join(" "));
   };
 
+
+
   const onParamValueChange = (ev) => {
     const val = ev.target.value;
     setParamValue(val);
@@ -1010,28 +1013,6 @@ function Reconnaissance({ attacker, attacks, isLoading, machines, setMachines, h
       if (!Number.isNaN(n)) setIcmpWorkers(n);
     }
   };
-
-  // aggiungi sopra il componente (o in util separato)
-  const ipRegex = /^(?:25[0-5]|2[0-4]\d|1?\d{1,2})(?:\.(?:25[0-5]|2[0-4]\d|1?\d{1,2})){3}$/;
-
-  function computeSubnetFromIp(rawIp) {
-    if (!rawIp) return null;
-    // se il campo è tipo "192.168.10.5/24" -> ritorna "192.168.10.0/24"
-    if (String(rawIp).includes("/")) {
-      try {
-        return String(rawIp).trim();
-      } catch (e) {
-        return null;
-      }
-    }
-    // altrimenti prova a costruire /24
-    const ipOnly = String(rawIp).split("/")[0].trim();
-    const oct = ipOnly.split(".");
-    if (oct.length === 4) {
-      return `${oct[0]}.${oct[1]}.${oct[2]}.0/24`;
-    }
-    return null;
-  }
 
   const onArpModeChange = (val) => {
     setArpMode(val);
@@ -1075,41 +1056,10 @@ function Reconnaissance({ attacker, attacks, isLoading, machines, setMachines, h
     }
   };
 
-  useEffect(() => {
-    setArpPrevArgsAfter(null);
-    // ... resto della logica esistente che popola extraText / icmp ecc.
-  }, [selectedImage]);
+  // aggiungi sopra il componente (o in util separato)
 
-  function extractTargetIPs(
-    targets = [],
-    attackerDomain,
-    { allowOtherDomains = true } = {}  // default: includi anche altre subnet
-  ) {
-    const ips = [];
-    targets.forEach((t) => {
-      if (!t || !t.interfaces || !Array.isArray(t.interfaces.if)) return;
 
-      t.interfaces.if.forEach((iface) => {
-        try {
-          if (!iface || !iface.eth || !iface.ip) return;
 
-          // Se allowOtherDomains è true, non filtrare per dominio
-          const sameDomain = iface.eth.domain === attackerDomain;
-          if ((allowOtherDomains || sameDomain)) {
-            const ipOnly = String(iface.ip).split('/')[0].trim();
-            if (ipRegex.test(ipOnly)) ips.push(ipOnly);
-          }
-        } catch { }
-      });
-    });
-    return Array.from(new Set(ips));
-  }
-
-  // helper: trova definizione attacco
-  function getAttackDefinition(attackName) {
-    if (!Array.isArray(attacks)) return null;
-    return attacks.find(a => a.name === attackName || a.image === attackName || a.displayName === attackName) || null;
-  }
 
 
   // helper: cerca definizione attacco (se non esiste già)

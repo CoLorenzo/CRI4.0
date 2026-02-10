@@ -17,32 +17,9 @@ import { XSymbol } from "../Symbols/XSymbol";
 import { LogContext } from "../../contexts/LogContext";
 import MachineSelector from "./MachineSelector";
 import AttackSelector from "./AttackSelector";
+import { extractTargetIPs } from "../../utils/ipUtils";
 
-const ipRegex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
 
-function extractTargetIPs(
-  targets = [],
-  attackerDomain,
-  { allowOtherDomains = true } = {}
-) {
-  const ips = [];
-  targets.forEach((t) => {
-    if (!t || !t.interfaces || !Array.isArray(t.interfaces?.if)) return;
-
-    t.interfaces.if.forEach((iface) => {
-      try {
-        if (!iface || !iface.eth || !iface.ip) return;
-
-        const sameDomain = iface.eth.domain === attackerDomain;
-        if (allowOtherDomains || sameDomain) {
-          const ipOnly = String(iface.ip).split('/')[0].trim();
-          if (ipRegex.test(ipOnly)) ips.push(ipOnly);
-        }
-      } catch { }
-    });
-  });
-  return Array.from(new Set(ips));
-}
 
 function Sniffing({ attacker, attacks, isLoading, machines, setMachines, handleRefresh }) {
   const [selectedImage, setSelectedImage] = useState(attacker.attackImage);
