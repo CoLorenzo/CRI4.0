@@ -155,10 +155,23 @@ function Topology() {
     // Fix: attacker machine is always named "attacker" in Kathara, but state might have image name.
     const targetContainer = attacker.type === "attacker" ? "attacker" : attacker.name;
     try {
-      await api.simulateAttack(targetContainer, commandArgs);
+      const output = await api.simulateAttack(targetContainer, commandArgs);
+      console.log("Attack output:", output);
+      if (output) {
+        toast.success(
+          <div>
+            <b>Attack executed:</b>
+            <pre className="text-xs mt-1 whitespace-pre-wrap max-h-40 overflow-auto">{output}</pre>
+          </div>,
+          { duration: 5000 }
+        );
+      } else {
+        toast.success("Attack command sent (no output returned).");
+      }
+
     } catch (e) {
       console.error("Attack error", e);
-      // opzionale: mostra notifica / alert a utente
+      toast.error("Attack failed: " + e.message);
     }
     // nota: lo stato (attackInProgress/showTimer) viene chiuso dal timer sopra
   };

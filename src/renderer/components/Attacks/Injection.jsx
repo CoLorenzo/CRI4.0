@@ -25,6 +25,18 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
   const { attackLoaded, setAttackLoaded } = useContext(NotificationContext);
   const [targets, setTargets] = useState(attacker.targets);
 
+  const getEnvValue = (key) => {
+    if (attacker.attackLoaded && attacker.attackImage?.includes("modbustcp-injection")) {
+      const args = attacker.attackCommandArgs || [];
+      const entry = args.find(a => typeof a === 'string' && a.startsWith(`${key}=`));
+      return entry ? entry.split("=")[1] : "";
+    }
+    return "";
+  };
+
+  const [target1, setTarget1] = useState(getEnvValue("TARGET1"));
+  const [target2, setTarget2] = useState(getEnvValue("TARGET2"));
+
   console.log(attacker.attackImage)
 
   const toggleAttack = (val) => {
@@ -36,7 +48,20 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
           const cleanIps = extractTargetIPs(targets, attackerDomain);
 
           // costruisci l'array di argomenti (più sicuro)
-          const attackArgs = ['sh', '/usr/local/bin/script.sh', ...cleanIps];
+          let attackArgs = ['sh', '/usr/local/bin/script.sh', ...cleanIps];
+
+          if (val && val.includes("modbustcp-injection")) {
+            // Per ModbusTCP injection, passiamo i parametri come variabili d'ambiente a entrypoint.sh
+            // Assumiamo eth0 come interfaccia di default se non diversamente specificato
+            const iface = "eth0";
+            attackArgs = [
+              'env',
+              `INTERFACE=${iface}`,
+              `TARGET1=${target1}`,
+              `TARGET2=${target2}`,
+              '/usr/local/bin/entrypoint.sh'
+            ];
+          }
 
           // versione stringa leggibile (opzionale) per UI/log
           const attackCommandStr = attackArgs.join(' ');
@@ -78,6 +103,17 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
         <div className="grid gap-2">
           <MachineSelector machines={machines} setTargets={setTargets} attacker={attacker} />
           <AttackSelector type="injection" attacker={attacker} attacks={attacks} selectedImage={selectedImage} setSelectedImage={setSelectedImage} isLoading={isLoading} handleRefresh={handleRefresh} />
+
+          {selectedImage && selectedImage.includes("modbustcp-injection") && (
+            <Card>
+              <CardBody>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input label="Target 1 IP" value={target1} onValueChange={setTarget1} placeholder="e.g. 192.168.1.10" />
+                  <Input label="Target 2 IP" value={target2} onValueChange={setTarget2} placeholder="e.g. 192.168.1.20" />
+                </div>
+              </CardBody>
+            </Card>
+          )}
         </div>
       </div>
       <div className="grid">

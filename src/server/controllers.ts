@@ -354,8 +354,8 @@ export const runSimulation = async (req: Request, res: Response) => {
         sendLog('log', "🚀 Launching Kathara...");
         const output = await new Promise((resolve, reject) => {
             sendLog('log', `📂 Lanciando kathara in: ${LAB_PATH}`);
-            sendLog('log', `📄 File presenti: ${fs.readdirSync(LABS_DIR)}`);
-            exec(`kathara lstart --noterminals`, { cwd: LABS_DIR }, (error, stdout, stderr) => {
+            sendLog('log', `📄 File presenti: ${fs.readdirSync(LAB_PATH)}`);
+            exec(`kathara lstart --noterminals`, { cwd: LAB_PATH }, (error, stdout, stderr) => {
                 if (error) {
                     const errorMessage = `❌ Failed to start: ${stderr || error.message}`;
                     sendLog('error', errorMessage);
