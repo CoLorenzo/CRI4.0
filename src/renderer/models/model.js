@@ -459,12 +459,12 @@ export const attacksModel = [
       argsAfterTargets: []      // nessun flag dopo gli IP
     }
   },
- {
- name: "injection-modbustcp-injection",
- displayName: "Modbus-TCP injection",
- category: "injection",
- attackLoaded: false,
- image: "",
- isImage: false,
- }
+  {
+    name: "modbustcp-injection",
+    displayName: "Modbus-TCP injection",
+    category: "injection",
+    attackLoaded: false,
+    image: "",
+    isImage: false,
+  }
 ]

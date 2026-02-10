@@ -189,7 +189,7 @@ services:
   engine:
     build: ./engine
     image: icr/engine
-  modbustcp-injection:
+  injection-modbustcp-injection:
     build: ./injection/modbustcp-injection
     image: icr/injection-modbustcp-injection
     cap_add:
