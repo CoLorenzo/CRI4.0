@@ -64,14 +64,40 @@ export const buildDockerImage = async (req: Request, res: Response) => {
     if (!name) return res.status(400).json({ error: 'Image name required' });
 
     console.log("BUILDING:", name);
-    exec(`docker compose -f ./containers/docker-compose.yaml build ${name}`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
-        if (error) {
-            console.error("Build failed:", stderr);
-            res.json([]);
-        } else {
-            res.json(stdout.split("\n"));
-        }
-    });
+    sendLog('log', `🚀 Starting build for ${name}...`);
+
+    // Respond immediately to prevent browser timeout
+    res.json(["Build started in background. Check logs for progress."]);
+
+    const dockerArgs = ['compose', '-f', './containers/docker-compose.yaml', 'build', name];
+
+    try {
+        const proc = spawn('docker', dockerArgs);
+
+        proc.stdout.on('data', (data) => {
+            sendLog('log', data.toString().trim());
+        });
+
+        proc.stderr.on('data', (data) => {
+            // Docker build output often goes to stderr
+            sendLog('log', data.toString().trim());
+        });
+
+        proc.on('close', (code) => {
+            if (code === 0) {
+                sendLog('log', `✅ Build successful: ${name}`);
+            } else {
+                sendLog('error', `❌ Build failed: ${name} (code ${code})`);
+            }
+        });
+
+        proc.on('error', (err) => {
+            sendLog('error', `❌ Spawn error: ${err.message}`);
+        });
+
+    } catch (e: any) {
+        sendLog('error', `❌ Build error: ${e.message}`);
+    }
 };
 
 export const getContainerInspect = async (req: Request, res: Response) => {

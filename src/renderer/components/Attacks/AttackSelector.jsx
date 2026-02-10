@@ -20,12 +20,28 @@ function AttackSelector({ type, attacker, attacks, selectedImage, setSelectedIma
 
         const buildImage = (e, attack) => {
             setIsBuilding(true);
-            api.buildDockerImage(`${attack.category}-${attack.name}`).then((output) => {
-                console.log(output);
-                setLogs([...logs, `${attack.category}-${attack.name} arg:  Built image: ${attack.image}\n${output.join("\n")}\n`]);
-                setIsBuilding(false);
-                handleRefresh();
-            });
+            api.buildDockerImage(`${attack.category}-${attack.name}`)
+                .then((output) => {
+                    // Backend now returns immediately with a "started" message.
+                    // The actual build logs are streamed via SSE to LogContext.
+                    console.log("Build started:", output);
+                    setLogs(prev => [...prev, `${attack.category}-${attack.name}: Build initiated. Check logs for progress.\n`]);
+
+                    // We don't turn off isBuilding immediately to prevent double-clicking, 
+                    // but we also don't know when it finishes. 
+                    // A simple timeout or just letting it finish 'loading' state now is fine 
+                    // since the user can see log activity.
+                    setTimeout(() => {
+                        setIsBuilding(false);
+                        // Refresh to check if it finished quickly, though likely user will need to refresh manually later
+                        handleRefresh();
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error(err);
+                    setLogs(prev => [...prev, `Error starting build: ${err.message}\n`]);
+                    setIsBuilding(false);
+                });
         }
 
         return (
