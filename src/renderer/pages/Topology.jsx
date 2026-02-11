@@ -12,6 +12,7 @@ import { Slider } from "@nextui-org/react";
 import TopologyGraph from "../components/TopologyGraph";
 import TerminalModal from "../components/TerminalModal";
 import UIModal from "../components/UIModal";
+import PasswordModal from "../components/PasswordModal";
 import { toast } from 'react-hot-toast';
 import LogsModal from "../components/LogsModal";
 import { getMachineIps } from "../utils/ipUtils";
@@ -35,6 +36,28 @@ function Topology() {
 
   // Logs Modal State
   const [logsModal, setLogsModal] = useState({ isOpen: false, containerName: "" });
+
+  // Password Modal State
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+
+  const handleSimulationStart = async (password) => {
+    setPasswordModalOpen(false);
+    setShowSimulationBanner(true);
+
+    try {
+      await api.runSimulation(machines, labInfo, password);
+      // Wait a bit to ensure kathara starts
+      setTimeout(() => {
+        setShowSimulationBanner(false);
+        setSimulationRun(true);
+        setStopSimulation(false);
+      }, 2000);
+    } catch (e) {
+      console.error("Run simulation error:", e);
+      toast.error("Simulation failed: " + e.message);
+      setShowSimulationBanner(false);
+    }
+  };
 
   const [simulationRun, setSimulationRun] = useState(() => {
     try { return JSON.parse(localStorage.getItem('simulationRun') || 'false'); }
@@ -335,21 +358,7 @@ function Topology() {
         <Button
           isDisabled={simulationRun}
           className="bg-success text-white"
-          onClick={async () => {
-            setShowSimulationBanner(true);
-
-            try {
-              await api.runSimulation(machines, labInfo);
-            } catch (e) {
-              console.error("Run simulation error:", e);
-            }
-
-            setTimeout(() => {
-              setShowSimulationBanner(false);
-              setSimulationRun(true);
-              setStopSimulation(false);
-            }, 2000);
-          }}
+          onClick={() => setPasswordModalOpen(true)}
         >
           Run Simulation
         </Button>
@@ -478,6 +487,11 @@ function Topology() {
         isOpen={logsModal.isOpen}
         onClose={() => setLogsModal({ ...logsModal, isOpen: false })}
         containerName={logsModal.containerName}
+      />
+      <PasswordModal
+        isOpen={passwordModalOpen}
+        onClose={() => setPasswordModalOpen(false)}
+        onSubmit={handleSimulationStart}
       />
     </div>
   );

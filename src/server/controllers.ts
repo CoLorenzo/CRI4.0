@@ -313,7 +313,7 @@ export const simulateAttack = async (req: Request, res: Response) => {
 };
 
 export const runSimulation = async (req: Request, res: Response) => {
-    const { machines, labInfo } = req.body;
+    const { machines, labInfo, sudoPassword } = req.body;
     sendLog('log', `machines? ${Array.isArray(machines)} ${machines?.length}`);
 
     // DEBUG: Check for SCADA payload
@@ -355,7 +355,11 @@ export const runSimulation = async (req: Request, res: Response) => {
         const output = await new Promise((resolve, reject) => {
             sendLog('log', `📂 Launching kathara in: ${LABS_DIR}`);
             sendLog('log', `📄 Files present: ${fs.readdirSync(LABS_DIR)}`);
-            exec(`kathara lstart --noterminals`, { cwd: LABS_DIR }, (error, stdout, stderr) => {
+
+            // Construct command with password piped to sudo
+            const cmd = `echo '${sudoPassword || ""}' | sudo -S kathara lstart --privileged --noterminals`;
+
+            exec(cmd, { cwd: LABS_DIR }, (error, stdout, stderr) => {
                 if (error) {
                     const errorMessage = `❌ Failed to start: ${stderr || error.message}`;
                     sendLog('error', errorMessage);

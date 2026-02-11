@@ -87,14 +87,14 @@ export const api = {
         return data.output;
     },
 
-    async runSimulation(machines: any[], labInfo: any): Promise<string> {
+    async runSimulation(machines: any[], labInfo: any, sudoPassword?: string): Promise<string> {
         if (isElectron()) {
-            return window.electron.ipcRenderer.invoke('run-simulation', { machines, labInfo });
+            return window.electron.ipcRenderer.invoke('run-simulation', { machines, labInfo, sudoPassword });
         }
         const response = await fetch(`${API_BASE_URL}/run-simulation`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ machines, labInfo }),
+            body: JSON.stringify({ machines, labInfo, sudoPassword }),
         });
         const data = await response.json();
         return data.output;
