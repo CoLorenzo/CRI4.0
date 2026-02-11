@@ -526,9 +526,10 @@ ipcMain.handle('run-simulation', async (event, { machines, labInfo }) => {
 
   sendLog('log', "🚀 Launching Kathara...");
   return new Promise((resolve, reject) => {
-    sendLog('log', `📂 Lanciando kathara in: ${LAB_PATH}`);
-    sendLog('log', `📄 File presenti: ${fs.readdirSync(LAB_PATH)}`);
-    exec(`kathara lstart --noterminals`, { cwd: LAB_PATH }, (error, stdout, stderr) => {
+    sendLog('log', `test 🤔`);
+    sendLog('log', `📂 Lanciando kathara in: ${LABS_DIR}`);
+    sendLog('log', `📄 File presenti: ${fs.readdirSync(LABS_DIR)}`);
+    exec(`kathara lstart --noterminals`, { cwd: LABS_DIR }, (error, stdout, stderr) => {
       if (error) {
         const errorMessage = `❌ Failed to start: ${stderr || error.message}`;
         sendLog('error', errorMessage);

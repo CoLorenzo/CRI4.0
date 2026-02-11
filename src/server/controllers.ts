@@ -353,9 +353,9 @@ export const runSimulation = async (req: Request, res: Response) => {
 
         sendLog('log', "🚀 Launching Kathara...");
         const output = await new Promise((resolve, reject) => {
-            sendLog('log', `📂 Lanciando kathara in: ${LAB_PATH}`);
-            sendLog('log', `📄 File presenti: ${fs.readdirSync(LAB_PATH)}`);
-            exec(`kathara lstart --noterminals`, { cwd: LAB_PATH }, (error, stdout, stderr) => {
+            sendLog('log', `📂 Throwing kathara in: ${LABS_DIR}`);
+            sendLog('log', `📄 Files present: ${fs.readdirSync(LABS_DIR)}`);
+            exec(`kathara lstart --noterminals`, { cwd: LABS_DIR }, (error, stdout, stderr) => {
                 if (error) {
                     const errorMessage = `❌ Failed to start: ${stderr || error.message}`;
                     sendLog('error', errorMessage);
@@ -384,15 +384,15 @@ async function emptyKatharaLabs(labsDir: string) {
                 fsp.rm(path.join(labsDir, entry), { recursive: true, force: true })
             )
         );
-        sendLog('log', `🧹 Contenuto rimosso da: ${labsDir}`);
+        sendLog('log', `🧹 Content removed from: ${labsDir}`);
     } catch (err) {
-        sendLog('error', `❌ Errore durante lo svuotamento: ${err}`);
+        sendLog('error', `❌ Error during emptying: ${err}`);
     }
 }
 
 export const stopSimulation = async (req: Request, res: Response) => {
     if (!CURRENT_LAB) {
-        return res.status(400).json({ error: "Nessuna simulazione attiva." });
+        return res.status(400).json({ error: "No active simulation." });
     }
 
     const { name, labsDir } = CURRENT_LAB;
