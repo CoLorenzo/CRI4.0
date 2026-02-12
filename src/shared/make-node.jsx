@@ -42,18 +42,18 @@ function makeStartupFiles(netkit, lab) {
   lab.file["collectordb.startup"] = "";
 
   // 1. Pre-calculate IPs for all machines (needed for PLC to know other machines' IPs)
-  let collectorIpCounter = 1; // New counter for 10.0.0.X subnet
+  let collectorIpCounter = 1; // New counter for 10.1.0.X subnet
 
   for (let machine of netkit) {
     const rawName = machine.type === "attacker" ? "attacker" : machine.name;
     const machineName = String(rawName || "node").replace(/[^\w.-]/g, "_");
 
-    // Assign IP to eth0 from 10.0.0.0/24 subnet
+    // Assign IP to eth0 from 10.1.0.0/24 subnet
     let eth0Ip;
     if (machineName === "collector") {
-      eth0Ip = "10.0.0.254/24"; // Dedicated IP for the collector
+      eth0Ip = "10.1.0.254/24"; // Dedicated IP for the collector
     } else if (machineName === "collectordb") {
-      eth0Ip = "10.0.0.253/24"; // Dedicated IP for the collector DB
+      eth0Ip = "10.1.0.253/24"; // Dedicated IP for the collector DB
     } else {
       // Check if eth0 is already configured in interfaces
       const eth0Interface = machine.interfaces?.if?.find(i => i.eth?.number === 0);
@@ -62,7 +62,7 @@ function makeStartupFiles(netkit, lab) {
         // Ensure it has CIDR
         if (!eth0Ip.includes('/')) eth0Ip += '/24';
       } else {
-        eth0Ip = `10.0.0.${collectorIpCounter}/24`;
+        eth0Ip = `10.1.0.${collectorIpCounter}/24`;
         collectorIpCounter++;
       }
     }
@@ -108,7 +108,7 @@ function makeStartupFiles(netkit, lab) {
     const body = (userScript || "").trim();
 
     if (machine.type === "tls_termination_proxy") {
-      const { in_addr = "0.0.0.0:50000", out_addr = "10.0.0.2:50001", verify = "0" } = machine.tls || {};
+      const { in_addr = "0.0.0.0:50000", out_addr = "10.1.0.2:50001", verify = "0" } = machine.tls || {};
       const tlsScript = `
 cd /etc/stunnel
 mkcert -cert-file server.crt -key-file server.key "localhost" "127.0.0.1" $(hostname -I)
@@ -155,12 +155,11 @@ stunnel
           for (const monitoredId of machine.industrial.monitored_machines) {
             const targetMachine = netkit.find(m => m.id === monitoredId);
             if (targetMachine) {
-              // Determine IP address: prefer Control Network (eth0 aka computedEth0Ip)
+              // Determine IP address: use Industrial Network (eth1)
               let targetIp = null;
-              if (targetMachine.computedEth0Ip) {
-                targetIp = targetMachine.computedEth0Ip.split("/")[0];
-              } else if (targetMachine.interfaces?.if?.[0]?.ip) {
-                targetIp = targetMachine.interfaces.if[0].ip.split("/")[0];
+              const eth1Interface = targetMachine.interfaces?.if?.find((i) => i.eth?.number === 1);
+              if (eth1Interface && eth1Interface.ip) {
+                targetIp = eth1Interface.ip.split("/")[0];
               }
 
               if (targetIp) {
@@ -254,7 +253,7 @@ function makeLabConfFile(netkit, lab) {
   lab.file["collector.startup"] += '#!/bin/sh\n'
   lab.file["collector.startup"] += 'echo "nameserver 8.8.8.8" > /etc/resolv.conf\n'
   lab.file["collector.startup"] += 'loki -config.file=/etc/loki/config.yml &\n'
-  lab.file["collector.startup"] += 'ip addr add 10.0.0.254/24 dev eth0\n'
+  lab.file["collector.startup"] += 'ip addr add 10.1.0.254/24 dev eth0\n'
   lab.file["collector.startup"] += 'ip link set eth0 up\n'
 
   // PER BUG MAC
@@ -264,7 +263,7 @@ function makeLabConfFile(netkit, lab) {
   //  lab.file["lab.conf"] += "collector[image]=\"icr/collector\"\n";
   //kathara lconfig -n collector --add "_collector"
   //tramite docker exec nel main, lanciare
-  //ip addr add 10.0.0.254/24 dev eth1
+  //ip addr add 10.1.0.254/24 dev eth1
   //ip link set eth1 up
 
 

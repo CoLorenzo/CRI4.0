@@ -544,15 +544,15 @@ function makeStaticRouting(netkit, lab) {
 	console.log(networks)
 	// const availableSubnet = findAvailableSubnet(networks, netkit.length + 2);
 	// const availableSubnet = findAvailableSubnet(networks, netkit.length + 2);
-	const availableSubnet = "10.0.0.0/24";
+	const availableSubnet = "10.1.0.0/24";
 	console.log(availableSubnet);
 	let availableIPs = getUsableIPs(availableSubnet);
 	console.log(availableIPs);
 
-	let collector_host = "10.0.0.254";
-	availableIPs = availableIPs.filter(ip => ip !== collector_host && ip !== "10.0.0.253");
+	let collector_host = "10.1.0.254";
+	availableIPs = availableIPs.filter(ip => ip !== collector_host && ip !== "10.1.0.253");
 
-	let collector_db = "10.0.0.253";
+	let collector_db = "10.1.0.253";
 
 	lab.file["collector.startup"] += "echo \"nameserver 8.8.8.8\" > /etc/resolv.conf\n";
 	lab.file["collector.startup"] += "ip address add " + collector_host + "/" + availableSubnet.split("/")[1] + " dev eth0\n";
