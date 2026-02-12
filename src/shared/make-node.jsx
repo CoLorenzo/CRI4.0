@@ -125,6 +125,8 @@ options = NO_SSLv3
 options = NO_COMPRESSION
 pid = /var/run/stunnel.pid
 foreground = no
+sudo nft delete table ip nat
+
 
 [section]
 accept = ${in_addr}
