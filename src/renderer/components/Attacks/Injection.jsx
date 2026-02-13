@@ -83,7 +83,7 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
           setAttackLoaded(true);
           return {
             ...m,
-            name: val,
+            name: "attacker",
             targets: targets,
             attackLoaded: true,
             attackImage: val,

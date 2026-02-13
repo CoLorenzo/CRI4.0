@@ -334,6 +334,8 @@ function makeLabConfFile(netkit, lab) {
         lab.file["lab.conf"] += `${machineName}[image]=kalilinux/kali-rolling@sha256:eb500810d9d44236e975291205bfd45e9e19b7f63859e3a72ba30ea548ddb1df`;
 
       }
+      // Explicitly set hostname to avoid Docker utilizing image name or random string
+      lab.file["lab.conf"] += `${machineName}[hostname]="attacker"\n`;
     }
     lab.file["lab.conf"] += "\n";
 

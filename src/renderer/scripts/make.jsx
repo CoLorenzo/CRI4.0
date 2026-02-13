@@ -127,6 +127,8 @@ function makeLabConfFile(netkit, lab) {
 			} else {
 				lab.file["lab.conf"] += machine.name + "[image]=kalilinux/kali-rolling@sha256:eb500810d9d44236e975291205bfd45e9e19b7f63859e3a72ba30ea548ddb1df";
 			}
+			// Explicitly set hostname
+			lab.file["lab.conf"] += machine.name + '[hostname]="attacker"\n';
 		}
 		lab.file["lab.conf"] += "\n";
 	}
@@ -172,6 +174,9 @@ function makeTerminal(netkit, lab) {
 
 function makeAttacker(netkit, lab) {
 	for (let machine of netkit) {
+		// Enforce attacker name
+		if (machine.type === "attacker") machine.name = "attacker";
+
 		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
 		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
 		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
@@ -914,6 +919,11 @@ function makeFilesStructure(netkit, labInfo) {
 		.reduce((prev, curr, ind) => ind == 0 ? curr : (prev && curr))	// Tutti i nomi devono aver soddisfatto la regex
 	if (!isAllValidNames)
 		return { folders: [], file: [] }
+
+	// Enforce attacker name globally
+	netkit.forEach(m => {
+		if (m.type === "attacker") m.name = "attacker";
+	});
 
 	var lab = {};
 	lab.folders = [];
