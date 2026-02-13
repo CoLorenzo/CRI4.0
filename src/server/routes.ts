@@ -23,3 +23,4 @@ router.delete('/saves/:filename', controllers.deleteProject);
 
 // SSE for logs
 router.get('/logs', controllers.subscribeToLogs);
+router.post('/loki-delete', controllers.deleteLokiLogs);

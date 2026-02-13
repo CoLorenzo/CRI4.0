@@ -827,3 +827,42 @@ export const saveScadaProject = async (req: Request, res: Response) => {
         }
     });
 };
+
+export const deleteLokiLogs = async (req: Request, res: Response) => {
+    const { query, start, end } = req.body;
+
+    if (!query || !start || !end) {
+        return res.status(400).json({ error: 'Missing required parameters: query, start, end' });
+    }
+
+    sendLog('log', `🗑️ deleteLokiLogs: Deleting logs for query="${query}" start=${start} end=${end}`);
+
+    try {
+        const params = new URLSearchParams({
+            query,
+            start: String(start),
+            end: String(end)
+        });
+
+        // Assuming Loki is running on localhost:3100
+        const lokiUrl = `http://127.0.0.1:3100/loki/api/v1/delete?${params.toString()}`;
+
+        const response = await fetch(lokiUrl, {
+            method: 'POST'
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            sendLog('error', `❌ Loki delete failed: ${response.status} ${text}`);
+            return res.status(response.status).send(text);
+        }
+
+        sendLog('log', '✅ Loki logs deleted successfully.');
+        res.status(204).send();
+    } catch (err: any) {
+        sendLog('error', `❌ Error calling Loki delete: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// --- Save System Controllers ---

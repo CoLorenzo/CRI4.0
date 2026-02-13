@@ -37,9 +37,9 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
   const [target1, setTarget1] = useState(getEnvValue("TARGET1"));
   const [target2, setTarget2] = useState(getEnvValue("TARGET2"));
 
-  const [usernames, setUsernames] = useState(getEnvValue("USERNAMES"));
-  const [passwords, setPasswords] = useState(getEnvValue("PASSWORDS"));
-  const [targetHost, setTargetHost] = useState(getEnvValue("TARGET"));
+  const [usernames, setUsernames] = useState(getEnvValue("USERNAMES") || "root\nadmin\nuser\nopenplc");
+  const [passwords, setPasswords] = useState(getEnvValue("PASSWORDS") || "password\n12345\nadmin\nroot\nopenplc");
+
 
   console.log(attacker.attackImage)
 
@@ -72,7 +72,7 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
               'env',
               `USERNAMES=${usernames}`,
               `PASSWORDS=${passwords}`,
-              `TARGET=${targetHost}`,
+              `TARGET=${cleanIps[0] || ""}`,
               '/usr/local/bin/entrypoint.sh'
             ];
           }
@@ -133,7 +133,8 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
             <Card>
               <CardBody>
                 <div className="grid gap-2">
-                  <Input label="Target Host" value={targetHost} onValueChange={setTargetHost} placeholder="e.g. 10.0.0.x" />
+                  {/* Target is selected via checkboxes above */}
+
                   <div className="grid grid-cols-2 gap-2">
                     <Textarea label="Usernames" value={usernames} onValueChange={setUsernames} placeholder="admin\nroot" />
                     <Textarea label="Passwords" value={passwords} onValueChange={setPasswords} placeholder="openplc\n123456" />
