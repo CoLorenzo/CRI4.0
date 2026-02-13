@@ -238,6 +238,8 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs }) {
 		return m.name === machineName && m.type === "scada";
 	});
 
+
+
 	return (
 		<div className="relative h-full w-full" onContextMenu={(e) => e.preventDefault()}>
 			<Graph
@@ -308,6 +310,7 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs }) {
 					>
 						Logs
 					</button>
+
 				</div>
 			)}
 		</div>

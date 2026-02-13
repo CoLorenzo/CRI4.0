@@ -29,7 +29,7 @@ if [ "$#" -lt 1 ]; then
 fi
 
 #Push 'start attack' message to collector
-export SMOLOKI_BASE_ENDPOINT="http://20.0.0.254:3100"
+export SMOLOKI_BASE_ENDPOINT="http://10.1.0.254:3100"
 smoloki '{"job":"arp_scan","level":"info"}' '{"message":"Start arp scan attack"}'
 
 # Funzioni di validazione (semplici, pratiche)

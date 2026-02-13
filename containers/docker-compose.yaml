@@ -196,3 +196,10 @@ services:
       - NET_ADMIN
     profiles:
       - kali
+  injection-crack-plc:
+    build: ./injection/crack-plc
+    image: icr/injection-crack-plc
+    cap_add:
+      - NET_ADMIN
+    profiles:
+      - kali

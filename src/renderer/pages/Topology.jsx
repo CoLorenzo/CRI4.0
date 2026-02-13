@@ -102,17 +102,7 @@ function Topology() {
 
 
 
-  useEffect(() => {
-    if (attackInProgress && progress >= 100) {
-      const timeout = setTimeout(() => {
-        setAttackInProgress(false);
-        setShowTimer(false);
-        setProgress(0);
-      }, 1000); // attesa finale opzionale
 
-      return () => clearTimeout(timeout);
-    }
-  }, [progress, attackInProgress]);
 
 
 
@@ -127,8 +117,16 @@ function Topology() {
   const { attackLoaded } = useContext(NotificationContext);
 
 
-  const simulateAttack = async () => {
-    const attacker = machines.find((m) => m.type === "attacker");
+  const simulateAttack = async (nodeId) => {
+    let attacker;
+
+    if (nodeId && typeof nodeId === "string") {
+      const machineName = nodeId.replace("machine-", "");
+      attacker = machines.find((m) => m.name === machineName);
+    } else {
+      attacker = machines.find((m) => m.type === "attacker");
+    }
+
     console.log("simulateAttack triggered");
     console.log("attacker:", attacker);
 
@@ -168,10 +166,8 @@ function Topology() {
       setProgress((seconds / 4) * 100); // progress in %
       if (seconds >= 4) {
         clearInterval(interval);
-        setTimeout(() => {
-          setShowTimer(false);
-          setAttackInProgress(false);
-        }, 1000); // attesa finale per chiusura pulita
+        setShowTimer(false);
+        // We keep attackInProgress = true until user stops it
       }
     }, 1000);
 
@@ -199,49 +195,36 @@ function Topology() {
     // nota: lo stato (attackInProgress/showTimer) viene chiuso dal timer sopra
   };
 
-  /* const simulateAttack = async () => {
- const attacker = machines.find((m) => m.type === "attacker");
- console.log("simulateAttack triggered");
- console.log("attacker:", attacker);
+  const stopAttack = async (nodeId) => {
+    let attacker;
+    if (nodeId && typeof nodeId === "string") {
+      const machineName = nodeId.replace("machine-", "");
+      attacker = machines.find((m) => m.name === machineName);
+    } else {
+      attacker = machines.find((m) => m.type === "attacker");
+    }
 
- if (!attacker) {
-   console.warn("⚠️ No attacker machine found.");
-   return;
- }
+    if (!attacker) return;
+    const targetContainer = attacker.type === "attacker" ? "attacker" : attacker.name;
 
- if (!attacker.attackLoaded) {
-   console.warn("⚠️ Attack not loaded on attacker.");
-   return;
- }
+    // Use a composite command to stop known processes
+    const stopCmd = [
+      "sh",
+      "-c",
+      "sudo nft delete table ip nat 2>/dev/null || true; while pgrep ettercap > /dev/null; do pkill -9 ettercap; sleep 0.5; done; pkill -f modbus_server.py || true",
+    ];
 
- // Se arrivi qui, IPC verrà chiamato
- console.log("✅ Launching attack:", attacker.attackCommand);
-
- setAttackInProgress(true);
- setShowTimer(true);
- setProgress(0);
-
- try {
-   await api.simulateAttack(attacker.name, attacker.attackCommand);
- } catch (e) {
-   console.error("Attack error", e);
- }
+    try {
+      await api.simulateAttack(targetContainer, stopCmd);
+      toast.success("Attack stopped (processes key processes killed).");
+      setAttackInProgress(false);
+    } catch (e) {
+      console.error("Stop attack error", e);
+      toast.error("Failed to stop attack: " + e.message);
+    }
+  };
 
 
-
- let seconds = 0;
- const interval = setInterval(() => {
-   seconds += 1;
-   setProgress((seconds / 4) * 100); // progress in %
-   if (seconds >= 4) {
-     clearInterval(interval);
-     setTimeout(() => {
-       setShowTimer(false);
-       setAttackInProgress(false);
-     }, 1000); // attesa finale per chiusura pulita
-   }
- }, 1000);
-};*/
 
   const handleStopSimulation = async () => {
     setStopSimulation(true);
@@ -348,6 +331,8 @@ function Topology() {
                     const machineName = nodeId.replace("machine-", "");
                     setLogsModal({ isOpen: true, containerName: machineName });
                   }}
+                  onStartAttack={(nodeId) => simulateAttack(nodeId)}
+                  onStopAttack={(nodeId) => stopAttack(nodeId)}
                 />
               </div>
             )}
@@ -363,14 +348,23 @@ function Topology() {
           Run Simulation
         </Button>
 
-        {/* Simulate Attack */}
-        <Button
-          isDisabled={attackInProgress || !attackLoaded || !simulationRun || stopSimulation}
-          className={attackInProgress ? "bg-danger/50 text-white" : "bg-danger text-white"}
-          onClick={simulateAttack}
-        >
-          {attackInProgress ? "Attack launched!" : "Simulate Attack"}
-        </Button>
+        {/* Start/Stop Attack */}
+        {!attackInProgress ? (
+          <Button
+            isDisabled={!attackLoaded || !simulationRun || stopSimulation}
+            className="bg-danger text-white"
+            onClick={() => simulateAttack()}
+          >
+            Start Attack
+          </Button>
+        ) : (
+          <Button
+            className="bg-danger/50 text-white"
+            onClick={() => stopAttack()}
+          >
+            Stop Attack
+          </Button>
+        )}
 
         {/* Stop Simulation */}
         {simulationRun && !stopSimulation && (

@@ -158,7 +158,7 @@ def main():
     p.add_argument("targets", nargs='+', help="IP o CIDR (separati da spazi). Esempio: 192.168.0.1 10.0.0.0/30")
     args = p.parse_args()
 
-    os.environ["SMOLOKI_BASE_ENDPOINT"] = "http://20.0.0.254:3100"
+    os.environ["SMOLOKI_BASE_ENDPOINT"] = "http://10.1.0.254:3100"
     importlib.reload(smoloki)
     
     smoloki.push_sync(

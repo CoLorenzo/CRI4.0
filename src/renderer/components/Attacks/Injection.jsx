@@ -5,7 +5,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable import/no-duplicates */
 /* eslint-disable prettier/prettier */
-import { Card, CardBody, Input } from "@nextui-org/react";
+import { Card, CardBody, Input, Textarea } from "@nextui-org/react";
 import { Radio, RadioGroup } from "@nextui-org/react";
 import { CheckboxGroup, Checkbox } from "@nextui-org/react";
 import { Button } from "@nextui-org/react";
@@ -37,6 +37,10 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
   const [target1, setTarget1] = useState(getEnvValue("TARGET1"));
   const [target2, setTarget2] = useState(getEnvValue("TARGET2"));
 
+  const [usernames, setUsernames] = useState(getEnvValue("USERNAMES"));
+  const [passwords, setPasswords] = useState(getEnvValue("PASSWORDS"));
+  const [targetHost, setTargetHost] = useState(getEnvValue("TARGET"));
+
   console.log(attacker.attackImage)
 
   const toggleAttack = (val) => {
@@ -53,12 +57,22 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
           if (val && val.includes("modbustcp-injection")) {
             // Per ModbusTCP injection, passiamo i parametri come variabili d'ambiente a entrypoint.sh
             // Assumiamo eth0 come interfaccia di default se non diversamente specificato
-            const iface = "eth0";
+            const iface = "eth1";
             attackArgs = [
               'env',
               `INTERFACE=${iface}`,
               `TARGET1=${target1}`,
               `TARGET2=${target2}`,
+              '/usr/local/bin/entrypoint.sh'
+            ];
+          }
+
+          if (val && val.includes("crack-plc")) {
+            attackArgs = [
+              'env',
+              `USERNAMES=${usernames}`,
+              `PASSWORDS=${passwords}`,
+              `TARGET=${targetHost}`,
               '/usr/local/bin/entrypoint.sh'
             ];
           }
@@ -110,6 +124,20 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
                 <div className="grid grid-cols-2 gap-2">
                   <Input label="Target 1 IP" value={target1} onValueChange={setTarget1} placeholder="e.g. 192.168.1.10" />
                   <Input label="Target 2 IP" value={target2} onValueChange={setTarget2} placeholder="e.g. 192.168.1.20" />
+                </div>
+              </CardBody>
+            </Card>
+          )}
+
+          {selectedImage && selectedImage.includes("crack-plc") && (
+            <Card>
+              <CardBody>
+                <div className="grid gap-2">
+                  <Input label="Target Host" value={targetHost} onValueChange={setTargetHost} placeholder="e.g. 10.0.0.x" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Textarea label="Usernames" value={usernames} onValueChange={setUsernames} placeholder="admin\nroot" />
+                    <Textarea label="Passwords" value={passwords} onValueChange={setPasswords} placeholder="openplc\n123456" />
+                  </div>
                 </div>
               </CardBody>
             </Card>

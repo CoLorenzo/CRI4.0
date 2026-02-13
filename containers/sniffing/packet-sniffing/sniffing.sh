@@ -14,5 +14,5 @@ timeout ${time}s tshark -i $interface \
   -Y "ip.dst == $destination_ip1 || ip.dst == $destination_ip2" \
   -P -x > /tmp/sniffing.pcap
 
-export SMOLOKI_BASE_ENDPOINT="http://20.0.0.254:3100"
+export SMOLOKI_BASE_ENDPOINT="http://10.1.0.254:3100"
 smoloki '{"job":"sniffing","level":"info"}' '{"message":"$(cat /tmp/sniffing.pcap)"}'

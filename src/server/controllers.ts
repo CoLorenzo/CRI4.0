@@ -216,21 +216,21 @@ export const simulateAttack = async (req: Request, res: Response) => {
 
     try {
         if (Array.isArray(command)) {
-            args = command.flatMap((el) => String(el).split(/[,\s]+/).filter(Boolean));
+            // Respect the array structure provided by the client
+            args = command.map(String);
         } else if (typeof command === 'string') {
+            // Legacy string splitting
             args = command.trim().split(/[,\s]+/).filter(Boolean);
+            // Only clean quotes for string-based legacy input
+            args = args.map(a => a.replace(/^["']|["']$/g, '').trim()).filter(Boolean);
         } else {
             throw new Error('Invalid command type');
         }
 
-        args = args.map(a => a.replace(/^["']|["']$/g, '').trim()).filter(Boolean);
-        const seen = new Set<string>();
-        args = args.filter(x => (seen.has(x) ? false : (seen.add(x), true)));
-
         if (args.length === 0) {
-            throw new Error('No valid command arguments after normalization.');
+            throw new Error('No valid command arguments.');
         }
-        sendLog('log', `Normalized args for docker exec: ${args}`);
+        sendLog('log', `args for docker exec: ${JSON.stringify(args)}`);
     } catch (err: any) {
         sendLog('error', `❌ Failed to normalize command: ${err}`);
         return res.status(400).json({ error: err.message });
@@ -357,20 +357,51 @@ export const runSimulation = async (req: Request, res: Response) => {
             sendLog('log', `📄 Files present: ${fs.readdirSync(LABS_DIR)}`);
 
             // Construct command with password piped to sudo
-            const cmd = `echo '${sudoPassword || ""}' | sudo -S kathara lstart --privileged --noterminals`;
+            // Spawn the process
+            const childVal = spawn('sudo', ['-S', 'kathara', 'lstart', '--privileged', '--noterminals'], {
+                cwd: LABS_DIR,
+                stdio: ['pipe', 'pipe', 'pipe']
+            });
 
-            exec(cmd, { cwd: LABS_DIR }, (error, stdout, stderr) => {
-                if (error) {
-                    const errorMessage = `❌ Failed to start: ${stderr || error.message}`;
+            // Write password to stdin
+            if (sudoPassword) {
+                childVal.stdin.write(sudoPassword + '\n');
+            }
+            childVal.stdin.end();
+
+            let stdoutData = '';
+            let stderrData = '';
+
+            childVal.stdout.on('data', (data) => {
+                const msg = data.toString();
+                stdoutData += msg;
+                sendLog('log', msg);
+            });
+
+            childVal.stderr.on('data', (data) => {
+                const msg = data.toString();
+                // Filter out standard sudo prompt if it leaks, though -S implies non-interactive
+                if (!msg.includes('[sudo] password for')) {
+                    stderrData += msg;
+                    sendLog('warn', msg);
+                }
+            });
+
+            childVal.on('close', (code) => {
+                if (code === 0) {
+                    sendLog('log', "✅ Lab started.");
+                    resolve(stdoutData.trim());
+                } else {
+                    const errorMessage = `❌ Failed to start (code ${code}): ${stderrData}`;
                     sendLog('error', errorMessage);
-                    return reject(errorMessage);
+                    reject(errorMessage);
                 }
-                if (stderr) {
-                    sendLog('warn', stderr);
-                }
-                sendLog('log', stdout);
-                sendLog('log', "✅ Lab started.");
-                resolve(stdout.trim());
+            });
+
+            childVal.on('error', (err) => {
+                const errorMessage = `❌ Spawn error: ${err.message}`;
+                sendLog('error', errorMessage);
+                reject(errorMessage);
             });
         });
         res.json({ output });

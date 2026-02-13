@@ -466,5 +466,13 @@ export const attacksModel = [
     attackLoaded: false,
     image: "",
     isImage: false,
+  },
+  {
+    name: "crack-plc",
+    displayName: "Crack PLC",
+    category: "injection",
+    attackLoaded: false,
+    image: "",
+    isImage: false,
   }
 ]
