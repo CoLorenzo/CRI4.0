@@ -175,6 +175,12 @@ stunnel
           const extension = machine.industrial.plcProgramName.includes('.') ? machine.industrial.plcProgramName.split('.').pop() : 'st';
           extraCommands += `openplc-cli program add "/shared/\${HOSTNAME}.${extension}" "main" "main program"\n`;
         }
+
+        console.log(`[DEBUG] Checking password for machine ${machine.name}:`, machine.industrial?.password);
+        if (machine.industrial?.password) {
+          extraCommands += `openplc-cli changeuser -u openplc -p "${machine.industrial.password}"\n`;
+        }
+
         extraCommands += `/opt/OpenPLC_v3/start_openplc.sh\n`;
       }
 

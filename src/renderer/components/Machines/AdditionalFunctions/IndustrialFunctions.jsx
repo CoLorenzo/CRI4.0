@@ -373,6 +373,29 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
                             </div>
                         )}
                     </div>
+                    <div className="mt-2">
+                        <Input
+                            type="text"
+                            label="PLC Password"
+                            placeholder="openplc"
+                            value={machine.industrial?.password || ""}
+                            onChange={(e) => {
+                                setMachines(machines.map(m => {
+                                    if (m.id === machine.id) {
+                                        return {
+                                            ...m,
+                                            industrial: {
+                                                ...(m.industrial || {}),
+                                                password: e.target.value
+                                            }
+                                        };
+                                    }
+                                    return m;
+                                }));
+                            }}
+                            description="Set the password for the 'openplc' user"
+                        />
+                    </div>
                 </div>
             )}
 

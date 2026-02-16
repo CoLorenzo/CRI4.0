@@ -19,6 +19,7 @@ RUN apt update && \
 RUN apt update && apt install -y iproute2
 
 #Install openplc-cli
+RUN echo "caching" #TODO:DELETE
 RUN apt-get update \
  && apt-get install -y --no-install-recommends curl ca-certificates \
  && rm -rf /var/lib/apt/lists/*
