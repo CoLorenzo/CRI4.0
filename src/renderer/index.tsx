@@ -16,8 +16,4 @@ if (window.electron) {
   window.electron.ipcRenderer.sendMessage('ipc-example', ['ping']);
 }
 
-window.addEventListener('beforeunload', () => {
-  if (performance.getEntriesByType('navigation')[0].type !== 'reload') {
-    localStorage.removeItem("navbar");
-  }
-});
+
