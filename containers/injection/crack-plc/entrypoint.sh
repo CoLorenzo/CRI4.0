@@ -40,8 +40,17 @@ cd /opt/openplc-crack
 # Run the attack
 # Output to stderr (for docker logs) AND filter for SUCCESS to results.log (for Fluent Bit)
 # We use stdbuf to avoid buffering delays if available, otherwise just standard pipe
+
+echo "Waiting for the service to become available"
+ENDPOINT="http://$TARGET:8080"
+while [[ "$(curl -s -o /dev/null -w "%{http_code}\n" ${ENDPOINT})" == "000" ]]; do
+  echo "Waiting for the service to become available"
+  sleep 2
+done
+
+
 echo "Starting OpenPLC/Crack on target: $TARGET"
-./run.sh "http://$TARGET:8080" 2>&1 | tee /dev/stderr | grep --line-buffered "SUCCESS" >> results.log
+./run.sh "http://$TARGET:8080" 2>&1 | tee /dev/stderr >> results.log
 
 # Keep container running after attack to allow log collection
 tail -f /dev/null
