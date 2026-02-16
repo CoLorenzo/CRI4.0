@@ -72,7 +72,7 @@ function LogInsightsPage() {
         ws.current.onclose = null;
         try {
           ws.current.close();
-        } catch {}
+        } catch { }
       }
 
       const url = buildLokiTailUrl();
@@ -92,10 +92,21 @@ function LogInsightsPage() {
                   const ns = Number(ts); // ns epoch
                   const ms = Math.floor(ns / 1e6);
                   const level = (stream.stream.level || "info").toLowerCase();
+
+                  let message = line;
+                  try {
+                    const jsonLine = JSON.parse(line);
+                    if (jsonLine.log) {
+                      message = jsonLine.log;
+                    }
+                  } catch (e) {
+                    // Not a JSON string or doesn't have .log property
+                  }
+
                   return {
                     id: `${ts}-${Math.random()}`,
                     timestamp: new Date(ms),
-                    message: line,
+                    message: message,
                     hostname: stream.stream.host || "N/A",
                     severity:
                       level === "warn"
@@ -144,7 +155,7 @@ function LogInsightsPage() {
       if (ws.current) {
         try {
           ws.current.close();
-        } catch {}
+        } catch { }
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -250,9 +261,8 @@ function LogInsightsPage() {
     <div className="min-h-screen p-4 bg-gray-900 text-white">
       <div className="flex justify-end items-center mb-6">
         <span
-          className={`px-3 py-1 rounded-full text-sm font-semibold ${
-            isLive ? "bg-green-500" : "bg-red-500"
-          }`}
+          className={`px-3 py-1 rounded-full text-sm font-semibold ${isLive ? "bg-green-500" : "bg-red-500"
+            }`}
         >
           {isLive ? "Live Stream" : "Offline"}
         </span>
@@ -413,9 +423,8 @@ function LogInsightsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        severityColors[log.severity] || "bg-gray-600"
-                      }`}
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${severityColors[log.severity] || "bg-gray-600"
+                        }`}
                     >
                       {log.severity}
                     </span>
