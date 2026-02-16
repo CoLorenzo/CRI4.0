@@ -60,24 +60,24 @@ function Topology() {
   };
 
   const [simulationRun, setSimulationRun] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('simulationRun') || 'false'); }
+    try { return JSON.parse(sessionStorage.getItem('simulationRun') || 'false'); }
     catch { return false; }
   });
   const [stopSimulation, setStopSimulation] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('stopSimulation') || 'false'); }
+    try { return JSON.parse(sessionStorage.getItem('stopSimulation') || 'false'); }
     catch { return false; }
   });
 
   useEffect(() => {
-    const storedSimulationRun = JSON.parse(localStorage.getItem('simulationRun') || 'false');
-    const storedStopSimulation = JSON.parse(localStorage.getItem('stopSimulation') || 'false');
+    const storedSimulationRun = JSON.parse(sessionStorage.getItem('simulationRun') || 'false');
+    const storedStopSimulation = JSON.parse(sessionStorage.getItem('stopSimulation') || 'false');
 
     if (storedSimulationRun && storedStopSimulation) {
       // Inconsistent state: simulation was running but also stopped. Reset both.
       setSimulationRun(false);
       setStopSimulation(false);
-      localStorage.setItem('simulationRun', 'false');
-      localStorage.setItem('stopSimulation', 'false');
+      sessionStorage.setItem('simulationRun', 'false');
+      sessionStorage.setItem('stopSimulation', 'false');
     }
   }, []);
 
@@ -92,11 +92,11 @@ function Topology() {
 
 
   useEffect(() => {
-    localStorage.setItem('simulationRun', JSON.stringify(simulationRun));
+    sessionStorage.setItem('simulationRun', JSON.stringify(simulationRun));
   }, [simulationRun]);
 
   useEffect(() => {
-    localStorage.setItem('stopSimulation', JSON.stringify(stopSimulation));
+    sessionStorage.setItem('stopSimulation', JSON.stringify(stopSimulation));
   }, [stopSimulation]);
 
 

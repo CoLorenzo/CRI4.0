@@ -5,6 +5,13 @@ import App from './Layout';
 
 const container = document.getElementById('root') as HTMLElement;
 const root = createRoot(container);
+
+// Clear simulation state on startup
+sessionStorage.removeItem('simulationRun');
+sessionStorage.removeItem('stopSimulation');
+localStorage.removeItem('simulationRun');
+localStorage.removeItem('stopSimulation');
+
 root.render(<HashRouter><App /></HashRouter>);
 
 // calling IPC exposed from preload script
