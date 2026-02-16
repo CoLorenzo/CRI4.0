@@ -16,8 +16,7 @@ import PasswordModal from "../components/PasswordModal";
 import { toast } from 'react-hot-toast';
 import LogsModal from "../components/LogsModal";
 import { getMachineIps } from "../utils/ipUtils";
-import { useContext } from "react";
-import { NotificationContext } from "../contexts/NotificationContext";
+
 import { api } from "../api";
 
 
@@ -114,7 +113,7 @@ function Topology() {
 
 
 
-  const { attackLoaded } = useContext(NotificationContext);
+
 
 
   const simulateAttack = async (nodeId) => {
@@ -351,7 +350,7 @@ function Topology() {
         {/* Start/Stop Attack */}
         {!attackInProgress ? (
           <Button
-            isDisabled={!attackLoaded || !simulationRun || stopSimulation}
+            isDisabled={!machines.find(m => m.type === 'attacker')?.attackLoaded || !simulationRun || stopSimulation}
             className="bg-danger text-white"
             onClick={() => simulateAttack()}
           >
