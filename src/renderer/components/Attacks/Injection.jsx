@@ -34,11 +34,52 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
     return "";
   };
 
-  const [target1, setTarget1] = useState(getEnvValue("TARGET1"));
-  const [target2, setTarget2] = useState(getEnvValue("TARGET2"));
+  // Helper to safely get config values from machine state
+  const getConfig = (key, fallback) => {
+    return attacker.attackConfig?.[key] || fallback;
+  };
 
-  const [usernames, setUsernames] = useState(getEnvValue("USERNAMES") || "root\nadmin\nuser\nopenplc");
-  const [passwords, setPasswords] = useState(getEnvValue("PASSWORDS") || "password\n12345\nadmin\nroot\nopenplc");
+  // Initialize local state from machine config (if available) or env values (legacy/fallback)
+  const [target1, setTarget1] = useState(() => getConfig("target1", getEnvValue("TARGET1")));
+  const [target2, setTarget2] = useState(() => getConfig("target2", getEnvValue("TARGET2")));
+  const [usernames, setUsernames] = useState(() => getConfig("usernames", getEnvValue("USERNAMES") || "root\nadmin\nuser\nopenplc"));
+  const [passwords, setPasswords] = useState(() => getConfig("passwords", getEnvValue("PASSWORDS") || "password\n12345\nadmin\nroot\nopenplc"));
+
+  // Update machine state whenever local state changes
+  const updateMachineConfig = (key, value) => {
+    setMachines(prevMachines => prevMachines.map(m => {
+      if (m.type === "attacker") {
+        return {
+          ...m,
+          attackConfig: {
+            ...m.attackConfig,
+            [key]: value
+          }
+        };
+      }
+      return m;
+    }));
+  };
+
+  const handleTarget1Change = (val) => {
+    setTarget1(val);
+    updateMachineConfig("target1", val);
+  };
+
+  const handleTarget2Change = (val) => {
+    setTarget2(val);
+    updateMachineConfig("target2", val);
+  };
+
+  const handleUsernamesChange = (val) => {
+    setUsernames(val);
+    updateMachineConfig("usernames", val);
+  };
+
+  const handlePasswordsChange = (val) => {
+    setPasswords(val);
+    updateMachineConfig("passwords", val);
+  };
 
 
   console.log(attacker.attackImage)
@@ -122,8 +163,8 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
             <Card>
               <CardBody>
                 <div className="grid grid-cols-2 gap-2">
-                  <Input label="Target 1 IP" value={target1} onValueChange={setTarget1} placeholder="e.g. 192.168.1.10" />
-                  <Input label="Target 2 IP" value={target2} onValueChange={setTarget2} placeholder="e.g. 192.168.1.20" />
+                  <Input label="Target 1 IP" value={target1} onValueChange={handleTarget1Change} placeholder="e.g. 192.168.1.10" />
+                  <Input label="Target 2 IP" value={target2} onValueChange={handleTarget2Change} placeholder="e.g. 192.168.1.20" />
                 </div>
               </CardBody>
             </Card>
@@ -136,8 +177,8 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
                   {/* Target is selected via checkboxes above */}
 
                   <div className="grid grid-cols-2 gap-2">
-                    <Textarea label="Usernames" value={usernames} onValueChange={setUsernames} placeholder="admin\nroot" />
-                    <Textarea label="Passwords" value={passwords} onValueChange={setPasswords} placeholder="openplc\n123456" />
+                    <Textarea label="Usernames" value={usernames} onValueChange={handleUsernamesChange} placeholder="admin\nroot" />
+                    <Textarea label="Passwords" value={passwords} onValueChange={handlePasswordsChange} placeholder="openplc\n123456" />
                   </div>
                 </div>
               </CardBody>
