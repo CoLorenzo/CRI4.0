@@ -44,6 +44,7 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
   const [target2, setTarget2] = useState(() => getConfig("target2", getEnvValue("TARGET2")));
   const [usernames, setUsernames] = useState(() => getConfig("usernames", getEnvValue("USERNAMES") || "root\nadmin\nuser\nopenplc"));
   const [passwords, setPasswords] = useState(() => getConfig("passwords", getEnvValue("PASSWORDS") || "password\n12345\nadmin\nroot\nopenplc"));
+  const [view, setView] = useState(() => getConfig("view", "same"));
 
   // Update machine state whenever local state changes
   const updateMachineConfig = (key, value) => {
@@ -56,6 +57,16 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
             [key]: value
           }
         };
+      }
+      return m;
+    }));
+  };
+
+  // Helper to update specific root-level properties of the attacker machine
+  const updateMachineData = (updates) => {
+    setMachines(prevMachines => prevMachines.map(m => {
+      if (m.type === "attacker") {
+        return { ...m, ...updates };
       }
       return m;
     }));
@@ -79,6 +90,16 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
   const handlePasswordsChange = (val) => {
     setPasswords(val);
     updateMachineConfig("passwords", val);
+  };
+
+  const handleViewChange = (val) => {
+    setView(val);
+    updateMachineConfig("view", val);
+  };
+
+  const handleTargetsChange = (val) => {
+    setTargets(val);
+    updateMachineData({ targets: val });
   };
 
 
@@ -131,6 +152,13 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
             // salva ENTRAMBI: args + str
             attackCommandArgs: attackArgs,
             attackCommand: attackCommandStr,
+            attackConfig: {
+              target1,
+              target2,
+              usernames,
+              passwords,
+              view
+            }
           };
         } else {
           setAttackLoaded(false);
@@ -156,7 +184,7 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
       </div>
       <div className="flex-grow">
         <div className="grid gap-2">
-          <MachineSelector machines={machines} setTargets={setTargets} attacker={attacker} />
+          <MachineSelector machines={machines} setTargets={handleTargetsChange} attacker={attacker} view={view} onViewChange={handleViewChange} />
           <AttackSelector type="injection" attacker={attacker} attacks={attacks} selectedImage={selectedImage} setSelectedImage={setSelectedImage} isLoading={isLoading} handleRefresh={handleRefresh} />
 
           {selectedImage && selectedImage.includes("modbustcp-injection") && (
