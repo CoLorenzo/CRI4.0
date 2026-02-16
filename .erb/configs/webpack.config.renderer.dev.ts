@@ -202,6 +202,17 @@ const configuration: webpack.Configuration = {
     historyApiFallback: {
       verbose: true,
     },
+    proxy: {
+      '/api': 'http://localhost:3001',
+      '/loki': {
+        target: 'http://localhost:3100',
+        pathRewrite: { '^/loki': '' },
+      },
+      '/socket.io': {
+        target: 'http://localhost:3001',
+        ws: true
+      }
+    },
     setupMiddlewares(middlewares) {
       if (isWebOnly) {
         console.log('Skipping electron spawn for web-only mode');

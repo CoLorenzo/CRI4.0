@@ -42,7 +42,8 @@ compactor:
 
   retention_enabled: true
   delete_request_store: filesystem
-  compaction_interval: 10m
+  compaction_interval: 1m
+  retention_delete_delay: 0s
 
 limits_config:
   retention_period: 0s # Infinite retention by default, delete via API

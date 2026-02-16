@@ -176,8 +176,8 @@ function LogInsightsPage() {
     setLogs([]);
   };
 
-  // Compute start/end in *nanoseconds* for Loki delete API
-  const getStartEndNs = () => {
+  // Compute start/end in *seconds* for Loki delete API
+  const getStartEndSeconds = () => {
     const nowMs = Date.now();
     let startMs = nowMs - 30 * 60 * 1000; // default 30 minutes
     let endMs = nowMs;
@@ -195,9 +195,9 @@ function LogInsightsPage() {
       if (!Number.isNaN(e)) endMs = e;
     }
 
-    // Convert to nanoseconds (string to avoid precision issues in very large numbers)
-    const toNs = (ms) => `${BigInt(Math.floor(ms)) * 1000000n}`;
-    return { startNs: toNs(startMs), endNs: toNs(endMs) };
+    // Convert to seconds (string to avoid precision issues)
+    const toSec = (ms) => String(Math.floor(ms / 1000));
+    return { start: toSec(startMs), end: toSec(endMs) };
   };
 
   // Very broad selector for deletion (must not be empty). Adjust label to one that always exists in your tenant.
@@ -206,12 +206,12 @@ function LogInsightsPage() {
   const handleCleanLogs = async () => {
     setIsCleaning(true);
     try {
-      const { startNs, endNs } = getStartEndNs();
+      const { start, end } = getStartEndSeconds();
 
       const payload = {
         query: broadDeleteSelector,
-        start: startNs,
-        end: endNs,
+        start,
+        end,
       };
 
       // 1) Try custom API route (Next.js/Express). Avoids CORS.
