@@ -280,6 +280,7 @@ function LogInsightsPage() {
               value={hostnameSearch}
               onChange={(e) => setHostnameSearch(e.target.value)}
               className="w-full"
+              aria-label="Hostname Search"
             />
           </CardBody>
         </Card>
@@ -295,6 +296,7 @@ function LogInsightsPage() {
               value={logSearch}
               onChange={(e) => setLogSearch(e.target.value)}
               className="w-full"
+              aria-label="Log Search"
             />
           </CardBody>
         </Card>
@@ -308,6 +310,7 @@ function LogInsightsPage() {
               value={severityFilter}
               onValueChange={setSeverityFilter}
               orientation="horizontal"
+              aria-label="Severity Filter"
             >
               <Radio value="info">INFO</Radio>
               <Radio value="warning">WARNING</Radio>
@@ -328,6 +331,7 @@ function LogInsightsPage() {
                 const selectedKey = Array.from(keys)[0];
                 setTimeRange(selectedKey);
               }}
+              aria-label="Time Range"
             >
               <SelectItem key="last_minute" value="last_minute">
                 Last minute
@@ -376,6 +380,7 @@ function LogInsightsPage() {
               value={generalSearch}
               onChange={(e) => setGeneralSearch(e.target.value)}
               className="w-full"
+              aria-label="General Search"
             />
           </CardBody>
         </Card>
