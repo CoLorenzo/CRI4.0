@@ -119,7 +119,7 @@ function makeLabConfFile(netkit, lab) {
 			lab.file["lab.conf"] += machine.name + "[image]=icr/kathara-base";
 		}
 		if (machine.type == "ngfw") {
-			lab.file["lab.conf"] += machine.name + "[image]=ngfw_appliance";
+			lab.file["lab.conf"] += machine.name + "[image]=icr/ngfw";
 		}
 		if (machine.type == "attacker") {
 			if (machine.attackLoaded && machine.attackImage != "") {
@@ -668,6 +668,146 @@ function makeIndustrialDevices(netkit, lab) {
 	}
 }
 
+function makeNGFW(netkit, lab) {
+	for (let machine of netkit) {
+		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
+		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
+		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+
+		if (machine.type === "ngfw" && machine.ngfw && machine.ngfw.waf && machine.ngfw.waf.enabled) {
+			const waf = machine.ngfw.waf;
+			const endpoint = waf.endpoint || "http://10.0.1.1:8080";
+			const findtime = waf.findtime || "10m";
+			const maxretry = waf.maxretry || "5";
+			const bantime = waf.bantime || "1h";
+			const page = waf.page || "/login";
+			const http_code = waf.http_code || "200";
+			const protocol = waf.protocol || "HTTP";
+			const method = waf.method || "POST";
+
+			lab.file[machine.name + ".startup"] += `
+# WAF Configuration
+ENDPOINT="${endpoint}"
+FINDTIME="${findtime}"
+MAXRETRY="${maxretry}"
+BANTIME="${bantime}"
+PAGE="${page}"
+HTTP_CODE="${http_code}"
+PROTOCOL="${protocol}"
+METHOD="${method}"
+
+# Install dependencies if needed (though already in image)
+# apt update & apt install -y sudo nginx-full fail2ban fluent-bit
+
+#------MAIN--------------------
+sudo tee /etc/nginx/conf.d/proxy_8080.conf <<'EOF'
+server {
+    listen 8080;
+    server_name _;
+
+    location / {
+        proxy_pass __ENDPOINT__;
+
+        proxy_http_version 1.1;
+
+        # header importanti
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # websocket / keepalive compat
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_read_timeout 300;
+        proxy_connect_timeout 300;
+    }
+}
+EOF
+sudo sed -i "s|__ENDPOINT__|$ENDPOINT|g" /etc/nginx/conf.d/proxy_8080.conf
+sudo rm /etc/nginx/sites-enabled/default
+
+sudo systemctl enable --now nginx
+sudo systemctl reload nginx || sudo service nginx reload
+
+# ---- FAIL2BAN
+sudo systemctl enable --now fail2ban
+
+sudo tee /etc/fail2ban/filter.d/nginx-login-200.conf > /dev/null <<EOF
+[Definition]
+failregex = ^<HOST>.*"\${METHOD}.*\${PAGE}.*\${PROTOCOL}/1\.[01]".* \${HTTP_CODE} [0-9]+
+ignoreregex =
+EOF
+
+sudo tee /etc/fail2ban/jail.d/nginx-login-200.local > /dev/null <<__EOF__
+[nginx-login-200]
+enabled  = true
+filter   = nginx-login-200
+logpath  = /var/log/nginx/access.log
+backend  = auto
+
+# Soglie
+findtime = \${FINDTIME}
+maxretry = \${MAXRETRY}
+bantime  = \${BANTIME}
+
+# Azione
+action   = %(action_mwl)s
+__EOF__
+
+sudo systemctl restart fail2ban
+
+#------fluetbit
+if ! command -v fluent-bit >/dev/null 2>&1; then
+    # Fallback installation
+    sudo apt update
+    sudo apt install -y curl gpg
+    curl -fsSL https://packages.fluentbit.io/fluentbit.key | \
+      sudo gpg --dearmor -o /usr/share/keyrings/fluentbit-keyring.gpg
+    echo 'deb [signed-by=/usr/share/keyrings/fluentbit-keyring.gpg] https://packages.fluentbit.io/debian/bookworm bookworm main' | \
+      sudo tee /etc/apt/sources.list.d/fluent-bit.list
+    sudo apt update
+    sudo apt install -y fluent-bit
+    sudo ln -s /opt/fluent-bit/bin/fluent-bit /usr/local/bin/fluent-bit
+    sudo mkdir -p /var/lib/fluent-bit
+    sudo chown $(whoami):$(whoami) /var/lib/fluent-bit
+    systemctl enable --now fluent-bit
+fi
+
+TEXT_FILE="/var/log/fail2ban.log"
+LOKI_IP="10.1.0.254"
+
+sudo tee /etc/fluent-bit/sender.conf > /dev/null <<EOF
+[INPUT]
+    Name              tail
+    Path              \${TEXT_FILE}
+    Tag               fail2ban.log
+    DB                /var/lib/fluent-bit/fail2ban.db
+    Mem_Buf_Limit     5MB
+    Skip_Long_Lines   On
+    storage.type      filesystem
+    Refresh_Interval  1
+    Read_From_Head    Off
+
+[FILTER]
+    Name   grep
+    Match  fail2ban.log
+    Regex  log  The IP [0-9.]+ has just been banned by Fail2Ban after [0-9]+ attempts against [^[:space:]]+
+
+[OUTPUT]
+    Name          loki
+    Match         fail2ban.log
+    Host          \${LOKI_IP}
+    Port          3100
+    Labels        job=fail2ban,env=lab,host=\${HOSTNAME}
+    Line_Format   json
+EOF
+sudo systemctl restart fluent-bit
+`;
+		}
+	}
+}
 
 
 /*---------------------------------------------*/
@@ -941,6 +1081,7 @@ function makeFilesStructure(netkit, labInfo) {
 	makeWebserver(netkit, lab);
 	makeNameserver(netkit, lab);
 	makeIndustrialDevices(netkit, lab);
+	makeNGFW(netkit, lab);
 	makeOther(netkit, lab);
 	makeOVSwitch(netkit, lab);
 	makeRyuController(netkit, lab);

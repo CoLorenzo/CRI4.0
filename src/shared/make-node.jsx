@@ -324,7 +324,7 @@ function makeLabConfFile(netkit, lab) {
       lab.file["lab.conf"] += `${machineName}[image]=icr/kathara-base`;
     }
     if (machine.type == "ngfw") {
-      lab.file["lab.conf"] += `${machineName}[image]=ngfw_appliance`;
+      lab.file["lab.conf"] += `${machineName}[image]=icr/ngfw`;
     }
     if (machine.type == "attacker") {
       if (machine.attackLoaded && machine.attackImage != "") {

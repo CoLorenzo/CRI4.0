@@ -78,3 +78,7 @@ RUN systemctl enable --now fluent-bit || true
 
 COPY ./suricata.conf /etc/fluent-bit/suricata.conf 
 COPY ./zeek.conf  /etc/fluent-bit/zeek.conf
+
+# WAP
+RUN apt update && apt install -y nginx-full fail2ban
+COPY ./proxy_8080.conf  /etc/nginx/sites-available/default

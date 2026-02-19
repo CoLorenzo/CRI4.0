@@ -203,3 +203,8 @@ services:
       - NET_ADMIN
     profiles:
       - kali
+  ngfw:
+    build: ./ngfw_appliance
+    image: icr/ngfw
+    cap_add:
+      - NET_ADMIN
