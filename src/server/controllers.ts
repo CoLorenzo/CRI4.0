@@ -865,4 +865,24 @@ export const deleteLokiLogs = async (req: Request, res: Response) => {
     }
 };
 
+export const queryLokiLogs = async (req: Request, res: Response) => {
+    try {
+        const params = new URLSearchParams(req.query as Record<string, string>);
+        const lokiUrl = `http://127.0.0.1:3100/loki/api/v1/query_range?${params.toString()}`;
+
+        const response = await fetch(lokiUrl);
+        if (!response.ok) {
+            const text = await response.text();
+            sendLog('error', `❌ Loki query failed: ${response.status} ${text}`);
+            return res.status(response.status).send(text);
+        }
+
+        const data = await response.json();
+        res.json(data);
+    } catch (err: any) {
+        sendLog('error', `❌ Error calling Loki query: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+};
+
 // --- Save System Controllers ---

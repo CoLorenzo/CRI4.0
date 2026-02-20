@@ -19,18 +19,15 @@ function LogInsightsPage() {
   const [generalSearch, setGeneralSearch] = useState("");
   const [timeRange, setTimeRange] = useState("last_30_minutes");
   const [customTime, setCustomTime] = useState({ start: "", end: "" });
-  const [isLive, setIsLive] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
-
-  const ws = useRef(null);
-  const reconnectTimer = useRef(null);
 
   // Escapes special characters for regex in LogQL
   const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const escDQ = (s) => s.replace(/"/g, '\\"');
 
-  // Builds Loki's WebSocket Tail URL based on filters
-  const buildLokiTailUrl = () => {
+  // Builds Loki's HTTP query URL based on filters
+  const buildLokiQueryUrl = () => {
     // Base selector with at least one non-empty matcher (required by Loki 3.x)
     // Use a label you know exists (e.g., job, host, env, service_name)
     const matchers = ['job=~".+"'];
@@ -56,114 +53,89 @@ function LogInsightsPage() {
     }
 
     const logqlQuery = `${selector}${pipeline}`;
-    const url = `ws://localhost:3100/loki/api/v1/tail?query=${encodeURIComponent(
-      logqlQuery
-    )}&limit=200`;
-    return url;
+
+    const { start, end } = getStartEndSeconds();
+    const startNs = start + "000000000";
+    const endNs = end + "000000000";
+
+    const params = new URLSearchParams({
+      query: logqlQuery,
+      limit: 200,
+      direction: "BACKWARD",
+      start: startNs,
+      end: endNs
+    });
+
+    return `/api/loki-query?${params.toString()}`;
   };
 
-  // Opens the WS connection to Loki Tail
-  const openWebSocket = () => {
+  const fetchLogs = async () => {
+    setIsFetching(true);
     try {
-      if (ws.current) {
-        ws.current.onopen = null;
-        ws.current.onmessage = null;
-        ws.current.onerror = null;
-        ws.current.onclose = null;
-        try {
-          ws.current.close();
-        } catch { }
+      const url = buildLokiQueryUrl();
+      let res = await fetch(url);
+
+      // Fallback: if 404 (route not present), try a proxy-mounted direct path
+      if (res.status === 404) {
+        const queryParams = url.split("?")[1];
+        res = await fetch(`/loki/api/v1/query_range?${queryParams}`);
       }
 
-      const url = buildLokiTailUrl();
-      const socket = new WebSocket(url);
+      if (!res.ok) throw new Error("Failed to fetch logs");
+      const data = await res.json();
 
-      socket.onopen = () => {
-        setIsLive(true);
-      };
+      if (data.data && data.data.result) {
+        const incoming = data.data.result.flatMap((stream) =>
+          stream.values.map(([ts, line]) => {
+            const ns = Number(ts); // ns epoch
+            const ms = Math.floor(ns / 1e6);
+            const level = (stream.stream.level || "info").toLowerCase();
 
-      socket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.streams) {
-            setLogs((prev) => {
-              const incoming = data.streams.flatMap((stream) =>
-                stream.values.map(([ts, line]) => {
-                  const ns = Number(ts); // ns epoch
-                  const ms = Math.floor(ns / 1e6);
-                  const level = (stream.stream.level || "info").toLowerCase();
+            let message = line;
+            try {
+              const jsonLine = JSON.parse(line);
+              if (jsonLine.log) {
+                message = jsonLine.log;
+              }
+            } catch (e) {
+              // Not a JSON string or doesn't have .log property
+            }
 
-                  let message = line;
-                  try {
-                    const jsonLine = JSON.parse(line);
-                    if (jsonLine.log) {
-                      message = jsonLine.log;
-                    }
-                  } catch (e) {
-                    // Not a JSON string or doesn't have .log property
-                  }
-
-                  return {
-                    id: `${ts}-${Math.random()}`,
-                    timestamp: new Date(ms),
-                    message: message,
-                    hostname: stream.stream.host || "N/A",
-                    severity:
-                      level === "warn"
-                        ? "WARNING"
-                        : (level || "info").toUpperCase(), // INFO/WARNING/ERROR
-                  };
-                })
-              );
-              // Add new logs to the top and limit to 500
-              return [...incoming.reverse(), ...prev].slice(0, 500);
-            });
-          }
-        } catch (e) {
-          // Ignore non-JSON frames
-        }
-      };
-
-      const scheduleReconnect = () => {
-        setIsLive(false);
-        if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-        reconnectTimer.current = setTimeout(() => {
-          openWebSocket();
-        }, 1200); // Simple backoff
-      };
-
-      socket.onerror = () => scheduleReconnect();
-      socket.onclose = () => scheduleReconnect();
-
-      ws.current = socket;
+            return {
+              id: `${ts}-${Math.random()}`,
+              timestamp: new Date(ms),
+              message: message,
+              hostname: stream.stream.host || "N/A",
+              severity:
+                level === "warn"
+                  ? "WARNING"
+                  : (level || "info").toUpperCase(), // INFO/WARNING/ERROR
+            };
+          })
+        );
+        // Sort descending by timestamp
+        incoming.sort((a, b) => b.timestamp - a.timestamp);
+        // Limit to 500
+        setLogs(incoming.slice(0, 500));
+      } else {
+        setLogs([]);
+      }
     } catch (e) {
-      setIsLive(false);
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-      reconnectTimer.current = setTimeout(() => {
-        openWebSocket();
-      }, 1500);
+      console.error(e);
+      setLogs([]);
+    } finally {
+      setIsFetching(false);
     }
   };
 
-  // Connect/reconnect when filters change
+  // Fetch when filters change
   useEffect(() => {
-    openWebSocket();
-    return () => {
-      if (reconnectTimer.current) {
-        clearTimeout(reconnectTimer.current);
-      }
-      if (ws.current) {
-        try {
-          ws.current.close();
-        } catch { }
-      }
-    };
+    fetchLogs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hostnameSearch, logSearch, severityFilter, generalSearch]);
 
   const handleSearch = () => {
-    setLogs([]);
-    // Changing filters will trigger the useEffect -> WS reconnection
+    fetchLogs();
   };
 
   const handleClearFilters = () => {
@@ -177,7 +149,7 @@ function LogInsightsPage() {
   };
 
   // Compute start/end in *seconds* for Loki delete API
-  const getStartEndSeconds = () => {
+  function getStartEndSeconds() {
     const nowMs = Date.now();
     let startMs = nowMs - 30 * 60 * 1000; // default 30 minutes
     let endMs = nowMs;
@@ -206,41 +178,7 @@ function LogInsightsPage() {
   const handleCleanLogs = async () => {
     setIsCleaning(true);
     try {
-      const { start, end } = getStartEndSeconds();
-
-      const payload = {
-        query: broadDeleteSelector,
-        start,
-        end,
-      };
-
-      // 1) Try custom API route (Next.js/Express). Avoids CORS.
-      let res = await fetch("/api/loki-delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      // 2) Fallback: if 404 (route not present), try a proxy-mounted direct path
-      // e.g., Vite devServer proxy mapping "/loki" -> "http://localhost:3100"
-      if (res.status === 404) {
-        const params = new URLSearchParams({
-          query: payload.query,
-          start: payload.start,
-          end: payload.end,
-        });
-        res = await fetch(`/loki/api/v1/delete?${params.toString()}`, {
-          method: "POST",
-        });
-      }
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Loki delete failed (${res.status}): ${text}`);
-      }
-
       setLogs([]);
-      openWebSocket();
     } catch (err) {
       console.error(err);
       alert(`Error while submitting delete: ${err.message}`);
@@ -261,10 +199,10 @@ function LogInsightsPage() {
     <div className="min-h-screen p-4 bg-gray-900 text-white">
       <div className="flex justify-end items-center mb-6">
         <span
-          className={`px-3 py-1 rounded-full text-sm font-semibold ${isLive ? "bg-green-500" : "bg-red-500"
+          className={`px-3 py-1 rounded-full text-sm font-semibold ${isFetching ? "bg-blue-500" : "bg-gray-600"
             }`}
         >
-          {isLive ? "Live Stream" : "Offline"}
+          {isFetching ? "Fetching Logs..." : "Idle"}
         </span>
       </div>
 
@@ -390,6 +328,9 @@ function LogInsightsPage() {
         <Button color="primary" onClick={handleSearch}>
           Search
         </Button>
+        <Button color="success" isLoading={isFetching} onClick={fetchLogs}>
+          Refresh
+        </Button>
         <Button color="danger" onClick={handleClearFilters}>
           Clear Filters
         </Button>
@@ -445,7 +386,7 @@ function LogInsightsPage() {
                   colSpan="4"
                   className="px-6 py-4 text-center text-sm text-gray-400"
                 >
-                  Waiting for logs...
+                  Refresh to see logs
                 </td>
               </tr>
             )}
