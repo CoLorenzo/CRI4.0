@@ -325,6 +325,94 @@ function makeLabConfFile(netkit, lab) {
     }
     if (machine.type == "ngfw") {
       lab.file["lab.conf"] += `${machineName}[image]=icr/ngfw`;
+
+      if (machine.ngfw && machine.ngfw.waf && machine.ngfw.waf.enabled) {
+        const waf = machine.ngfw.waf;
+        const listenport = waf.listenport || "8080";
+        const endpoint = waf.endpoint || "http://10.0.1.1:8080";
+        const findtime = waf.findtime || "10m";
+        const maxretry = waf.maxretry || "5";
+        const bantime = waf.bantime || "1h";
+        const page = waf.page || "/login";
+        const http_code = waf.http_code || "200";
+        const protocol = waf.protocol || "HTTP";
+        const method = waf.method || "POST";
+
+        lab.file[`${machineName}.startup`] += `
+# WAF Configuration
+LISTENPORT="${listenport}"
+ENDPOINT="${endpoint}"
+FINDTIME="${findtime}"
+MAXRETRY="${maxretry}"
+BANTIME="${bantime}"
+PAGE="${page}"
+HTTP_CODE="${http_code}"
+PROTOCOL="${protocol}"
+METHOD="${method}"
+
+# Install dependencies if needed (though already in image)
+# apt update & apt install -y sudo nginx-full fail2ban fluent-bit
+
+#------MAIN--------------------
+
+sed -i "s|__ENDPOINT__|$ENDPOINT|g" /etc/nginx/sites-available/default
+sed -i "s|__LISTENPORT__|$LISTENPORT|g" /etc/nginx/sites-available/default
+nginx -t && service nginx stop && service nginx start 
+
+# ---- FAIL2BAN
+service fail2ban start
+
+tee /etc/fail2ban/filter.d/nginx-login-200.conf > /dev/null <<EOF
+[Definition]
+failregex = ^<HOST>.*"\${METHOD}.*\${PAGE}.*\${PROTOCOL}/1\.[01]".* \${HTTP_CODE} [0-9]+
+ignoreregex =
+EOF
+
+tee /etc/fail2ban/jail.d/nginx-login-200.local > /dev/null <<__EOF__
+[nginx-login-200]
+enabled  = true
+filter   = nginx-login-200
+logpath  = /var/log/nginx/access.log
+backend  = auto
+
+# Soglie
+findtime = \${FINDTIME}
+maxretry = \${MAXRETRY}
+bantime  = \${BANTIME}
+
+# Azione
+action   = %(action_mwl)s
+__EOF__
+    
+service fail2ban restart
+
+#------fluetbit
+if ! command -v fluent-bit >/dev/null 2>&1; then
+    # Fallback installation
+    sudo apt update
+    sudo apt install -y curl gpg
+    curl -fsSL https://packages.fluentbit.io/fluentbit.key | \
+      sudo gpg --dearmor -o /usr/share/keyrings/fluentbit-keyring.gpg
+    echo 'deb [signed-by=/usr/share/keyrings/fluentbit-keyring.gpg] https://packages.fluentbit.io/debian/bookworm bookworm main' | \
+      sudo tee /etc/apt/sources.list.d/fluent-bit.list
+    sudo apt update
+    sudo apt install -y fluent-bit
+    sudo ln -s /opt/fluent-bit/bin/fluent-bit /usr/local/bin/fluent-bit
+    sudo mkdir -p /var/lib/fluent-bit
+    sudo chown $(whoami):$(whoami) /var/lib/fluent-bit
+    systemctl enable --now fluent-bit
+fi
+
+
+TEXT_FILE="/var/log/fail2ban.log"
+LOKI_IP="10.1.0.254"
+
+sudo mkdir -p /var/lib/fluent-bit/storage
+sudo chown -R root:root /var/lib/fluent-bit
+
+fluent-bit -c /etc/fluent-bit/sender.conf &
+`;
+      }
     }
     if (machine.type == "attacker") {
       if (machine.attackLoaded && machine.attackImage != "") {

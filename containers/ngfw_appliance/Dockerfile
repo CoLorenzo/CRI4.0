@@ -82,3 +82,4 @@ COPY ./zeek.conf  /etc/fluent-bit/zeek.conf
 # WAP
 RUN apt update && apt install -y nginx-full fail2ban
 COPY ./proxy_8080.conf  /etc/nginx/sites-available/default
+COPY ./sender.conf /etc/fluent-bit/sender.conf

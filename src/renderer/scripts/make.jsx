@@ -670,11 +670,18 @@ function makeIndustrialDevices(netkit, lab) {
 
 function makeNGFW(netkit, lab) {
 	for (let machine of netkit) {
+		if (machine.type === "ngfw") {
+			console.log("[DEBUG] Checking NGFW machine:", machine.name);
+			console.log("[DEBUG] machine.ngfw:", JSON.stringify(machine.ngfw));
+			console.log("[DEBUG] WAF enable check:", machine.ngfw && machine.ngfw.waf && machine.ngfw.waf.enabled);
+		}
+
 		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
 		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
 		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
 
 		if (machine.type === "ngfw" && machine.ngfw && machine.ngfw.waf && machine.ngfw.waf.enabled) {
+			console.log("[DEBUG] Generating WAF config for", machine.name);
 			const waf = machine.ngfw.waf;
 			const endpoint = waf.endpoint || "http://10.0.1.1:8080";
 			const findtime = waf.findtime || "10m";
@@ -695,6 +702,10 @@ PAGE="${page}"
 HTTP_CODE="${http_code}"
 PROTOCOL="${protocol}"
 METHOD="${method}"
+
+
+
+
 
 # Install dependencies if needed (though already in image)
 # apt update & apt install -y sudo nginx-full fail2ban fluent-bit
@@ -756,7 +767,7 @@ bantime  = \${BANTIME}
 action   = %(action_mwl)s
 __EOF__
 
-sudo systemctl restart fail2ban
+sudo  service fail2ban restart
 
 #------fluetbit
 if ! command -v fluent-bit >/dev/null 2>&1; then
@@ -777,11 +788,18 @@ fi
 
 TEXT_FILE="/var/log/fail2ban.log"
 LOKI_IP="10.1.0.254"
+sudo tee /etc/fluent-bit/sender.conf > /dev/null <<'EOF'
+[SERVICE]
+    Flush         1
+    Daemon        Off
+    Log_Level     info
+    storage.path  /var/lib/fluent-bit/storage
+    Parsers_File  /etc/fluent-bit/parsers_fail2ban.conf
 
-sudo tee /etc/fluent-bit/sender.conf > /dev/null <<EOF
+# ========= INPUT =========
 [INPUT]
     Name              tail
-    Path              \${TEXT_FILE}
+    Path              /var/log/fail2ban.log
     Tag               fail2ban.log
     DB                /var/lib/fluent-bit/fail2ban.db
     Mem_Buf_Limit     5MB
@@ -789,21 +807,31 @@ sudo tee /etc/fluent-bit/sender.conf > /dev/null <<EOF
     storage.type      filesystem
     Refresh_Interval  1
     Read_From_Head    Off
+    Parser            fail2ban_ban
 
+# ========= FILTER =========
 [FILTER]
     Name   grep
     Match  fail2ban.log
-    Regex  log  The IP [0-9.]+ has just been banned by Fail2Ban after [0-9]+ attempts against [^[:space:]]+
+    Regex  action  Ban
 
+# ricostruisce la riga pulita
+[FILTER]
+    Name   modify
+    Match  fail2ban.log
+    Set    log Ban \${ip}
+
+# ========= OUTPUT =========
 [OUTPUT]
     Name          loki
     Match         fail2ban.log
-    Host          \${LOKI_IP}
+    Host          10.1.0.254
     Port          3100
-    Labels        job=fail2ban,env=lab,host=\${HOSTNAME}
+    Labels        job=fail2ban,env=lab,host=f2b,ip=\${ip}
     Line_Format   json
 EOF
-sudo systemctl restart fluent-bit
+
+fluent-bit -c /etc/fluent-bit/sender.conf
 `;
 		}
 	}
