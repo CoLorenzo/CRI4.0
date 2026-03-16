@@ -252,7 +252,25 @@ npm start &
             const maxretry = sig.maxretry || "5";
             const bantime = sig.bantime || "1h";
 
-            extraCommands += `snortadd ${input_addr} ${output_addr} ${new_int} ${signature_name} '${signature_body}' ${findtime} ${maxretry} ${bantime}\n`;
+            //snortadd ${input_addr} ${output_addr} ${new_int} ${signature_name} '${signature_body}' ${findtime} ${maxretry} ${bantime}
+            extraCommands += `
+            suricata-update
+
+            if [[ REGISTRY_ADDR_PROTECT_BTN == "yes" ]]; then
+              snortadd 10.0.0.1:502 ${REGISTRY_ADDR_PROTECT_ADDR} eth1 modbus-invalidreg 'alert tcp any 502 -> any any (msg: "Traffic detected"; sid:1000001; rev:1;)' 10m 5 1h
+
+              yq -i '(.outputs[] | select(has("eve-log")).eve-log.types) |= (. + "modbus" | unique)' /etc/suricata/suricata.yaml
+              yq -i '.app-layer.protocols.modbus.enabled = "yes"' /etc/suricata/suricata.yaml
+
+              killall Suricata-Main
+              crudini --set /etc/fail2ban/jail.d/suricata-1000001.local "suricata-1000001" logpath "/tmp/f2b.log"
+              service suricata start
+              service fail2ban stop && service fail2ban start
+              service f2bcompanion start
+              service suricata start
+            fi
+            `;
+
           }
         }
       }
@@ -370,8 +388,35 @@ function makeLabConfFile(netkit, lab) {
       lab.file["lab.conf"] += `${machineName}[image]="${machine.other.image}"`;
     }
     if (machine.type == "ngfw") {
-      lab.file["lab.conf"] += `${machineName}[image]=icr/ngfw`;
+      lab.file["lab.conf"] += `${machineName}[image]=icr/ngfw\n`;
 
+      const modbusProtect = machine.ngfw?.modbusProtect ? "yes" : "no";
+      lab.file["lab.conf"] += `${machineName}[env]="REGISTRY_ADDR_PROTECT_BTN=${modbusProtect}"\n`;
+
+      if (machine.ngfw?.modbusProtect && machine.ngfw?.modbusProtectAddr) {
+        const protectedIps = Object.entries(machine.ngfw.modbusProtectAddr)
+          .filter(([_, enabled]) => enabled)
+          .map(([machineId, _]) => {
+            const target = netkit.find((m) => m.id === machineId);
+            if (target) {
+              // Prefer eth1 ip if available, then eth0
+              const eth1Interface = target.interfaces?.if?.find((i) => i.eth?.number === 1);
+              if (eth1Interface && eth1Interface.ip) {
+                return eth1Interface.ip.split("/")[0];
+              }
+              if (target.computedEth0Ip) {
+                return target.computedEth0Ip.split("/")[0];
+              }
+            }
+            return null;
+          })
+          .filter((ip) => ip)
+          .join(",");
+
+        if (protectedIps) {
+          lab.file["lab.conf"] += `${machineName}[env]="REGISTRY_ADDR_PROTECT_ADDR=${protectedIps}"\n`;
+        }
+      }
 
       // && machine.ngfw.waf && machine.ngfw.waf.enabled
 

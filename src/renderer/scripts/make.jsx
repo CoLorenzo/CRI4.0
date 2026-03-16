@@ -122,7 +122,7 @@ function makeLabConfFile(netkit, lab) {
 			lab.file["lab.conf"] += machine.name + '[image]="' + machine.other.image + '"';
 		}
 		if (machine.type == "ngfw") {
-			lab.file["lab.conf"] += machine.name + "[image]=icr/ngfw";
+			lab.file["lab.conf"] += machine.name + "[image]=icr/ngfw\n";
 		}
 		if (machine.type == "attacker") {
 			if (machine.attackLoaded && machine.attackImage != "") {
@@ -700,6 +700,31 @@ function makeNGFW(netkit, lab) {
 		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
 		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
 		if (machine.type == "temperature_sensor") { lab.file["lab.conf"] += machine.name + "[image]=icr/temperature_sensor"; }
+
+		if (machine.type === "ngfw") {
+			const modbusProtect = machine.ngfw?.modbusProtect ? "yes" : "no";
+			lab.file["lab.conf"] += `${machine.name}[env]="REGISTRY_ADDR_PROTECT_BTN=${modbusProtect}"\n`;
+
+			if (machine.ngfw?.modbusProtect && machine.ngfw?.modbusProtectAddr) {
+				const protectedIps = Object.entries(machine.ngfw.modbusProtectAddr)
+					.filter(([_, enabled]) => enabled)
+					.map(([machineId, _]) => {
+						const target = netkit.find((m) => m.id === machineId);
+						if (target && target.interfaces?.if) {
+							// Prefer eth1, then eth0, etc.
+							const iface = target.interfaces.if.find((i) => i.eth?.number === 1) || target.interfaces.if[0];
+							return iface?.ip?.split("/")[0];
+						}
+						return null;
+					})
+					.filter((ip) => ip)
+					.join(",");
+
+				if (protectedIps) {
+					lab.file["lab.conf"] += `${machine.name}[env]="REGISTRY_ADDR_PROTECT_ADDR=${protectedIps}"\n`;
+				}
+			}
+		}
 
 		// WAF rules (array)
 		if (machine.type === "ngfw" && machine.ngfw && Array.isArray(machine.ngfw.wafRules)) {

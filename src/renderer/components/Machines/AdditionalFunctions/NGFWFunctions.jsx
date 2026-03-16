@@ -15,6 +15,20 @@ export function NGFWFunctions({ machine, machines, setMachines }) {
         updateMachine((m) => ({ ...m, ngfw: { ...(m.ngfw || {}), useFwknop: value } }));
     }
 
+    function handleModbusProtectToggle(value) {
+        updateMachine((m) => ({ ...m, ngfw: { ...(m.ngfw || {}), modbusProtect: value } }));
+    }
+
+    function handleModbusProtectRangeChange(value, targetMachineId) {
+        updateMachine((m) => ({
+            ...m,
+            ngfw: {
+                ...(m.ngfw || {}),
+                modbusProtectAddr: { ...(m.ngfw?.modbusProtectAddr || {}), [targetMachineId]: value },
+            },
+        }));
+    }
+
     function handleChange(value, targetMachineId) {
         updateMachine((m) => ({
             ...m,
@@ -103,6 +117,32 @@ export function NGFWFunctions({ machine, machines, setMachines }) {
                 <Switch isSelected={machine.ngfw?.useFwknop || false} onValueChange={handleToggleRole}>
                     Use fwknop
                 </Switch>
+
+                <Switch isSelected={machine.ngfw?.modbusProtect || false} onValueChange={handleModbusProtectToggle}>
+                    Protect from modbus illegal registry address read
+                </Switch>
+
+                {machine.ngfw?.modbusProtect && (
+                    <>
+                        <label className="text-sm font-semibold mt-2">Target Machines to Protect</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {machines
+                                .filter((m) => m.id !== machine.id)
+                                .map((m) => (
+                                    <Checkbox
+                                        key={m.id}
+                                        isSelected={machine.ngfw?.modbusProtectAddr?.[m.id] || false}
+                                        onValueChange={(value) => handleModbusProtectRangeChange(value, m.id)}
+                                    >
+                                        {m.name || `Machine ${m.id.substring(0, 4)}`}
+                                    </Checkbox>
+                                ))}
+                        </div>
+                        {machines.length <= 1 && (
+                            <div className="text-sm text-gray-400 italic">No other machines created.</div>
+                        )}
+                    </>
+                )}
 
                 {machine.ngfw?.useFwknop && (
                     <>
