@@ -63,18 +63,31 @@ export function extractTargetIPs(
     targets.forEach((t) => {
         if (!t || !t.interfaces || !Array.isArray(t.interfaces.if)) return;
 
-        t.interfaces.if.forEach((iface) => {
-            try {
-                if (!iface || !iface.eth || !iface.ip) return;
+        // Filtra le interfacce escludendo quella di infrastruttura (_collector)
+        const validInterfaces = t.interfaces.if.filter(
+            (iface) => iface && iface.eth && iface.eth.domain !== "_collector" && iface.ip
+        );
 
-                // Se allowOtherDomains è true, non filtrare per dominio
-                const sameDomain = iface.eth.domain === attackerDomain;
-                if ((allowOtherDomains || sameDomain)) {
-                    const ipOnly = String(iface.ip).split('/')[0].trim();
-                    if (ipRegex.test(ipOnly)) ips.push(ipOnly);
-                }
-            } catch { }
-        });
+        // 1. Cerca interfacce nello stesso dominio dell'attaccante
+        const sameDomainIfaces = validInterfaces.filter(
+            (iface) => iface.eth.domain === attackerDomain
+        );
+
+        if (sameDomainIfaces.length > 0) {
+            // 1. Se ci sono interfacce nello stesso dominio dell'attaccante, usiamo solo quelle.
+            // (Ci aspettiamo solitamente una, ma ne supportiamo più di una se configurate)
+            sameDomainIfaces.forEach((iface) => {
+                const ipOnly = String(iface.ip).split('/')[0].trim();
+                if (ipRegex.test(ipOnly)) ips.push(ipOnly);
+            });
+        } else if (allowOtherDomains && validInterfaces.length > 0) {
+            // 2. Se non ci sono interfacce nello stesso dominio, e allowOtherDomains è true,
+            // prendiamo SOLO LA PRIMA interfaccia valida disponibile (escludendo _collector).
+            // Questo impedisce di avere doppioni come "10.0.1.0" se ci sono interfacce non configurate o secondarie.
+            const firstValid = validInterfaces[0];
+            const ipOnly = String(firstValid.ip).split('/')[0].trim();
+            if (ipRegex.test(ipOnly)) ips.push(ipOnly);
+        }
     });
     return Array.from(new Set(ips));
 }
