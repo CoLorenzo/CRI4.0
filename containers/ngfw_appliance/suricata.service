@@ -6,7 +6,7 @@ LOGFILE="/var/log/${NAME}.log"
 ERRORFILE="/var/log/${NAME}.err"
 INTERFACE="eth1"
 
-# ── helpers ──────────────────────────────────────────────────────────────────
+# helpers
 
 do_start() {
     if do_status | grep -q "is running"; then
@@ -15,8 +15,10 @@ do_start() {
     fi
 
     echo "Starting $NAME with command:"
-    echo "suricata -c /etc/suricata/suricata.yaml -i ${INTERFACE} --runmode workers 1> ${LOGFILE} 2> ${ERRORFILE}"
-    sh -c "suricata -c /etc/suricata/suricata.yaml -i ${INTERFACE} --runmode workers 1> ${LOGFILE} 2> ${ERRORFILE}" &
+    echo "suricata -c /etc/suricata/suricata.yaml -i ${INTERFACE} --runmode workers 1>> ${LOGFILE} 2>> ${ERRORFILE}"
+    echo "STARTING SURICATA at $(date)" >> ${LOGFILE}
+    echo "STARTING SURICATA at $(date)" >> ${ERRORFILE}
+    sh -c "suricata -c /etc/suricata/suricata.yaml -i ${INTERFACE} --runmode workers 1>> ${LOGFILE} 2>> ${ERRORFILE}" &
     echo $! >"$PIDFILE"
     echo "PID: $(cat $PIDFILE)"
     sleep 5
@@ -66,7 +68,7 @@ do_clearlogs() {
     rm "${ERRORFILE}"
 }
 
-# ── dispatch ─────────────────────────────────────────────────────────────────
+# dispatch   
 
 case "$1" in
 start) do_start ;;

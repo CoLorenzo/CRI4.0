@@ -252,26 +252,33 @@ npm start &
             const maxretry = sig.maxretry || "5";
             const bantime = sig.bantime || "1h";
 
-            //snortadd ${input_addr} ${output_addr} ${new_int} ${signature_name} '${signature_body}' ${findtime} ${maxretry} ${bantime}
-            extraCommands += `
-            suricata-update
+            //extraCommands += `snortadd ${input_addr} ${output_addr} ${new_int} ${signature_name} '${signature_body}' ${findtime} ${maxretry} ${bantime}\n`;
+          }
+        }
 
-            if [[ REGISTRY_ADDR_PROTECT_BTN == "yes" ]]; then
-              snortadd 10.0.0.1:502 ${REGISTRY_ADDR_PROTECT_ADDR} eth1 modbus-invalidreg 'alert tcp any 502 -> any any (msg: "Traffic detected"; sid:1000001; rev:1;)' 10m 5 1h
+        if (machine.ngfw?.modbusProtect) {
+          extraCommands += `
+            set +euo pipefail
+
+            if [[ "$REGISTRY_ADDR_PROTECT_BTN" == "yes" ]]; then
+              export PATH="$PATH:/root/.asdf/shims"
+              snortadd 10.0.0.1:502 \${REGISTRY_ADDR_PROTECT_ADDR}:502 eth1 modbus-invalidreg 'alert tcp any 502 -> any any (msg: "Traffic detected"; sid:1000001; rev:1;)' 10m 5 1h
 
               yq -i '(.outputs[] | select(has("eve-log")).eve-log.types) |= (. + "modbus" | unique)' /etc/suricata/suricata.yaml
               yq -i '.app-layer.protocols.modbus.enabled = "yes"' /etc/suricata/suricata.yaml
 
-              killall Suricata-Main
               crudini --set /etc/fail2ban/jail.d/suricata-1000001.local "suricata-1000001" logpath "/tmp/f2b.log"
+              # wait for kernel module to be loaded
+              sleep 3
               service suricata start
-              service fail2ban stop && service fail2ban start
+              sleep 1
               service f2bcompanion start
-              service suricata start
+              sleep 1
+              service fail2ban restart
             fi
-            `;
 
-          }
+            smoloki -b "http://10.1.0.254:3100" '{"job":"job","level":"info","host":"'"$HOSTNAME"'"}' '{"message":"ready"}'
+            `;
         }
       }
 

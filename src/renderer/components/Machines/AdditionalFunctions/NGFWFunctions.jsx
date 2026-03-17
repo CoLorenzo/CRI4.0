@@ -134,7 +134,7 @@ export function NGFWFunctions({ machine, machines, setMachines }) {
                                         isSelected={machine.ngfw?.modbusProtectAddr?.[m.id] || false}
                                         onValueChange={(value) => handleModbusProtectRangeChange(value, m.id)}
                                     >
-                                        {m.name || `Machine ${m.id.substring(0, 4)}`}
+                                        {(m.name || `Machine ${m.id.substring(0, 4)}`) + (m.interfaces?.if?.find(i => i.eth?.number === 1)?.ip ? ` (${m.interfaces.if.find(i => i.eth?.number === 1).ip.split('/')[0]})` : (m.interfaces?.if?.[0]?.ip ? ` (${m.interfaces.if[0].ip.split('/')[0]})` : ""))}
                                     </Checkbox>
                                 ))}
                         </div>

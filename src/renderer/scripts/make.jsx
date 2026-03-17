@@ -724,6 +724,34 @@ function makeNGFW(netkit, lab) {
 					lab.file["lab.conf"] += `${machine.name}[env]="REGISTRY_ADDR_PROTECT_ADDR=${protectedIps}"\n`;
 				}
 			}
+
+			if (machine.ngfw?.modbusProtect) {
+				lab.file[machine.name + ".startup"] += `
+# Modbus Protection
+suricata-update
+
+if [[ "$REGISTRY_ADDR_PROTECT_BTN" == "yes" ]]; then
+  snortadd 10.0.0.1:502 "$REGISTRY_ADDR_PROTECT_ADDR" eth1 modbus-invalidreg 'alert tcp any 502 -> any any (msg: "Traffic detected"; sid:1000001; rev:1;)' 10m 5 1h
+
+  yq -i '(.outputs[] | select(has("eve-log")).eve-log.types) |= (. + "modbus" | unique)' /etc/suricata/suricata.yaml
+  yq -i '.app-layer.protocols.modbus.enabled = "yes"' /etc/suricata/suricata.yaml
+
+  killall Suricata-Main || true
+  crudini --set /etc/fail2ban/jail.d/suricata-1000001.local "suricata-1000001" logpath "/tmp/f2b.log"
+  service suricata start
+  service fail2ban restart
+  service f2bcompanion start
+  service suricata restart
+fi
+
+export SMOLOKI_BASE_ENDPOINT="http://10.1.0.254:3100"
+export SMOLOKI_JOB="text"
+export SMOLOKI_LEVEL="debug" #OR info, warning, error
+export SMOLOKI_MESSAGE="Hello Loki from smoloki!"
+
+smoloki '{"job":"job","level":"info"}' '{"message":"ready"}'
+`;
+			}
 		}
 
 		// WAF rules (array)
