@@ -23,7 +23,10 @@ import { TerminalContext } from "../contexts/TerminalContext";
 
 function Topology() {
 
-  const [attackInProgress, setAttackInProgress] = useState(false);
+  const [attackInProgress, setAttackInProgress] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem('attackInProgress') || 'false'); }
+    catch { return false; }
+  });
   const [showTimer, setShowTimer] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -44,6 +47,7 @@ function Topology() {
   const handleSimulationStart = async (password) => {
     setPasswordModalOpen(false);
     setShowSimulationBanner(true);
+    setAttackInProgress(false);
     
     // Initialize statuses to 'pending'
     const initialStatuses = {};
@@ -143,6 +147,10 @@ function Topology() {
   useEffect(() => {
     sessionStorage.setItem('stopSimulation', JSON.stringify(stopSimulation));
   }, [stopSimulation]);
+
+  useEffect(() => {
+    sessionStorage.setItem('attackInProgress', JSON.stringify(attackInProgress));
+  }, [attackInProgress]);
 
 
 
@@ -273,6 +281,7 @@ function Topology() {
 
   const handleStopSimulation = async () => {
     setStopSimulation(true);
+    setAttackInProgress(false);
     try {
       await api.stopSimulation();
     } catch (e) {
