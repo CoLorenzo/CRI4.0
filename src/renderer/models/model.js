@@ -470,7 +470,7 @@ export const attacksModel = [
   {
     name: "crack-plc",
     displayName: "Crack PLC",
-    category: "injection",
+    category: "access-gain",
     attackLoaded: false,
     image: "",
     isImage: false,

@@ -18,6 +18,7 @@ import Reconnaissance from "../components/Attacks/Reconnaissance"
 import MITM from "../components/Attacks/MITM"
 import Injection from "../components/Attacks/Injection"
 import Sniffing from "../components/Attacks/Sniffing";
+import AccessGain from "../components/Attacks/AccessGain";
 
 function Attack() {
     const [machines, setMachines] = useState(() => {
@@ -46,6 +47,7 @@ function Attack() {
             case "dos":
             case "flood": return "Denial of Service";
             case "injection": return "Injection";
+            case "access-gain": return "Access Gain";
             case "sniffing": return "Sniffing";
             case "ping": return "Denial of Service"; // Defaulting ping to dos because it doesn't have a tab
             default: return "Other";
@@ -55,12 +57,24 @@ function Attack() {
     const initialActiveTab = useMemo(() => {
         if (!attacker || !attacker.attackLoaded || !attacker.attackImage) return "Reconnaissance";
         let category = "Reconnaissance";
-        if (attacker.attackImage.includes("icr/")) {
+        
+        // Find the attack in our model
+        let activeAttack = attacksModel?.find(a => a.image === attacker.attackImage || a.name === attacker.attackImage || a.displayName === attacker.attackImage);
+        
+        // Try to match the dynamically generated image name
+        if (!activeAttack && attacker.attackImage.includes("icr/")) {
+            activeAttack = attacksModel?.find(a => `icr/${a.category.toLowerCase()}-${a.name}` === attacker.attackImage);
+        }
+
+        // Handle legacy crack-plc from localStorage
+        if (!activeAttack && attacker.attackImage === "icr/injection-crack-plc") {
+            category = "access-gain";
+        } else if (activeAttack) {
+            category = activeAttack.category;
+        } else if (attacker.attackImage.includes("icr/")) {
             const rest = attacker.attackImage.split('icr/')[1] || "";
+            // fallback if not found in model (this might split hyphens incorrectly, but acts as a last resort)
             category = rest.split('-')[0] || "Reconnaissance";
-        } else {
-            const activeAttack = attacksModel?.find(a => a.image === attacker.attackImage || a.name === attacker.attackImage || a.displayName === attacker.attackImage);
-            if (activeAttack) category = activeAttack.category;
         }
 
         return defaultTabFromCategory(category);
@@ -103,6 +117,9 @@ function Attack() {
                             </Tab>
                             <Tab key="Sniffing" title="Sniffing" className="grid gap-2 w-full">
                                 <Sniffing attacker={attacker} attacks={attacks} isLoading={isLoading} machines={machines} setMachines={setMachines} handleRefresh={handleRefresh}/>
+                            </Tab>
+                            <Tab key="Access Gain" title="Access Gain" className="grid gap-2 w-full">
+                                <AccessGain attacker={attacker} attacks={attacks} isLoading={isLoading} machines={machines} setMachines={setMachines} handleRefresh={handleRefresh}/>
                             </Tab>
                             <Tab key="Other" title="Other" className="grid gap-2 w-full">
                                 <Card className="h-full">
