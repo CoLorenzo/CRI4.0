@@ -239,6 +239,21 @@ npm start &
 `;
       }
 
+
+      if (machine.type === "temperature_sensor") {
+        extraCommands += `
+        smoloki -b "http://10.1.0.254:3100" '{"job":"job","level":"info","host":"'"$HOSTNAME"'"}' '{"message":"ready"}'
+        `
+      }
+
+
+      if (machine.type === "attacker") {
+        extraCommands += `
+        smoloki -b "http://10.1.0.254:3100" '{"job":"job","level":"info","host":"'"$HOSTNAME"'"}' '{"message":"ready"}'
+        `
+      }
+
+
       if (machine.type === "ngfw") {
         // Signatures (array)
         if (machine.ngfw && Array.isArray(machine.ngfw.signatures)) {
