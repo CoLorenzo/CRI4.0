@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable import/no-duplicates */
 /* eslint-disable prettier/prettier */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Tab, Tabs } from "@nextui-org/react";
 import { Card, CardBody } from "@nextui-org/react";
 import { Checkbox, CheckboxGroup } from "@nextui-org/react";
@@ -38,6 +38,41 @@ function Attack() {
         setRefresh(prev => !prev);
     };
 
+    const defaultTabFromCategory = (category) => {
+        if (!category) return "Reconnaissance";
+        switch(category.toLowerCase()) {
+            case "reconnaissance": return "Reconnaissance";
+            case "mitm": return "Man-in-the-Middle";
+            case "dos":
+            case "flood": return "Denial of Service";
+            case "injection": return "Injection";
+            case "sniffing": return "Sniffing";
+            case "ping": return "Denial of Service"; // Defaulting ping to dos because it doesn't have a tab
+            default: return "Other";
+        }
+    };
+
+    const initialActiveTab = useMemo(() => {
+        if (!attacker || !attacker.attackLoaded || !attacker.attackImage) return "Reconnaissance";
+        let category = "Reconnaissance";
+        if (attacker.attackImage.includes("icr/")) {
+            const rest = attacker.attackImage.split('icr/')[1] || "";
+            category = rest.split('-')[0] || "Reconnaissance";
+        } else {
+            const activeAttack = attacksModel?.find(a => a.image === attacker.attackImage || a.name === attacker.attackImage || a.displayName === attacker.attackImage);
+            if (activeAttack) category = activeAttack.category;
+        }
+
+        return defaultTabFromCategory(category);
+    }, [attacker]);
+
+    const [selectedTab, setSelectedTab] = useState(initialActiveTab);
+
+    // If active tab changes via reload/state, keep it in sync
+    useEffect(() => {
+        if (initialActiveTab) setSelectedTab(initialActiveTab);
+    }, [initialActiveTab]);
+
     return (
         <div className="min-h-[calc(100vh-4rem)] grid pb-24">
             {stepStatus && (
@@ -53,23 +88,23 @@ function Attack() {
                         </CardBody>
                     </Card>
                     <div className="h-full">
-                        <Tabs isVertical classNames={{tabList: "h-full", tabWrapper: "h-full bg-red-700"}} aria-label="Category" className="px-1 col-span-1">
-                            <Tab title="Reconnaissance" className="grid gap-2 w-full">
+                        <Tabs isVertical selectedKey={selectedTab} onSelectionChange={setSelectedTab} classNames={{tabList: "h-full", tabWrapper: "h-full bg-red-700"}} aria-label="Category" className="px-1 col-span-1">
+                            <Tab key="Reconnaissance" title="Reconnaissance" className="grid gap-2 w-full">
                                 <Reconnaissance attacker={attacker} attacks={attacks} isLoading={isLoading} machines={machines} setMachines={setMachines} handleRefresh={handleRefresh}/>
                             </Tab>
-                            <Tab title="Man-in-the-Middle" className="grid gap-2 w-full">
+                            <Tab key="Man-in-the-Middle" title="Man-in-the-Middle" className="grid gap-2 w-full">
                                 <MITM attacker={attacker} attacks={attacks} isLoading={isLoading} machines={machines} setMachines={setMachines} handleRefresh={handleRefresh}/>
                             </Tab>
-                            <Tab title="Denial of Service" className="grid gap-2 w-full">
+                            <Tab key="Denial of Service" title="Denial of Service" className="grid gap-2 w-full">
                                 <DOS attacker={attacker} attacks={attacks} isLoading={isLoading} machines={machines} setMachines={setMachines} handleRefresh={handleRefresh}/>
                             </Tab>
-                            <Tab title="Injection" className="grid gap-2 w-full">
+                            <Tab key="Injection" title="Injection" className="grid gap-2 w-full">
                                 <Injection attacker={attacker} attacks={attacks} isLoading={isLoading} machines={machines} setMachines={setMachines} handleRefresh={handleRefresh}/>
                             </Tab>
-                            <Tab title="Sniffing" className="grid gap-2 w-full">
+                            <Tab key="Sniffing" title="Sniffing" className="grid gap-2 w-full">
                                 <Sniffing attacker={attacker} attacks={attacks} isLoading={isLoading} machines={machines} setMachines={setMachines} handleRefresh={handleRefresh}/>
                             </Tab>
-                            <Tab title="Other" className="grid gap-2 w-full">
+                            <Tab key="Other" title="Other" className="grid gap-2 w-full">
                                 <Card className="h-full">
                                     <CardBody className="grid place-items-center">
                                         <h1>Not Implemented Yet</h1>
