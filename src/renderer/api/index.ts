@@ -128,6 +128,35 @@ export const api = {
         return data.output;
     },
 
+    async queryLokiLogs(queryParams: string): Promise<any> {
+        if (isElectron()) {
+            return window.electron.ipcRenderer.invoke('loki-query', queryParams);
+        }
+        const response = await fetch(`${API_BASE_URL}/loki-query?${queryParams}`);
+        if (!response.ok) {
+            let text = '';
+            try { text = await response.text(); } catch (e) {}
+            throw new Error(`Loki query failed: ${response.status} ${text}`);
+        }
+        return response.json();
+    },
+
+    async deleteLokiLogs(query: string, start: string, end: string): Promise<void> {
+        if (isElectron()) {
+            return window.electron.ipcRenderer.invoke('loki-delete', { query, start, end });
+        }
+        const response = await fetch(`${API_BASE_URL}/loki-delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, start, end }),
+        });
+        if (!response.ok) {
+            let text = '';
+            try { text = await response.text(); } catch (e) {}
+            throw new Error(`Loki delete failed: ${response.status} ${text}`);
+        }
+    },
+
     subscribeToLogs(callback: (level: string, message: string) => void): () => void {
         if (isElectron()) {
             return window.electron.ipcRenderer.on('log-message', (arg: any) => {

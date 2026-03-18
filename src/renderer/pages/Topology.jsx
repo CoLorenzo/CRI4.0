@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import Graph from "react-graph-vis";
 import { makeGraph } from "../scripts/draw";
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import { Accordion, AccordionItem, Button, Card, CardBody } from "@nextui-org/react";
 import { Checkbox, CheckboxGroup } from "@nextui-org/react";
 import { Select, SelectItem } from "@nextui-org/react";
@@ -43,6 +43,7 @@ function Topology() {
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
 
   const [machineStatuses, setMachineStatuses] = useState({});
+  const pollingIntervalRef = useRef(null);
 
   const handleSimulationStart = async (password) => {
     setPasswordModalOpen(false);
@@ -62,7 +63,7 @@ function Topology() {
       // Start polling for readiness
       let currentStatuses = { ...initialStatuses };
       
-      const interval = setInterval(async () => {
+      pollingIntervalRef.current = setInterval(async () => {
         let allReady = true;
         const newStatuses = { ...currentStatuses };
         
@@ -70,15 +71,10 @@ function Topology() {
           if (newStatuses[machine.name] !== 'ready') {
             try {
               const query = `{host="${machine.name}"} |= "ready"`;
-              const url = `http://localhost:3001/api/loki-query?query=${encodeURIComponent(query)}&limit=1`;
-              const res = await fetch(url);
-              if (res.ok) {
-                const data = await res.json();
-                if (data.status === 'success' && data.data && data.data.result && data.data.result.length > 0) {
-                  newStatuses[machine.name] = 'ready';
-                } else {
-                  allReady = false;
-                }
+              const queryParams = `query=${encodeURIComponent(query)}&limit=1`;
+              const data = await api.queryLokiLogs(queryParams);
+              if (data.status === 'success' && data.data && data.data.result && data.data.result.length > 0) {
+                newStatuses[machine.name] = 'ready';
               } else {
                 allReady = false;
               }
@@ -92,7 +88,7 @@ function Topology() {
         setMachineStatuses(newStatuses);
         
         if (allReady) {
-          clearInterval(interval);
+          clearInterval(pollingIntervalRef.current);
           setTimeout(() => {
             setShowSimulationBanner(false);
             setSimulationRun(true);
@@ -106,6 +102,16 @@ function Topology() {
       toast.error("Simulation failed: " + e.message);
       setShowSimulationBanner(false);
     }
+  };
+
+  const handleCancelSimulation = async () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    setShowSimulationBanner(false);
+    toast("Deployment cancelled. Stopping infrastructure...", { icon: 'ℹ️' });
+    await handleStopSimulation();
   };
 
   const [simulationRun, setSimulationRun] = useState(() => {
@@ -479,6 +485,12 @@ function Topology() {
                 className="bg-warning h-2 animate-pulse"
                 style={{ width: `100%` }}
               />
+            </div>
+
+            <div className="pt-2">
+              <Button size="sm" color="danger" variant="light" onPress={handleCancelSimulation}>
+                Cancel
+              </Button>
             </div>
           </div>
         </div>

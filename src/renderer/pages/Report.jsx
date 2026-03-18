@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { api } from "../api";
 import {
   Card,
   CardBody,
@@ -71,23 +72,22 @@ function LogInsightsPage() {
       end: endNs
     });
 
-    return `/api/loki-query?${params.toString()}`;
+    return params.toString();
   };
 
   const fetchLogs = async () => {
     setIsFetching(true);
     try {
-      const url = buildLokiQueryUrl();
-      let res = await fetch(url);
-
-      // Fallback: if 404 (route not present), try a proxy-mounted direct path
-      if (res.status === 404) {
-        const queryParams = url.split("?")[1];
-        res = await fetch(`/loki/api/v1/query_range?${queryParams}`);
+      const queryParams = buildLokiQueryUrl();
+      let data;
+      try {
+        data = await api.queryLokiLogs(queryParams);
+      } catch (e) {
+        // Fallback: if route fails, try a direct proxy-mounted path (legacy)
+        const res = await fetch(`/loki/api/v1/query_range?${queryParams}`);
+        if (!res.ok) throw new Error("Failed to fetch logs");
+        data = await res.json();
       }
-
-      if (!res.ok) throw new Error("Failed to fetch logs");
-      const data = await res.json();
 
       if (data.data && data.data.result) {
         const incoming = data.data.result.flatMap((stream) =>
@@ -187,6 +187,8 @@ function LogInsightsPage() {
   const handleCleanLogs = async () => {
     setIsCleaning(true);
     try {
+      const { start, end } = getStartEndSeconds();
+      await api.deleteLokiLogs(broadDeleteSelector, start, end);
       setLogs([]);
     } catch (err) {
       console.error(err);

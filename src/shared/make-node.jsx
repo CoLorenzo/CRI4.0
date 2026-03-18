@@ -205,7 +205,8 @@ stunnel
           extraCommands += `openplc-cli changeuser -u openplc -p "${machine.industrial.password}"\n`;
         }
 
-        extraCommands += `/opt/OpenPLC_v3/start_openplc.sh\n`;
+        extraCommands += `smoloki -b "http://10.1.0.254:3100" '{"job":"job","level":"info","host":"'"\$HOSTNAME"'"}' '{"message":"ready"}'\n`;
+        extraCommands += `/opt/OpenPLC_v3/start_openplc.sh & disown \n`;
       }
 
       if (machine.type === "scada") {

@@ -717,6 +717,45 @@ ipcMain.handle('save-scada-project', async (event, machineName) => {
   });
 });
 
+ipcMain.handle('loki-query', async (event, queryParams: string) => {
+  try {
+    const lokiUrl = `http://127.0.0.1:3100/loki/api/v1/query_range?${queryParams}`;
+    const response = await fetch(lokiUrl);
+    if (!response.ok) {
+      const text = await response.text();
+      sendLog('error', `❌ Loki query failed: ${response.status} ${text}`);
+      throw new Error(`Loki query failed: ${response.status} ${text}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (err: any) {
+    sendLog('error', `❌ Error calling Loki query: ${err.message}`);
+    throw err;
+  }
+});
+
+ipcMain.handle('loki-delete', async (event, { query, start, end }) => {
+  sendLog('log', `🗑️ deleteLokiLogs: Deleting logs for query="${query}" start=${start} end=${end}`);
+  try {
+    const params = new URLSearchParams({
+      query,
+      start: String(start),
+      end: String(end)
+    });
+    const lokiUrl = `http://127.0.0.1:3100/loki/api/v1/delete?${params.toString()}`;
+    const response = await fetch(lokiUrl, { method: 'POST' });
+    if (!response.ok) {
+      const text = await response.text();
+      sendLog('error', `❌ Loki delete failed: ${response.status} ${text}`);
+      throw new Error(`Loki delete failed: ${response.status} ${text}`);
+    }
+    sendLog('log', '✅ Loki logs deleted successfully.');
+  } catch (err: any) {
+    sendLog('error', `❌ Error calling Loki delete: ${err.message}`);
+    throw err;
+  }
+});
+
 
 
 
