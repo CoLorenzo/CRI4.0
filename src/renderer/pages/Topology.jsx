@@ -39,18 +39,64 @@ function Topology() {
   // Password Modal State
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
 
+  const [machineStatuses, setMachineStatuses] = useState({});
+
   const handleSimulationStart = async (password) => {
     setPasswordModalOpen(false);
     setShowSimulationBanner(true);
+    
+    // Initialize statuses to 'pending'
+    const initialStatuses = {};
+    machines.forEach(m => {
+      initialStatuses[m.name] = 'pending';
+    });
+    setMachineStatuses(initialStatuses);
 
     try {
       await api.runSimulation(machines, labInfo, password);
-      // Wait a bit to ensure kathara starts
-      setTimeout(() => {
-        setShowSimulationBanner(false);
-        setSimulationRun(true);
-        setStopSimulation(false);
-      }, 2000);
+      
+      // Start polling for readiness
+      let currentStatuses = { ...initialStatuses };
+      
+      const interval = setInterval(async () => {
+        let allReady = true;
+        const newStatuses = { ...currentStatuses };
+        
+        for (const machine of machines) {
+          if (newStatuses[machine.name] !== 'ready') {
+            try {
+              const query = `{host="${machine.name}"} |= "ready"`;
+              const url = `http://localhost:3001/api/loki-query?query=${encodeURIComponent(query)}&limit=1`;
+              const res = await fetch(url);
+              if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'success' && data.data && data.data.result && data.data.result.length > 0) {
+                  newStatuses[machine.name] = 'ready';
+                } else {
+                  allReady = false;
+                }
+              } else {
+                allReady = false;
+              }
+            } catch (err) {
+              allReady = false;
+            }
+          }
+        }
+        
+        currentStatuses = newStatuses;
+        setMachineStatuses(newStatuses);
+        
+        if (allReady) {
+          clearInterval(interval);
+          setTimeout(() => {
+            setShowSimulationBanner(false);
+            setSimulationRun(true);
+            setStopSimulation(false);
+          }, 1000);
+        }
+      }, 1000);
+      
     } catch (e) {
       console.error("Run simulation error:", e);
       toast.error("Simulation failed: " + e.message);
@@ -403,13 +449,22 @@ function Topology() {
       )}
       {showSimulationBanner && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-          <div className="bg-gray-900 text-warning px-6 py-4 rounded-xl shadow-lg w-96 text-center space-y-2">
+          <div className="bg-gray-900 text-warning px-6 py-4 rounded-xl shadow-lg w-96 text-center space-y-4">
             <p className="text-sm font-bold uppercase tracking-wide">
               Deploying infrastructure
             </p>
-            <p className="text-xs">Please wait...</p>
+            
+            <div className="text-left space-y-2 bg-gray-800 p-4 rounded-lg mt-2 mb-2 max-h-60 overflow-y-auto">
+              {machines.map(m => (
+                <div key={m.name} className="flex justify-between items-center">
+                  <span className="text-sm text-gray-300">{m.name} ({m.type || 'node'})</span>
+                  <span>{machineStatuses[m.name] === 'ready' ? '🟢' : '🟡'}</span>
+                </div>
+              ))}
+            </div>
 
-            {/* Progress bar opzionale */}
+            <p className="text-xs">Waiting for all nodes to be ready...</p>
+
             <div className="w-full bg-warning/20 rounded-full h-2 overflow-hidden">
               <div
                 className="bg-warning h-2 animate-pulse"
