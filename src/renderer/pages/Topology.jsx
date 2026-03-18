@@ -27,8 +27,6 @@ function Topology() {
     try { return JSON.parse(sessionStorage.getItem('attackInProgress') || 'false'); }
     catch { return false; }
   });
-  const [showTimer, setShowTimer] = useState(false);
-  const [progress, setProgress] = useState(0);
 
   // Terminal Sessions State
   const { activeTerminals, setActiveTerminals } = useContext(TerminalContext);
@@ -215,20 +213,6 @@ function Topology() {
     console.log("✅ Launching attack args:", commandArgs);
 
     setAttackInProgress(true);
-    setShowTimer(true);
-    setProgress(0);
-
-    // start timer/progress (comportamento originale: 4 secondi)
-    let seconds = 0;
-    const interval = setInterval(() => {
-      seconds += 1;
-      setProgress((seconds / 4) * 100); // progress in %
-      if (seconds >= 4) {
-        clearInterval(interval);
-        setShowTimer(false);
-        // We keep attackInProgress = true until user stops it
-      }
-    }, 1000);
 
     // Fix: attacker machine is always named "attacker" in Kathara, but state might have image name.
     const targetContainer = attacker.type === "attacker" ? "attacker" : attacker.name;
@@ -246,10 +230,12 @@ function Topology() {
       } else {
         toast.success("Attack command sent (no output returned).");
       }
+      setAttackInProgress(false);
 
     } catch (e) {
       console.error("Attack error", e);
       toast.error("Attack failed: " + e.message);
+      setAttackInProgress(false);
     }
     // nota: lo stato (attackInProgress/showTimer) viene chiuso dal timer sopra
   };
@@ -444,24 +430,7 @@ function Topology() {
           </Button>
         )}
       </div>
-      {showTimer && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-          <div className="bg-gray-900 text-warning px-6 py-4 rounded-xl shadow-lg w-96 text-center space-y-2">
-            <p className="text-sm font-bold uppercase tracking-wide">
-              Stand by, Launching attack
-            </p>
-            <p className="text-xs">Deployment in progress...</p>
 
-            {/* Progress bar */}
-            <div className="w-full bg-warning/20 rounded-full h-2 overflow-hidden">
-              <div
-                className="bg-warning h-2 transition-all duration-1000 ease-linear"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
       {showSimulationBanner && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
           <div className="bg-gray-900 text-warning px-6 py-4 rounded-xl shadow-lg w-96 text-center space-y-4">
