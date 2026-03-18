@@ -93,7 +93,7 @@ function Sniffing({ attacker, attacks, isLoading, machines, setMachines, handleR
       <div className="grid items-start">
         <Button isLoading={isLoading} className="bg-secondary" startContent={isLoading ? null : <FaArrowRotateLeft />} onClick={handleRefresh}>{isLoading ? "Refreshing images..." : "Refresh images"}</Button>
       </div>
-      <div className="flex-grow">
+      <div className={`flex-grow transition-opacity duration-300 ${attacker?.attackLoaded ? "opacity-50 pointer-events-none" : ""}`}>
         <div className="grid gap-2">
           <MachineSelector machines={machines} setTargets={setTargets} attacker={attacker} />
           <AttackSelector type="sniffing" attacker={attacker} attacks={attacks} selectedImage={selectedImage} setSelectedImage={setSelectedImage} isLoading={isLoading} handleRefresh={handleRefresh} />
