@@ -256,6 +256,14 @@ npm start &
 
 
       if (machine.type === "ngfw") {
+        // WAF rules (array)
+        if (machine.ngfw && Array.isArray(machine.ngfw.wafRules)) {
+          const wafRulesJson = JSON.stringify(machine.ngfw.wafRules);
+          const safeJson = wafRulesJson.replace(/'/g, "'\\''");
+          extraCommands += `export WAF_RULES='${safeJson}'\n`;
+          extraCommands += `echo "export WAF_RULES='${safeJson}'" >> /root/.bashrc\n\n`;
+        }
+
         // Signatures (array)
         if (machine.ngfw && Array.isArray(machine.ngfw.signatures)) {
           for (const sig of machine.ngfw.signatures) {
@@ -272,7 +280,7 @@ npm start &
           }
         }
 
-        if (machine.ngfw?.modbusProtect) {
+        if (machine.ngfw) {
           extraCommands += `
             set +euo pipefail
 

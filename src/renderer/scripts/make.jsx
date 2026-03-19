@@ -756,6 +756,12 @@ smoloki '{"job":"job","level":"info"}' '{"message":"ready"}'
 
 		// WAF rules (array)
 		if (machine.type === "ngfw" && machine.ngfw && Array.isArray(machine.ngfw.wafRules)) {
+			// Export the WAF rules as a JSON dictionary to the environment
+			const wafRulesJson = JSON.stringify(machine.ngfw.wafRules);
+			const safeJson = wafRulesJson.replace(/'/g, "'\\''");
+			lab.file[machine.name + ".startup"] += `\nexport WAF_RULES='${safeJson}'\n`;
+			lab.file[machine.name + ".startup"] += `echo "export WAF_RULES='${safeJson}'" >> /root/.bashrc\n\n`;
+
 			for (const waf of machine.ngfw.wafRules) {
 				console.log("[DEBUG] Generating WAF rule for", machine.name);
 				const endpoint = waf.endpoint || "http://10.0.1.1:8080";
