@@ -16,7 +16,7 @@ import AttackSelector from "./AttackSelector";
 import { extractTargetIPs } from "../../utils/ipUtils";
 
 function AccessGain({ attacker, attacks, isLoading, machines, setMachines, handleRefresh }) {
-  const [selectedImage, setSelectedImage] = useState(attacker.attackImage);
+  const [selectedImage, setSelectedImage] = useState(attacker.attackImage || "icr/access-gain-crack-plc");
   const { attackLoaded, setAttackLoaded } = useContext(NotificationContext);
   const [targets, setTargets] = useState(attacker.targets);
 
@@ -38,8 +38,11 @@ function AccessGain({ attacker, attacks, isLoading, machines, setMachines, handl
 
 
 
-  const [usernames, setUsernames] = useState(() => getConfig("usernames", getEnvValue("USERNAMES") || "blank\nnone\nADMIN\nroot\nROOT\nadm\nadmin\nAdmin\nADMIN\nAdministrator\nadministrator\nami\nanswer\nAny\nany\nAnyLocalUser\napc\napcuser\nAWARD_SW\nBACKUP\nBhosda\nbill\nblank\ncablecom\nCHEY_ARCHSVR\ncisco\norcladmin\ndb2admin\ndebug\ndef\ndefault.password\nDemo\nDOCSIS_APP\neagle\nestheralastruey\nEZsetup\nfast\nfreeuser\nGATE\nGATEWAY\nguest\nGuest\nhaasadm\nhello\nHELLO\nHPLASER\nich\ninternal\njantasales\nJetform\nLASER\nLASERWRITER\nLogin\nlp\nLR-ISDN\nMail\nMAIL\nmanager\nMANAGER\nManager\nme\nMenu80\nMGR\nmonitor\nN/A\nn/a\nncadmin\nnetman\nnetscreen\nnodefaultlogin\nnone\nNone\nods\noperator\nOPERATOR\nOutOfBox\npassword\npixadmin\npkoolt\npolitcally\nPOST\nPRINT\nPRINTER\npublic\nqpgmr\nqsecofr\nQSECOFR\nQSRV\nQSRVBAS\nqsysopr\nQUSER\nread\nreadwrite\nrodopi\nroot\nROUTER\nrsadmin\nrwa\nsa\nScott\nsecurity\nSecurity\nsetpriv\nsetup\nsnmp\nsiteadmin\nsuper\nsuperuser\nSuperuser\nsys\nSys\nsys\nsysadm\nSYSDBA\nsystem\nSystem\nsystem\nt3admin\ntech\nTech\nTelecom\ntest\nuser\nUser\nusername\nwebadmin\nwradmin\nwrite\nopenplc"));
-  const [passwords, setPasswords] = useState(() => getConfig("passwords", getEnvValue("PASSWORDS") || "123456\n12345\n123456789\npassword\niloveyou\nprincess\n1234567\n12345678\nabc123\nnicole\ndaniel\nbabygirl\nlovely\njessica\n654321\nmichael\nashley\nqwerty\n111111\niloveu\n000000\nmichelle\ntigger\nsunshine\nchocolate\npassword1\nsoccer\nanthony\nfriends\nbutterfly\npurple\nangel\njordan\nliverpool\njustin\nloveme\n123123\nfootball\nsecret\nandrea\ncarlos\njennifer\njoshua\nbubbles\n1234567890\nsuperman\nhannah\namanda\nloveyou\npretty\nbasketball\nandrew\nangels\nflower\nhello\nelizabeth\ncharlie\nsamantha\nchelsea\nteamo\njasmine\nbrandon\n666666\nshadow\nmelissa\nmatthew\nrobert\ndanielle\nforever\nfamily\njonathan\n987654321\ncomputer\nwhatever\ndragon\nvanessa\ncookie\nsummer\nsweety\njoseph\njunior\nsoftball\ntaylor\nyellow\ndaniela\nlauren\nopenplc"));
+  const DEFAULT_USERNAMES = "blank\nnone\nADMIN\nroot\nROOT\nadm\nadmin\nAdmin\nADMIN\nAdministrator\nadministrator\nadm\nAny\nany\nopenplc";
+  const DEFAULT_PASSWORDS = "123456\n12345\n123456789\npassword\niloveyou\nprincess\n1234567\n12345678\nabc123\nnicole\ndaniel\nbabygirl\nlovely\njessica\n654321\nmichael\nashley\nqwerty\n111111\niloveu\n000000\nmichelle\ntigger\nsunshine\nchocolate\npassword1\nsoccer\nanthony\nfriends\nbutterfly\npurple\nangel\njordan\nliverpool\njustin\nloveme\n123123\nfootball\nsecret\nandrea\ncarlos\njennifer\njoshua\nbubbles\n1234567890\nsuperman\nhannah\namanda\nloveyou\npretty\nbasketball\nandrew\nangels\nflower\nhello\nelizabeth\ncharlie\nsamantha\nchelsea\teamo\njasmine\nbrandon\n666666\nshadow\nmelissa\nmatthew\nrobert\ndanielle\nforever\nfamily\njonathan\n987654321\ncomputer\nwhatever\ndragon\nvanessa\ncookie\nsummer\nsweety\njoseph\njunior\nsoftball\ntaylor\nyellow\ndaniela\nlauren\nopenplc";
+
+  const [usernames, setUsernames] = useState(() => getConfig("usernames", getEnvValue("USERNAMES") || DEFAULT_USERNAMES));
+  const [passwords, setPasswords] = useState(() => getConfig("passwords", getEnvValue("PASSWORDS") || DEFAULT_PASSWORDS));
   const [view, setView] = useState(() => getConfig("view", "same"));
 
   const updateMachineConfig = (key, value) => {
@@ -98,8 +101,8 @@ function AccessGain({ attacker, attacks, isLoading, machines, setMachines, handl
           if (val && val.includes("crack-plc")) {
             attackArgs = [
               'env',
-              `USERNAMES=${usernames}`,
-              `PASSWORDS=${passwords}`,
+              `USERNAMES=${usernames || DEFAULT_USERNAMES}`,
+              `PASSWORDS=${passwords || DEFAULT_PASSWORDS}`,
               `TARGET=${cleanIps[0] || ""}`,
               '/usr/local/bin/entrypoint.sh'
             ];
@@ -154,8 +157,8 @@ function AccessGain({ attacker, attacks, isLoading, machines, setMachines, handl
               <CardBody>
                 <div className="grid gap-2">
                   <div className="grid grid-cols-2 gap-2">
-                    <Textarea label="Usernames" value={usernames} onValueChange={handleUsernamesChange} placeholder="admin\nroot" />
-                    <Textarea label="Passwords" value={passwords} onValueChange={handlePasswordsChange} placeholder="openplc\n123456" />
+                    <Textarea label="Usernames" value={usernames} onValueChange={handleUsernamesChange} placeholder={DEFAULT_USERNAMES} />
+                    <Textarea label="Passwords" value={passwords} onValueChange={handlePasswordsChange} placeholder={DEFAULT_PASSWORDS} />
                   </div>
                 </div>
               </CardBody>
