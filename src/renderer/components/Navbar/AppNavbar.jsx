@@ -37,6 +37,12 @@ export function AppNavbar({ darkMode, setDarkMode }) {
             Home
           </Link>
         </NavbarItem>
+        <NavbarItem isActive={pathname === '/attack'}>
+          <Link
+            color={pathname === "/attack" ? "primary" : "foreground"} href="/attack">
+            Attack
+          </Link>
+        </NavbarItem>
         <NavbarItem isActive={pathname === '/topology'}>
           <Badge isInvisible={!attackLoaded} content="" placement='top-right' color="danger" size="sm" className='animate-pulse-fast'>
             <Link
@@ -44,12 +50,6 @@ export function AppNavbar({ darkMode, setDarkMode }) {
               Topology
             </Link>
           </Badge>
-        </NavbarItem>
-        <NavbarItem isActive={pathname === '/attack'}>
-          <Link
-            color={pathname === "/attack" ? "primary" : "foreground"} href="/attack">
-            Attack
-          </Link>
         </NavbarItem>
         <NavbarItem isActive={pathname === '/report'}>
           <Link
