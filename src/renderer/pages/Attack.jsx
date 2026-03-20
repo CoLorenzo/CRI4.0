@@ -59,22 +59,31 @@ function Attack() {
         let category = "Reconnaissance";
 
         // Find the attack in our model
-        let activeAttack = attacksModel?.find(a => a.image === attacker.attackImage || a.name === attacker.attackImage || a.displayName === attacker.attackImage);
+        let activeAttack = attacksModel?.find(a => 
+            a.image === attacker.attackImage || 
+            a.name === attacker.attackImage || 
+            a.displayName === attacker.attackImage
+        );
 
-        // Try to match the dynamically generated image name
+        // Try to match the dynamically generated image name (more robustly)
         if (!activeAttack && attacker.attackImage.includes("icr/")) {
-            activeAttack = attacksModel?.find(a => `icr/${a.category.toLowerCase()}-${a.name}` === attacker.attackImage);
+            activeAttack = attacksModel?.find(a => {
+                const searchString = `icr/${a.category.toLowerCase()}-${a.name}`;
+                return attacker.attackImage === searchString || attacker.attackImage.startsWith(`${searchString}:`);
+            });
         }
 
-        // Handle legacy crack-plc from localStorage
+        // Handle legacy crack-plc from localStorage or custom tags
         if (!activeAttack && attacker.attackImage === "icr/access-gain-crack-plc:latest") {
             category = "access-gain";
         } else if (activeAttack) {
             category = activeAttack.category;
         } else if (attacker.attackImage.includes("icr/")) {
             const rest = attacker.attackImage.split('icr/')[1] || "";
-            // fallback if not found in model (this might split hyphens incorrectly, but acts as a last resort)
-            category = rest.split('-')[0] || "Reconnaissance";
+            // fallback if not found in model (tries to find if any category matches the prefix)
+            const possibleCategories = ["reconnaissance", "mitm", "dos", "flood", "injection", "access-gain", "sniffing"];
+            const foundCategory = possibleCategories.find(c => rest.startsWith(`${c}-`));
+            category = foundCategory || rest.split('-')[0] || "Reconnaissance";
         }
 
         return defaultTabFromCategory(category);
