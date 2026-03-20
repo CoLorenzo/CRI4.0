@@ -182,7 +182,7 @@ export function NGFWFunctions({ machine, machines, setMachines }) {
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             <Select label="Interface" placeholder="Select Interface" selectedKeys={rule.interface ? [rule.interface] : []} onChange={(e) => handleWafChange(idx, "interface", e.target.value)} size="sm">
-                                {(machine.interfaces?.if || []).map((i) => i.eth?.number !== undefined ? <SelectItem key={`eth${i.eth.number}`} value={`eth${i.eth.number}`}>{`eth${i.eth.number}`}</SelectItem> : null)}
+                                {(machine.interfaces?.if || []).map((i) => i.eth?.number !== undefined ? <SelectItem key={`eth${i.eth.number + 1}`} value={`eth${i.eth.number + 1}`}>{`eth${i.eth.number + 1}`}</SelectItem> : null)}
                             </Select>
                             <Input label="Input Port" placeholder="8080" value={rule.input_port || ""} onValueChange={(v) => handleWafChange(idx, "input_port", v)} size="sm" />
                             <Input className="col-span-2" label="Output Endpoint" placeholder="http://10.0.1.1:8080" value={rule.output_endpoint || ""} onValueChange={(v) => handleWafChange(idx, "output_endpoint", v)} size="sm" />
@@ -219,7 +219,7 @@ export function NGFWFunctions({ machine, machines, setMachines }) {
                             <Input label="Input Addr" placeholder="10.0.0.1" value={sig.input_addr || ""} onValueChange={(v) => handleSignatureChange(idx, "input_addr", v)} size="sm" />
                             <Input label="Output Addr" placeholder="10.0.1.1" value={sig.output_addr || ""} onValueChange={(v) => handleSignatureChange(idx, "output_addr", v)} size="sm" />
                             <Select label="New Int" placeholder="Select Interface" selectedKeys={sig.new_int ? [sig.new_int] : []} onChange={(e) => handleSignatureChange(idx, "new_int", e.target.value)} size="sm">
-                                {(machine.interfaces?.if || []).map((i) => i.eth?.number !== undefined ? <SelectItem key={`eth${i.eth.number}`} value={`eth${i.eth.number}`}>{`eth${i.eth.number}`}</SelectItem> : null)}
+                                {(machine.interfaces?.if || []).map((i) => i.eth?.number !== undefined ? <SelectItem key={`eth${i.eth.number + 1}`} value={`eth${i.eth.number + 1}`}>{`eth${i.eth.number + 1}`}</SelectItem> : null)}
                             </Select>
                             <Input label="Signature Name" placeholder="modbus-invalidreg" value={sig.signature_name || ""} onValueChange={(v) => handleSignatureChange(idx, "signature_name", v)} size="sm" />
                             <Input className="col-span-2" label="Signature Body" placeholder="alert tcp $HOME_NET 502 -> $EXTERNAL_NET any (...)" value={sig.signature_body || ""} onValueChange={(v) => handleSignatureChange(idx, "signature_body", v)} size="sm" />

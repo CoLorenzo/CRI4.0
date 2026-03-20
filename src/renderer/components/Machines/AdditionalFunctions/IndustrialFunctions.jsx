@@ -223,7 +223,7 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
                     <div className="mb-2">
                         <label className="text-sm font-semibold">Machine Selection</label>
                         <p className="text-xs text-text/50">
-                            Select an engine from the same subnet (eth0)
+                            Select an engine from the same subnet (eth1)
                         </p>
                     </div>
 
@@ -242,7 +242,7 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
                         </RadioGroup>
                     ) : (
                         <div className="text-sm text-text/50 p-2 bg-default-100 rounded">
-                            No engines available on the same subnet (eth0).
+                            No engines available on the same subnet (eth1).
                             Add an engine and connect it to the same collision domain.
                         </div>
                     )}
@@ -301,7 +301,7 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
                     <div className="mb-2">
                         <label className="text-sm font-semibold">Monitored Machines</label>
                         <p className="text-xs text-text/50">
-                            Select industrial machines in the same subnet (eth0)
+                            Select industrial machines in the same subnet (eth1)
                         </p>
                     </div>
 
@@ -319,7 +319,7 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
                         </CheckboxGroup>
                     ) : (
                         <div className="text-sm text-text/50 p-2 bg-default-100 rounded mb-2">
-                            No industrial machines available on the same subnet (eth0).
+                            No industrial machines available on the same subnet (eth1).
                         </div>
                     )}
 

@@ -54,7 +54,7 @@ export function ScadaFunctions({ machine, machines, setMachines }) {
             <div className="mb-2">
                 <label className="text-sm font-semibold">Monitored Machines</label>
                 <p className="text-xs text-text/50">
-                    Select industrial machines in the same subnet (eth0)
+                    Select industrial machines in the same subnet (eth1)
                 </p>
             </div>
 
@@ -72,7 +72,7 @@ export function ScadaFunctions({ machine, machines, setMachines }) {
                 </CheckboxGroup>
             ) : (
                 <div className="text-sm text-text/50 p-2 bg-default-100 rounded">
-                    No industrial machines available on the same subnet (eth0).
+                    No industrial machines available on the same subnet (eth1).
                     Add industrial machines and connect them to the same collision domain.
                 </div>
             )}

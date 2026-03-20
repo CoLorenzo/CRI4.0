@@ -191,7 +191,7 @@ function generate_nodes_edges(lab, ifNameAt, ifOspfCost, routingLabel) {
 			let domain_name = machineInterface.eth.domain;
 			if (!domain_name || domain_name === "") continue;
 
-			let if_name = (ifNameAt.checked ? "@" : "eth") + machineInterface.eth.number;
+			let if_name = (ifNameAt.checked ? "@" : "eth") + (machineInterface.eth.number + 1);
 			let domain_id = "domain-" + domain_name;
 			let app_to = "iplabel-" + domain_name + "-domain_ip";
 			let domain_ip; let if_ip;
