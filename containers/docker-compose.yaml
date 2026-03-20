@@ -198,7 +198,7 @@ services:
       - kali
   access-gain-crack-plc:
     build: ./access-gain/crack-plc
-    image: icr/access-gain-crack-plc
+    image: icr/access-gain-crack-plc:latest
     cap_add:
       - NET_ADMIN
     profiles:

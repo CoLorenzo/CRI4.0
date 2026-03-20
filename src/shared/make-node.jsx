@@ -292,6 +292,7 @@ done
 
             if [[ "$REGISTRY_ADDR_PROTECT_BTN" == "yes" ]]; then
               export PATH="$PATH:/root/.asdf/shims"
+
               snortadd 10.0.0.1:502 \${REGISTRY_ADDR_PROTECT_ADDR}:502 eth1 modbus-invalidreg 'alert tcp any 502 -> any any (msg: "Traffic detected"; sid:1000001; rev:1;)' 10m 5 1h
 
               yq -i '(.outputs[] | select(has("eve-log")).eve-log.types) |= (. + "modbus" | unique)' /etc/suricata/suricata.yaml

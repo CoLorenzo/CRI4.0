@@ -1,5 +1,7 @@
 #! /bin/bash
 
+set -x
+
 if [ "$#" -ne 8 ]; then
     echo "Usage: $0 <INPUT_ENDPOINT> <OUTPUT_ENDPOINT> <NEW_INT> <SIGNATURE_NAME> <SIGNATURE_BODY> <FINDTIME> <MAXRETRY> <BANTIME>"
     echo "Example: $0 10.0.0.1:502 10.0.1.1:502 eth1 modbus-invalidreg 'alert tcp $HOME_NET 502 -> $EXTERNAL_NET any (msg: \"Traffic detected\"; sid:1000001; rev:1; byte_test:1,=,0x02,8;)' 10m 5 1h"
@@ -21,6 +23,7 @@ OUTPUT_ADDR="$(echo ${OUTPUT_ENDPOINT} | cut -d: -f1)"
 OUTPUT_PORT="$(echo ${OUTPUT_ENDPOINT} | cut -d: -f2)"
 
 # add proxy
+
 sed -i '/stream {/a \
     server {\
         listen '"${INPUT_ENDPOINT}"'; \

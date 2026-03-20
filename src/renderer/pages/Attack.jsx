@@ -67,7 +67,7 @@ function Attack() {
         }
 
         // Handle legacy crack-plc from localStorage
-        if (!activeAttack && attacker.attackImage === "icr/injection-crack-plc") {
+        if (!activeAttack && attacker.attackImage === "icr/access-gain-crack-plc:latest") {
             category = "access-gain";
         } else if (activeAttack) {
             category = activeAttack.category;

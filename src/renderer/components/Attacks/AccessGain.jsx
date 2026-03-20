@@ -16,7 +16,7 @@ import AttackSelector from "./AttackSelector";
 import { extractTargetIPs } from "../../utils/ipUtils";
 
 function AccessGain({ attacker, attacks, isLoading, machines, setMachines, handleRefresh }) {
-  const [selectedImage, setSelectedImage] = useState(attacker.attackImage || "icr/access-gain-crack-plc");
+  const [selectedImage, setSelectedImage] = useState(attacker.attackImage || "icr/access-gain-crack-plc:latest");
   const { attackLoaded, setAttackLoaded } = useContext(NotificationContext);
   const [targets, setTargets] = useState(attacker.targets);
 

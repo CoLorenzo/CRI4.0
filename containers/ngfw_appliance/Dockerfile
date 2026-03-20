@@ -56,3 +56,5 @@ RUN printf '#!/bin/sh\nexec uv run smoloki "$@"\n' >/usr/local/bin/smoloki && ch
 
 COPY wafadd /usr/local/bin/wafadd
 RUN chmod +x /usr/local/bin/wafadd
+
+COPY loki.conf /etc/fail2ban/action.d/loki.conf

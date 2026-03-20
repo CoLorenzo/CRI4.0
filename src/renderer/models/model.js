@@ -472,8 +472,8 @@ export const attacksModel = [
     displayName: "Crack PLC",
     category: "access-gain",
     attackLoaded: false,
-    image: "",
-    isImage: false,
+    image: "icr/access-gain-crack-plc:latest",
+    isImage: true,
   },
   {
     name: "modbustcp-recon",
