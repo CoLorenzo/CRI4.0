@@ -265,6 +265,32 @@ tee -a  /root/.bashrc<<__EOF__
   export WAF_RULES='${safeJson}'
 __EOF__
 
+            if [ -n "$WAF_RULES" ] && [ "$WAF_RULES" != "[]" ]; then
+                export PATH="$PATH:/root/.asdf/shims"
+            fi
+`;
+        if (machine.ngfw && Array.isArray(machine.ngfw.wafRules)) {
+          for (const waf of machine.ngfw.wafRules) {
+            const interface_name = waf.interface || "eth1";
+            const input_port = waf.input_port || "8080";
+            const output_endpoint = waf.output_endpoint || "http://10.0.1.1:8080";
+            const findtime = waf.findtime || "10m";
+            const maxretry = waf.maxretry || "5";
+            const bantime = waf.bantime || "1h";
+            const page = waf.page || "/login";
+            const http_code = waf.http_code || "200";
+            const protocol = waf.protocol || "HTTP";
+            const method = waf.method || "POST";
+
+            extraCommands += `
+wafadd ${interface_name} ${input_port} ${output_endpoint} ${page} ${http_code} ${method} ${protocol} ${findtime} ${maxretry} ${bantime}
+`;
+          }
+        }
+        
+        extraCommands += `
+
+
             if [[ "$REGISTRY_ADDR_PROTECT_BTN" == "yes" ]]; then
               export PATH="$PATH:/root/.asdf/shims"
               snortadd 10.0.0.1:502 \${REGISTRY_ADDR_PROTECT_ADDR}:502 eth1 modbus-invalidreg 'alert tcp any 502 -> any any (msg: "Traffic detected"; sid:1000001; rev:1;)' 10m 5 1h

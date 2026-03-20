@@ -764,7 +764,9 @@ smoloki '{"job":"job","level":"info"}' '{"message":"ready"}'
 
 			for (const waf of machine.ngfw.wafRules) {
 				console.log("[DEBUG] Generating WAF rule for", machine.name);
-				const endpoint = waf.endpoint || "http://10.0.1.1:8080";
+				const interface_name = waf.interface || "eth1";
+				const input_port = waf.input_port || "8080";
+				const output_endpoint = waf.output_endpoint || "http://10.0.1.1:8080";
 				const findtime = waf.findtime || "10m";
 				const maxretry = waf.maxretry || "5";
 				const bantime = waf.bantime || "1h";
@@ -774,142 +776,8 @@ smoloki '{"job":"job","level":"info"}' '{"message":"ready"}'
 				const method = waf.method || "POST";
 
 				lab.file[machine.name + ".startup"] += `
-# WAF Configuration
-ENDPOINT="${endpoint}"
-FINDTIME="${findtime}"
-MAXRETRY="${maxretry}"
-BANTIME="${bantime}"
-PAGE="${page}"
-HTTP_CODE="${http_code}"
-PROTOCOL="${protocol}"
-METHOD="${method}"
-
-
-# Install dependencies if needed (though already in image)
-# apt update & apt install -y sudo nginx-full fail2ban fluent-bit
-
-#------MAIN--------------------
-sudo tee /etc/nginx/conf.d/proxy_8080.conf <<'EOF'
-server {
-    listen 8080;
-    server_name _;
-
-    location / {
-        proxy_pass __ENDPOINT__;
-
-        proxy_http_version 1.1;
-
-        # header importanti
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # websocket / keepalive compat
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-
-        proxy_read_timeout 300;
-        proxy_connect_timeout 300;
-    }
-}
-EOF
-sudo sed -i "s|__ENDPOINT__|$ENDPOINT|g" /etc/nginx/conf.d/proxy_8080.conf
-sudo rm /etc/nginx/sites-enabled/default
-
-sudo systemctl enable --now nginx
-sudo systemctl reload nginx || sudo service nginx reload
-
-# ---- FAIL2BAN
-sudo systemctl enable --now fail2ban
-
-sudo tee /etc/fail2ban/filter.d/nginx-login-200.conf > /dev/null <<EOF
-[Definition]
-failregex = ^<HOST>.*"\${METHOD}.*\${PAGE}.*\${PROTOCOL}/1\.[01]".* \${HTTP_CODE} [0-9]+
-ignoreregex =
-EOF
-
-sudo tee /etc/fail2ban/jail.d/nginx-login-200.local > /dev/null <<__EOF__
-[nginx-login-200]
-enabled  = true
-filter   = nginx-login-200
-logpath  = /var/log/nginx/access.log
-backend  = auto
-
-# Soglie
-findtime = \${FINDTIME}
-maxretry = \${MAXRETRY}
-bantime  = \${BANTIME}
-
-# Azione
-action   = %(action_mwl)s
-__EOF__
-
-sudo  service fail2ban restart
-
-#------fluetbit
-if ! command -v fluent-bit >/dev/null 2>&1; then
-    # Fallback installation
-    sudo apt update
-    sudo apt install -y curl gpg
-    curl -fsSL https://packages.fluentbit.io/fluentbit.key | \
-      sudo gpg --dearmor -o /usr/share/keyrings/fluentbit-keyring.gpg
-    echo 'deb [signed-by=/usr/share/keyrings/fluentbit-keyring.gpg] https://packages.fluentbit.io/debian/bookworm bookworm main' | \
-      sudo tee /etc/apt/sources.list.d/fluent-bit.list
-    sudo apt update
-    sudo apt install -y fluent-bit
-    sudo ln -s /opt/fluent-bit/bin/fluent-bit /usr/local/bin/fluent-bit
-    sudo mkdir -p /var/lib/fluent-bit
-    sudo chown $(whoami):$(whoami) /var/lib/fluent-bit
-    systemctl enable --now fluent-bit
-fi
-
-TEXT_FILE="/var/log/fail2ban.log"
-LOKI_IP="10.1.0.254"
-sudo tee /etc/fluent-bit/sender.conf > /dev/null <<'EOF'
-[SERVICE]
-    Flush         1
-    Daemon        Off
-    Log_Level     info
-    storage.path  /var/lib/fluent-bit/storage
-    Parsers_File  /etc/fluent-bit/parsers_fail2ban.conf
-
-# ========= INPUT =========
-[INPUT]
-    Name              tail
-    Path              /var/log/fail2ban.log
-    Tag               fail2ban.log
-    DB                /var/lib/fluent-bit/fail2ban.db
-    Mem_Buf_Limit     5MB
-    Skip_Long_Lines   On
-    storage.type      filesystem
-    Refresh_Interval  1
-    Read_From_Head    Off
-    Parser            fail2ban_ban
-
-# ========= FILTER =========
-[FILTER]
-    Name   grep
-    Match  fail2ban.log
-    Regex  action  Ban
-
-# ricostruisce la riga pulita
-[FILTER]
-    Name   modify
-    Match  fail2ban.log
-    Set    log Ban \${ip}
-
-# ========= OUTPUT =========
-[OUTPUT]
-    Name          loki
-    Match         fail2ban.log
-    Host          10.1.0.254
-    Port          3100
-    Labels        job=fail2ban,env=lab,host=f2b,ip=\${ip}
-    Line_Format   json
-EOF
-
-fluent-bit -c /etc/fluent-bit/sender.conf
+export PATH="$PATH:/root/.asdf/shims"
+wafadd ${interface_name} ${input_port} ${output_endpoint} ${page} ${http_code} ${method} ${protocol} ${findtime} ${maxretry} ${bantime}
 `;
 			}
 		}

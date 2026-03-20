@@ -47,7 +47,7 @@ export function NGFWFunctions({ machine, machines, setMachines }) {
                 ...(m.ngfw || {}),
                 wafRules: [
                     ...(m.ngfw?.wafRules || []),
-                    { endpoint: "", findtime: "", maxretry: "", bantime: "", page: "", http_code: "", protocol: "HTTP", method: "POST" },
+                    { interface: "", input_port: "", output_endpoint: "", findtime: "", maxretry: "", bantime: "", page: "", http_code: "", protocol: "HTTP", method: "POST" },
                 ],
             },
         }));
@@ -181,7 +181,11 @@ export function NGFWFunctions({ machine, machines, setMachines }) {
                             <Button size="sm" variant="light" color="danger" onPress={() => removeWaf(idx)} className="min-w-0 px-2 h-6 text-xs">✕</Button>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
-                            <Input label="Endpoint" placeholder="http://10.0.1.1:8080" value={rule.endpoint || ""} onValueChange={(v) => handleWafChange(idx, "endpoint", v)} size="sm" />
+                            <Select label="Interface" placeholder="Select Interface" selectedKeys={rule.interface ? [rule.interface] : []} onChange={(e) => handleWafChange(idx, "interface", e.target.value)} size="sm">
+                                {(machine.interfaces?.if || []).map((i) => i.eth?.number !== undefined ? <SelectItem key={`eth${i.eth.number}`} value={`eth${i.eth.number}`}>{`eth${i.eth.number}`}</SelectItem> : null)}
+                            </Select>
+                            <Input label="Input Port" placeholder="8080" value={rule.input_port || ""} onValueChange={(v) => handleWafChange(idx, "input_port", v)} size="sm" />
+                            <Input className="col-span-2" label="Output Endpoint" placeholder="http://10.0.1.1:8080" value={rule.output_endpoint || ""} onValueChange={(v) => handleWafChange(idx, "output_endpoint", v)} size="sm" />
                             <Input label="Find Time" placeholder="10m" value={rule.findtime || ""} onValueChange={(v) => handleWafChange(idx, "findtime", v)} size="sm" />
                             <Input label="Max Retry" placeholder="5" type="number" value={rule.maxretry || ""} onValueChange={(v) => handleWafChange(idx, "maxretry", v)} size="sm" />
                             <Input label="Ban Time" placeholder="1h" value={rule.bantime || ""} onValueChange={(v) => handleWafChange(idx, "bantime", v)} size="sm" />
@@ -214,7 +218,9 @@ export function NGFWFunctions({ machine, machines, setMachines }) {
                         <div className="grid grid-cols-2 gap-2">
                             <Input label="Input Addr" placeholder="10.0.0.1" value={sig.input_addr || ""} onValueChange={(v) => handleSignatureChange(idx, "input_addr", v)} size="sm" />
                             <Input label="Output Addr" placeholder="10.0.1.1" value={sig.output_addr || ""} onValueChange={(v) => handleSignatureChange(idx, "output_addr", v)} size="sm" />
-                            <Input label="New Int" placeholder="eth1" value={sig.new_int || ""} onValueChange={(v) => handleSignatureChange(idx, "new_int", v)} size="sm" />
+                            <Select label="New Int" placeholder="Select Interface" selectedKeys={sig.new_int ? [sig.new_int] : []} onChange={(e) => handleSignatureChange(idx, "new_int", e.target.value)} size="sm">
+                                {(machine.interfaces?.if || []).map((i) => i.eth?.number !== undefined ? <SelectItem key={`eth${i.eth.number}`} value={`eth${i.eth.number}`}>{`eth${i.eth.number}`}</SelectItem> : null)}
+                            </Select>
                             <Input label="Signature Name" placeholder="modbus-invalidreg" value={sig.signature_name || ""} onValueChange={(v) => handleSignatureChange(idx, "signature_name", v)} size="sm" />
                             <Input className="col-span-2" label="Signature Body" placeholder="alert tcp $HOME_NET 502 -> $EXTERNAL_NET any (...)" value={sig.signature_body || ""} onValueChange={(v) => handleSignatureChange(idx, "signature_body", v)} size="sm" />
                             <Input label="Find Time" placeholder="10m" value={sig.findtime || ""} onValueChange={(v) => handleSignatureChange(idx, "findtime", v)} size="sm" />
