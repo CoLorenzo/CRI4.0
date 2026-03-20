@@ -254,7 +254,7 @@ npm start &
         `
       }
 
-
+      // NGFW startup append
       if (machine.type === "ngfw") {
         const wafRulesJson = JSON.stringify(machine.ngfw?.wafRules || []);
         const safeJson = wafRulesJson.replace(/'/g, "'\\''");
@@ -268,27 +268,6 @@ __EOF__
             if [ -n "$WAF_RULES" ] && [ "$WAF_RULES" != "[]" ]; then
                 export PATH="$PATH:/root/.asdf/shims"
             fi
-`;
-        if (machine.ngfw && Array.isArray(machine.ngfw.wafRules)) {
-          for (const waf of machine.ngfw.wafRules) {
-            const interface_name = waf.interface || "eth1";
-            const input_port = waf.input_port || "8080";
-            const output_endpoint = waf.output_endpoint || "http://10.0.1.1:8080";
-            const findtime = waf.findtime || "10m";
-            const maxretry = waf.maxretry || "5";
-            const bantime = waf.bantime || "1h";
-            const page = waf.page || "/login";
-            const http_code = waf.http_code || "200";
-            const protocol = waf.protocol || "HTTP";
-            const method = waf.method || "POST";
-
-            extraCommands += `
-wafadd ${interface_name} ${input_port} ${output_endpoint} ${page} ${http_code} ${method} ${protocol} ${findtime} ${maxretry} ${bantime}
-`;
-          }
-        }
-        
-        extraCommands += `
 
 
             if [[ "$REGISTRY_ADDR_PROTECT_BTN" == "yes" ]]; then
@@ -310,47 +289,6 @@ wafadd ${interface_name} ${input_port} ${output_endpoint} ${page} ${http_code} $
 
             smoloki -b "http://10.1.0.254:3100" '{"job":"job","level":"info","host":"'"$HOSTNAME"'"}' '{"message":"ready"}'
           `;
-      }
-
-      // Signatures (array)
-      if (machine.ngfw && Array.isArray(machine.ngfw.signatures)) {
-        for (const sig of machine.ngfw.signatures) {
-          const input_addr = sig.input_addr || "10.0.0.1";
-          const output_addr = sig.output_addr || "10.0.1.1";
-          const new_int = sig.new_int || "eth1";
-          const signature_name = sig.signature_name || "modbus-invalidreg";
-          const signature_body = sig.signature_body || "alert tcp $HOME_NET 502 -> $EXTERNAL_NET any (msg: \\\"Traffic detected\\\"; sid:1000001; rev:1; byte_test:1,=,0x02,8;)";
-          const findtime = sig.findtime || "10m";
-          const maxretry = sig.maxretry || "5";
-          const bantime = sig.bantime || "1h";
-
-          //extraCommands += `snortadd ${input_addr} ${output_addr} ${new_int} ${signature_name} '${signature_body}' ${findtime} ${maxretry} ${bantime}\n`;
-        }
-      }
-
-      if (machine.ngfw) {
-        extraCommands += `
-            set +euo pipefail
-
-            if [[ "$REGISTRY_ADDR_PROTECT_BTN" == "yes" ]]; then
-              export PATH="$PATH:/root/.asdf/shims"
-              snortadd 10.0.0.1:502 \${REGISTRY_ADDR_PROTECT_ADDR}:502 eth1 modbus-invalidreg 'alert tcp any 502 -> any any (msg: "Traffic detected"; sid:1000001; rev:1;)' 10m 5 1h
-
-              yq -i '(.outputs[] | select(has("eve-log")).eve-log.types) |= (. + "modbus" | unique)' /etc/suricata/suricata.yaml
-              yq -i '.app-layer.protocols.modbus.enabled = "yes"' /etc/suricata/suricata.yaml
-
-              crudini --set /etc/fail2ban/jail.d/suricata-1000001.local "suricata-1000001" logpath "/tmp/f2b.log"
-              # wait for kernel module to be loaded
-              sleep 3
-              service suricata start
-              sleep 1
-              service f2bcompanion start
-              sleep 1
-              service fail2ban restart
-            fi
-
-            smoloki -b "http://10.1.0.254:3100" '{"job":"job","level":"info","host":"'"$HOSTNAME"'"}' '{"message":"ready"}'
-            `;
       }
       lab.file[`${machineName}.startup`] = header + ipSetup + (body ? body + "\n\n" : "") + extraCommands;
     }
