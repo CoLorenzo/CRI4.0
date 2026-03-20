@@ -265,6 +265,26 @@ tee -a  /root/.bashrc<<__EOF__
   export WAF_RULES='${safeJson}'
 __EOF__
 
+# Apply all the waf rules
+WAF_RULES_LEN=$(echo $WAF_RULES | jq -r 'length')
+
+for ((i = 0; i <= \${WAF_RULES_LEN} - 1; i += 1)); do
+    INTERFACE="$(echo \${WAF_RULES} | jq -r .[$i].interface)"
+    INPUT_PORT="$(echo \${WAF_RULES} | jq -r .[$i].input_port)"
+    OUTPUT_ENDPOINT="$(echo \${WAF_RULES} | jq -r .[$i].output_endpoint)"
+    PAGE="$(echo \${WAF_RULES} | jq -r .[$i].page)"
+    HTTP_CODE="$(echo \${WAF_RULES} | jq -r .[$i].http_code)"
+    METHOD="$(echo \${WAF_RULES} | jq -r .[$i].method)"
+    PROTOCOL="$(echo \${WAF_RULES} | jq -r .[$i].protocol)"
+    FINDTIME="$(echo \${WAF_RULES} | jq -r .[$i].findtime)"
+    MAXRETRY="$(echo \${WAF_RULES} | jq -r .[$i].maxretry)"
+    BANTIME="$(echo \${WAF_RULES} | jq -r .[$i].bantime)"
+    wafadd \${INTERFACE} \${INPUT_PORT} \${OUTPUT_ENDPOINT} \${PAGE} \${HTTP_CODE} \${METHOD} \${PROTOCOL} \${FINDTIME} \${MAXRETRY} \${BANTIME}
+done
+
+
+
+
             if [ -n "$WAF_RULES" ] && [ "$WAF_RULES" != "[]" ]; then
                 export PATH="$PATH:/root/.asdf/shims"
             fi
