@@ -53,3 +53,6 @@ RUN chmod +x /etc/init.d/suricata
 # Install smoloki
 RUN uv tool install smoloki --with requests
 RUN printf '#!/bin/sh\nexec uv run smoloki "$@"\n' >/usr/local/bin/smoloki && chmod +x /usr/local/bin/smoloki
+
+COPY wafadd /usr/local/bin/wafadd
+RUN chmod +x /usr/local/bin/wafadd
