@@ -760,7 +760,7 @@ smoloki '{"job":"job","level":"info"}' '{"message":"ready"}'
 			const wafRulesJson = JSON.stringify(machine.ngfw.wafRules);
 			const safeJson = wafRulesJson.replace(/'/g, "'\\''");
 			lab.file[machine.name + ".startup"] += `\nexport WAF_RULES='${safeJson}'\n`;
-			lab.file[machine.name + ".startup"] += `echo "export WAF_RULES='${safeJson}'" >> /root/.bashrc\n\n`;
+			lab.file[machine.name + ".startup"] += `cat << 'WAF_EOF' >> /root/.bashrc\nexport WAF_RULES='${safeJson}'\nWAF_EOF\n\n`;
 
 			for (const waf of machine.ngfw.wafRules) {
 				console.log("[DEBUG] Generating WAF rule for", machine.name);

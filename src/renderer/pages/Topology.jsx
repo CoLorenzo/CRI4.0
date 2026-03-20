@@ -15,6 +15,7 @@ import UIModal from "../components/UIModal";
 import PasswordModal from "../components/PasswordModal";
 import { toast } from 'react-hot-toast';
 import LogsModal from "../components/LogsModal";
+import ErrorModal from "../components/ErrorModal";
 import { getMachineIps } from "../utils/ipUtils";
 
 import { api } from "../api";
@@ -39,6 +40,9 @@ function Topology() {
 
   // Password Modal State
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+
+  // Error Modal State
+  const [errorModalOpen, setErrorModalOpen] = useState({ isOpen: false, message: "" });
 
   const [machineStatuses, setMachineStatuses] = useState({});
   const pollingIntervalRef = useRef(null);
@@ -97,7 +101,8 @@ function Topology() {
       
     } catch (e) {
       console.error("Run simulation error:", e);
-      toast.error("Simulation failed: " + e.message);
+      setErrorModalOpen({ isOpen: true, message: String(e.message || e) });
+      toast.error("Simulation failed.");
       setShowSimulationBanner(false);
     }
   };
@@ -545,6 +550,11 @@ function Topology() {
         isOpen={passwordModalOpen}
         onClose={() => setPasswordModalOpen(false)}
         onSubmit={handleSimulationStart}
+      />
+      <ErrorModal
+        isOpen={errorModalOpen.isOpen}
+        onClose={() => setErrorModalOpen({ ...errorModalOpen, isOpen: false })}
+        message={errorModalOpen.message}
       />
     </div>
   );

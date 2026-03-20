@@ -96,6 +96,13 @@ export const api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ machines, labInfo, sudoPassword }),
         });
+
+        if (response.status === 500) {
+            const errorText = await response.text();
+            console.error('500 Internal Server Error:', errorText);
+            throw new Error(`500 Internal Server Error: ${errorText}`);
+        }
+
         const data = await response.json();
         return data.output;
     },
