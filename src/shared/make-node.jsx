@@ -243,12 +243,6 @@ npm start &
 `;
       }
 
-      if (machine.type === "fan") {
-        extraCommands += `
-        smoloki -b "http://10.1.0.254:3100" '{"job":"job","level":"info","host":"'"$HOSTNAME"'"}' '{"message":"ready"}'
-        `
-      }
-
 
       if (machine.type === "temperature_sensor") {
         extraCommands += `
