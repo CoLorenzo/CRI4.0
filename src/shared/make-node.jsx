@@ -234,7 +234,7 @@ stunnel
             }
           }
         }
-        
+
         const safeJson = JSON.stringify(monitoredMachines).replace(/'/g, "'\\''");
         extraCommands += `\nexport MONITORED_MACHINES='${safeJson}'\n`;
         extraCommands += `cat << 'MONITORED_EOF' >> /root/.bashrc\nexport MONITORED_MACHINES='${safeJson}'\nMONITORED_EOF\n` + `
@@ -263,10 +263,45 @@ if [ -f "/shared/\${HOSTNAME}.db" ]; then
   cp /shared/\${HOSTNAME}.db /usr/src/app/FUXA/server/_appdata/project.fuxap.db
 fi
 
+
+
+npm start & disown
+
+# add machines
+
+HOST="http://localhost:1881"
+INTERVAL=2
+while true; do
+    STATUS=$(curl -s -o /dev/null -w "%{http_code}" "\$HOST" || echo "000")
+    if [[ "\$STATUS" == "200" ]]; then
+        echo "online"
+        break
+    fi
+    echo "Host unreachable (HTTP \$STATUS). try again in \$INTERVAL"
+    sleep "\$INTERVAL"
+done
+
+MONITORED_MACHINES_LEN=$(echo $MONITORED_MACHINES | jq 'length')
+for (( i=0; i<\${MONITORED_MACHINES_LEN}; i++ )); do
+    MACHINE_NAME=$(echo \$MONITORED_MACHINES | jq -r .[$i].name)
+    MACHINE_TYPE=$(echo \$MONITORED_MACHINES | jq -r .[$i].type)
+    MACHINE_ADDRESS=$(echo \$MONITORED_MACHINES | jq -r .[$i].address)
+    fuxa_device_add localhost:1881 "\${MACHINE_NAME}" "\${MACHINE_ADDRESS}:502" 1000
+    
+    #insert tag
+    case "\$MACHINE_TYPE" in
+    "temperature_sensor")
+		fuxa_tag_add localhost:1881 \${MACHINE_NAME} temperature 1 Int16 input_register temperature
+        ;;
+    "fan")
+	    fuxa_tag_add localhost:1881 \${MACHINE_NAME} status 1 Bool digital_input status
+        ;;
+	esac
+    
+done
+
+
 smoloki -b "http://10.1.0.254:3100" '{"job":"job","level":"info","host":"'"$HOSTNAME"'"}' '{"message":"ready"}'
-
-
-npm start &
 `;
       }
 
