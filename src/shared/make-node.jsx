@@ -286,7 +286,7 @@ for (( i=0; i<\${MONITORED_MACHINES_LEN}; i++ )); do
     MACHINE_NAME=$(echo \$MONITORED_MACHINES | jq -r .[$i].name)
     MACHINE_TYPE=$(echo \$MONITORED_MACHINES | jq -r .[$i].type)
     MACHINE_ADDRESS=$(echo \$MONITORED_MACHINES | jq -r .[$i].address)
-    fuxa_device_add localhost:1881 "\${MACHINE_NAME}" "\${MACHINE_ADDRESS}:502" 1000
+    fuxa_device_add localhost:1881 "\${MACHINE_NAME}" "\${MACHINE_ADDRESS}:502" 250
     
     #insert tag
     case "\$MACHINE_TYPE" in
