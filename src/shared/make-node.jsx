@@ -294,7 +294,7 @@ for (( i=0; i<\${MONITORED_MACHINES_LEN}; i++ )); do
 		fuxa_tag_add localhost:1881 \${MACHINE_NAME} temperature 1 Int16 input_register temperature
         ;;
     "fan")
-	    fuxa_tag_add localhost:1881 \${MACHINE_NAME} status 1 Bool digital_input status
+	    fuxa_tag_add localhost:1881 \${MACHINE_NAME} status 1 Bool coil_status status
         ;;
 	esac
     
