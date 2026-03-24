@@ -687,6 +687,35 @@ function makeIndustrialDevices(netkit, lab) {
 				}
 			}
 		}
+
+		if (machine.name && machine.name != "" && machine.type === "scada") {
+			let monitoredMachines = [];
+			if (machine.industrial && machine.industrial.monitored_machines && Array.isArray(machine.industrial.monitored_machines)) {
+				for (const monitoredId of machine.industrial.monitored_machines) {
+					const targetMachine = netkit.find(m => m.id === monitoredId);
+					if (targetMachine) {
+						let targetIp = null;
+						const eth1Interface = targetMachine.interfaces?.if?.find((i) => i.eth?.number === 1);
+						if (eth1Interface && eth1Interface.ip) {
+							targetIp = eth1Interface.ip.split("/")[0];
+						}
+						if (!targetIp && targetMachine.interfaces?.if?.[0]?.ip) {
+							targetIp = targetMachine.interfaces.if[0].ip.split("/")[0];
+						}
+						
+						monitoredMachines.push({
+							name: targetMachine.name || targetMachine.type,
+							type: targetMachine.type,
+							address: targetIp
+						});
+					}
+				}
+			}
+			
+			const safeJson = JSON.stringify(monitoredMachines).replace(/'/g, "'\\''");
+			lab.file[machine.name + ".startup"] += `\nexport MONITORED_MACHINES='${safeJson}'\n`;
+			lab.file[machine.name + ".startup"] += `cat << 'MONITORED_EOF' >> /root/.bashrc\nexport MONITORED_MACHINES='${safeJson}'\nMONITORED_EOF\n`;
+		}
 	}
 }
 

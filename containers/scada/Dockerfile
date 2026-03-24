@@ -1,6 +1,6 @@
 FROM frangoteam/fuxa:latest
 
-RUN apt update && apt install -y iproute2
+RUN apt update && apt install -y iproute2 jq
 
 # Install smoloki
 RUN apt update && apt install -y curl ca-certificates
