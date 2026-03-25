@@ -313,6 +313,12 @@ smoloki -b "http://10.1.0.254:3100" '{"job":"job","level":"info","host":"'"$HOST
       }
 
 
+      if (machine.type === "terminal") {
+        extraCommands += `
+        smoloki -b "http://10.1.0.254:3100" '{"job":"job","level":"info","host":"'"$HOSTNAME"'"}' '{"message":"ready"}'
+        `
+      }
+
       if (machine.type === "attacker") {
         extraCommands += `
         smoloki -b "http://10.1.0.254:3100" '{"job":"job","level":"info","host":"'"$HOSTNAME"'"}' '{"message":"ready"}'

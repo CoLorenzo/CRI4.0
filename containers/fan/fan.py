@@ -43,23 +43,17 @@ context = ModbusServerContext(devices=store, single=True)
 def update_values(context):
     current_rpm = 0.0
     while True:
-        # Read Power (HR 0)
+        # Read Target RPM (HR 0)
         hr0 = context[0].getValues(3, 0, count=1)
         if isinstance(hr0, list):
-            power = hr0[0]
-            if power == 0: power = 1
+            target_rpm = hr0[0]
         else:
-            power = 1 # Default
-        log.info(f"Read power (HR 0): {power}")
-
-        # Read Target RPM (HR 1)
-        hr1 = context[0].getValues(3, 1, count=1)
-        if isinstance(hr1, list):
-            target_rpm = hr1[0]
-        else:
-            log.error(f"Error reading Target RPM from HR 1: {hr1}")
+            log.error(f"Error reading Target RPM from HR 0: {hr0}")
             target_rpm = 0.0 # Default if error
-        log.info(f"Target RPM (HR 1): {target_rpm}")
+        log.info(f"Target RPM (HR 0): {target_rpm}")
+
+        # Power is no longer read from registers, defaulting to 1 for cooling calculation
+        power = 1.0
 
         # Simulate RPM transition
         if current_rpm < target_rpm:
