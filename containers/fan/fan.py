@@ -9,6 +9,7 @@ import logging
 import random
 import time
 import threading
+import math
 
 import os
 
@@ -18,7 +19,7 @@ parser.add_argument("-a", "--address", required=False, default="0.0.0.0", help="
 parser.add_argument("-p", "--port", required=False, default=502, type=int, help="ModbusTCP port")
 parser.add_argument("-c", "--capacity", required=False, default=float(os.environ.get("CAPACITY", 2.0)), type=float, help="Fan capacity")
 parser.add_argument("-e", "--endpoint", required=False, default=os.environ.get("ENDPOINT", "http://localhost:8000/"), help="Endpoint API REST")
-parser.add_argument("-ft", "--fetch-time", required=False, default=1.0, type=float, help="Fetch time in seconds")
+parser.add_argument("-ft", "--fetch-time", required=False, default=0.1, type=float, help="Fetch time in seconds")
 parser.add_argument("-acc", "--acceleration", required=False, default=float(os.environ.get("ACCELERATION", 100.0)), type=float, help="RPM acceleration (RPM/s)")
 args = parser.parse_args()
 
@@ -55,12 +56,10 @@ def update_values(context):
         # Power is no longer read from registers, defaulting to 1 for cooling calculation
         power = 1.0
 
-        # Simulate RPM transition
-        if current_rpm < target_rpm:
-            current_rpm = min(target_rpm, current_rpm + args.acceleration * args.fetch_time)
-        elif current_rpm > target_rpm:
-            current_rpm = max(target_rpm, current_rpm - args.acceleration * args.fetch_time)
-        
+        delta = target_rpm - current_rpm
+        delta_to_apply = delta * 0.025
+        current_rpm += delta_to_apply
+
         # Update Current RPM (IR 1)
         context[0].setValues(4, 1, [int(current_rpm)])
         log.info(f"Current RPM: {int(current_rpm)}")
