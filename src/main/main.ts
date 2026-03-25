@@ -184,111 +184,83 @@ ipcMain.handle('docker-build', async (event, arg) => {
 
 
 ipcMain.handle('docker-inspect', async (event, machineName) => {
-  return new Promise((resolve, reject) => {
-    // 1. Find the container by name pattern (Kathara: _machineName_)
-    const findCmd = `docker ps --filter name=_${machineName}_ --format "{{.Names}}"`;
+  const patterns = [
+    CURRENT_LAB ? `kathara_.*_${CURRENT_LAB.name}_${machineName}_` : `_${machineName}_`,
+    `_${machineName}_`
+  ];
 
-    exec(findCmd, (findErr, findStdout) => {
-      if (findErr) {
-        sendLog('error', `❌ Error searching for container ${machineName}: ${findErr.message}`);
-        if (findErr.message.includes('permission denied') || findErr.message.includes('connect to the docker API')) {
-          throw new Error("Docker permission denied. Run: sudo usermod -aG docker $USER");
-        }
-        return resolve([]);
-      }
-
-      const containerName = findStdout.trim().split("\n")[0];
-      if (!containerName) {
-        // Fallback: try exact match just in case
-        exec(`docker inspect ${machineName}`, (inspectErr, inspectStdout) => {
-          if (inspectErr) {
-            sendLog('warn', `⚠️ Could not find container for ${machineName}`);
-            resolve([]);
-          } else {
-            try { resolve(JSON.parse(inspectStdout)); }
-            catch (e) { resolve([]); }
-          }
-        });
-        return;
-      }
-
-      // 2. Inspect the found container
-      exec(`docker inspect ${containerName}`, (inspectErr, inspectStdout) => {
-        if (inspectErr) {
-          sendLog('error', `❌ docker inspect failed for ${containerName}: ${inspectErr.message}`);
-          resolve([]);
-        } else {
-          try {
-            resolve(JSON.parse(inspectStdout));
-          } catch (e) {
-            sendLog('error', `❌ Failed to parse docker inspect output: ${e}`);
-            resolve([]);
-          }
-        }
+  const findContainer = async () => {
+    for (const pattern of patterns) {
+      const name = await new Promise<string | null>(r => {
+        exec(`docker ps --filter name=${pattern} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
       });
+      if (name) return name;
+    }
+    return await new Promise<string | null>(r => {
+      exec(`docker ps --filter ancestor=${machineName} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
+    });
+  };
+
+  const containerName = await findContainer();
+
+  if (!containerName) {
+    sendLog('warn', `⚠️ Could not find container for ${machineName}`);
+    return [];
+  }
+
+  return new Promise((resolve) => {
+    exec(`docker inspect ${containerName}`, (inspectErr, inspectStdout) => {
+      if (inspectErr) {
+        sendLog('error', `❌ docker inspect failed for ${containerName}: ${inspectErr.message}`);
+        resolve([]);
+      } else {
+        try {
+          resolve(JSON.parse(inspectStdout));
+        } catch (e) {
+          sendLog('error', `❌ Failed to parse docker inspect output: ${e}`);
+          resolve([]);
+        }
+      }
     });
   });
 });
 
 ipcMain.handle('docker-logs', async (event, machineName) => {
-  return new Promise((resolve, reject) => {
-    sendLog('log', `🔍 docker-logs called for: ${machineName}`);
+  sendLog('log', `🔍 docker-logs called for: ${machineName}`);
 
-    // Try to find container using the same logic as terminal.create
-    // 1. First try by ancestor (image name)
-    const ancestorCmd = `docker ps --filter ancestor=${machineName} --format "{{.Names}}"`;
-    sendLog('log', `Trying ancestor: ${ancestorCmd}`);
+  const patterns = [
+    CURRENT_LAB ? `kathara_.*_${CURRENT_LAB.name}_${machineName}_` : `_${machineName}_`,
+    `_${machineName}_`
+  ];
 
-    exec(ancestorCmd, (err1, stdout1) => {
-      const nameByAncestor = stdout1 ? stdout1.trim().split("\n")[0] : null;
-
-      if (nameByAncestor) {
-        sendLog('log', `✅ Found by ancestor: ${nameByAncestor}`);
-        exec(`docker logs ${nameByAncestor}`, (logsErr, logsStdout) => {
-          if (logsErr) {
-            sendLog('error', `❌ docker logs failed: ${logsErr.message}`);
-            resolve('');
-          } else {
-            sendLog('log', `✅ Got logs: ${logsStdout.length} chars`);
-            resolve(logsStdout);
-          }
-        });
-        return;
-      }
-
-      // 2. Fallback: try by name pattern (Kathara: _machineName_)
-      const nameCmd = `docker ps --filter name=_${machineName}_ --format "{{.Names}}"`;
-      sendLog('log', `Trying name pattern: ${nameCmd}`);
-
-      exec(nameCmd, (err2, stdout2) => {
-        const nameByPattern = stdout2 ? stdout2.trim().split("\n")[0] : null;
-
-        if (nameByPattern) {
-          sendLog('log', `✅ Found by pattern: ${nameByPattern}`);
-          exec(`docker logs ${nameByPattern}`, (logsErr, logsStdout) => {
-            if (logsErr) {
-              sendLog('error', `❌ docker logs failed: ${logsErr.message}`);
-              resolve('');
-            } else {
-              sendLog('log', `✅ Got logs: ${logsStdout.length} chars`);
-              resolve(logsStdout);
-            }
-          });
-          return;
-        }
-
-        // 3. Last resort: try exact name
-        sendLog('warn', `⚠️ Container not found by ancestor or pattern, trying exact: ${machineName}`);
-        exec(`docker logs ${machineName}`, (logsErr, logsStdout) => {
-          if (logsErr) {
-            sendLog('error', `❌ Could not get logs: ${logsErr.message}`);
-            resolve('');
-          } else {
-            sendLog('log', `✅ Got logs (exact): ${logsStdout.length} chars`);
-            resolve(logsStdout);
-          }
-        });
+  const findContainer = async () => {
+    for (const pattern of patterns) {
+      const name = await new Promise<string | null>(r => {
+        exec(`docker ps --filter name=${pattern} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
       });
+      if (name) return name;
+    }
+    return await new Promise<string | null>(r => {
+      exec(`docker ps --filter ancestor=${machineName} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
+    });
+  };
+
+  const containerName = await findContainer();
+
+  if (!containerName) {
+    sendLog('warn', `⚠️ Container not found for ${machineName}. Cannot get logs.`);
+    return '';
+  }
+
+  return new Promise((resolve) => {
+    exec(`docker logs ${containerName}`, (logsErr, logsStdout) => {
+      if (logsErr) {
+        sendLog('error', `❌ docker logs failed: ${logsErr.message}`);
+        resolve('');
+      } else {
+        sendLog('log', `✅ Got logs: ${logsStdout.length} chars`);
+        resolve(logsStdout);
+      }
     });
   });
 });
@@ -340,51 +312,31 @@ ipcMain.handle("simulate-attack", async (event, { container, command }) => {
 
 
 
-  const containerName = await new Promise<string>((resolve, reject) => {
+  const resolvedName = await (async () => {
+    const patterns = [
+      CURRENT_LAB ? `kathara_.*_${CURRENT_LAB.name}_${container}_` : `_${container}_`,
+      `_${container}_`
+    ];
+    for (const pattern of patterns) {
+      const name = await new Promise<string | null>(r => {
+        exec(`docker ps --filter name=${pattern} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
+      });
+      if (name) return name;
+    }
+    return await new Promise<string | null>(r => {
+      exec(`docker ps --filter ancestor=${container} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
+    });
+  })();
 
-    exec(
-
-      `docker ps --filter ancestor=${container} --format "{{.Names}}"`,
-
-      (err, stdout, stderr) => {
-
-        if (err) {
-
-          sendLog('error', `❌ Error looking for container: ${stderr || err.message}`);
-
-          return reject(`Failed to find container for image: ${container}`);
-
-        }
-
-
-
-        const name = stdout.trim().split("\n")[0];
-
-        if (!name) {
-
-          sendLog('warn', `⚠️ No running container found for image: ${container}`);
-
-          return reject(`No running container found for image: ${container}`);
-
-        }
-
-
-
-        sendLog('log', `✅ Using container: ${name}`);
-
-        resolve(name);
-
-      }
-
-    );
-
-  });
+  if (!resolvedName) {
+    sendLog('warn', `⚠️ No running container found for image/name: ${container}`);
+    throw new Error(`No running container found for image: ${container}`);
+  }
 
 
 
   return new Promise((resolve, reject) => {
-
-    const dockerArgs = ['exec', containerName, ...args];
+    const dockerArgs = ['exec', resolvedName, ...args];
 
     sendLog('log', `Spawning process: docker ${dockerArgs.join(' ')}`);
 
@@ -592,19 +544,23 @@ ipcMain.handle('terminal.create', async (event, containerName: string) => {
   const shell = 'docker';
   let targetContainer = '';
   try {
-    const ancestorName = await new Promise<string>((resolve, reject) => {
-      exec(`docker ps --filter ancestor=${containerName} --format "{{.Names}}"`, (err, stdout) => {
-        const name = stdout ? stdout.trim().split("\n")[0] : null;
-        if (name) resolve(name);
-        else {
-          exec(`docker ps --filter name=_${containerName}_ --format "{{.Names}}"`, (err2, stdout2) => {
-            const name2 = stdout2 ? stdout2.trim().split("\n")[0] : null;
-            if (name2) resolve(name2);
-            else reject('Container not found');
-          });
-        }
+    const ancestorName = await (async () => {
+      const patterns = [
+        CURRENT_LAB ? `kathara_.*_${CURRENT_LAB.name}_${containerName}_` : `_${containerName}_`,
+        `_${containerName}_`
+      ];
+      for (const pattern of patterns) {
+        const name = await new Promise<string | null>(r => {
+          exec(`docker ps --filter name=${pattern} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
+        });
+        if (name) return name;
+      }
+      return await new Promise<string | null>(r => {
+        exec(`docker ps --filter ancestor=${containerName} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
       });
-    });
+    })();
+
+    if (!ancestorName) throw new Error('Container not found');
     targetContainer = ancestorName;
   } catch (e: any) {
     sendLog('error', `Terminal creation failed: ${e}`);
@@ -666,52 +622,47 @@ ipcMain.handle('terminal.kill', (event, id) => {
 
 
 ipcMain.handle('save-scada-project', async (event, machineName) => {
+  sendLog('log', `💾 save-scada-project called for: ${machineName}`);
+
+  const patterns = [
+    CURRENT_LAB ? `kathara_.*_${CURRENT_LAB.name}_${machineName}_` : `_${machineName}_`,
+    `_${machineName}_`
+  ];
+
+  const findContainer = async () => {
+    for (const pattern of patterns) {
+      const name = await new Promise<string | null>(r => {
+        exec(`docker ps --filter name=${pattern} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
+      });
+      if (name) return name;
+    }
+    return await new Promise<string | null>(r => {
+      exec(`docker ps --filter ancestor=${machineName} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
+    });
+  };
+
+  const containerName = await findContainer();
+
+  if (!containerName) {
+    sendLog('warn', `⚠️ Container for ${machineName} not found.`);
+    throw new Error("Container not found");
+  }
+
+  // Trigger SAVE in FUXA before reading
+  const saveCmd = `docker exec ${containerName} curl -s -X POST http://localhost:1881/api/projectData -H "Content-Type: application/json" -d '{"cmd": "save-project"}'`;
+  await new Promise(r => exec(saveCmd, r));
+  await new Promise(r => setTimeout(r, 500)); // Brief pause for disk write
+
   return new Promise((resolve, reject) => {
-    sendLog('log', `💾 save-scada-project called for: ${machineName}`);
-
-    // Try to find container by name pattern (Kathara: _machineName_)
-    const nameCmd = `docker ps --filter name=_${machineName}_ --format "{{.Names}}"`;
-
-    exec(nameCmd, (err, stdout) => {
-      if (err) {
-        sendLog('error', `❌ Error finding container for ${machineName}: ${err.message}`);
-        return reject(err.message);
-      }
-
-      let containerName = stdout ? stdout.trim().split("\n")[0] : null;
-
-      const runBase64 = (targetContainer: string) => {
-        const filePath = "/usr/src/app/FUXA/server/_appdata/project.fuxap.db";
-        // Use base64 to safeguard binary data
-        const cmd = `docker exec ${targetContainer} base64 "${filePath}"`;
-        exec(cmd, { maxBuffer: 1024 * 1024 * 50 }, (error, stdout, stderr) => {
-          if (error) {
-            sendLog('error', `❌ Failed to read project file: ${stderr || error.message}`);
-            // Resolve empty to indicate failure without crashing logic, or reject?
-            // Alert in frontend handles empty string check.
-            resolve("");
-          } else {
-            sendLog('log', `✅ Project file read (${stdout.length} chars)`);
-            resolve(stdout.trim());
-          }
-        });
-      };
-
-      if (!containerName) {
-        // Fallback: try by ancestor (image name) if machineName is used as image name?
-        // Usually machineName is the hostname.
-        // Let's rely on name pattern first. If not found, log warning.
-        sendLog('warn', `⚠️ Container for ${machineName} not found by name pattern. Trying ancestor...`);
-        exec(`docker ps --filter ancestor=${machineName} --format "{{.Names}}"`, (err2, stdout2) => {
-          containerName = stdout2 ? stdout2.trim().split("\n")[0] : null;
-          if (containerName) {
-            runBase64(containerName);
-          } else {
-            reject("Container not found");
-          }
-        });
+    const filePath = "/usr/src/app/FUXA/server/_appdata/project.fuxap.db";
+    const cmd = `docker exec ${containerName} base64 "${filePath}"`;
+    exec(cmd, { maxBuffer: 1024 * 1024 * 50 }, (error, stdout, stderr) => {
+      if (error) {
+        sendLog('error', `❌ Failed to read project file: ${stderr || error.message}`);
+        resolve("");
       } else {
-        runBase64(containerName);
+        sendLog('log', `✅ Project file read (${stdout.length} chars)`);
+        resolve(stdout.trim());
       }
     });
   });
