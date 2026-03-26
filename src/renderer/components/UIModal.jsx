@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@nextui-org/react";
 
-export default function UIModal({ isOpen, onClose, url, title }) {
+export default function UIModal({ isOpen, onClose, url, title, zoom = 1 }) {
     return (
         <Modal
             isOpen={isOpen}
@@ -22,6 +22,7 @@ export default function UIModal({ isOpen, onClose, url, title }) {
                                         src={url}
                                         title="UI View"
                                         className="w-full h-full border-none"
+                                        style={{ zoom: zoom }}
                                         sandbox="allow-same-origin allow-scripts allow-forms"
                                     />
                                 ) : (

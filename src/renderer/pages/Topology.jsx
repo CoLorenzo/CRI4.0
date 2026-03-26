@@ -33,7 +33,7 @@ function Topology() {
   const { activeTerminals, setActiveTerminals } = useContext(TerminalContext);
 
   // UI Modal State
-  const [uiModal, setUiModal] = useState({ isOpen: false, url: "", title: "" });
+  const [uiModal, setUiModal] = useState({ isOpen: false, url: "", title: "", zoom: 1 });
 
   // Logs Modal State
   const [logsModal, setLogsModal] = useState({ isOpen: false, containerName: "" });
@@ -368,7 +368,8 @@ function Topology() {
                       setUiModal({
                         isOpen: true,
                         url,
-                        title: `${machineName} (${machine.type})`
+                        title: `${machineName} (${machine.type})`,
+                        zoom: machine.type === "plc" ? 0.8 : 1
                       });
                     } catch (e) {
                       console.error("Failed to resolve container IP", e);
@@ -381,7 +382,8 @@ function Topology() {
                       setUiModal({
                         isOpen: true,
                         url,
-                        title: `${machineName} (${machine.type}) - (IP Resolve Failed)`
+                        title: `${machineName} (${machine.type}) - (IP Resolve Failed)`,
+                        zoom: machine.type === "plc" ? 0.8 : 1
                       });
                     }
                   }}
@@ -540,6 +542,7 @@ function Topology() {
         onClose={() => setUiModal({ ...uiModal, isOpen: false })}
         url={uiModal.url}
         title={uiModal.title}
+        zoom={uiModal.zoom}
       />
       <LogsModal
         isOpen={logsModal.isOpen}
