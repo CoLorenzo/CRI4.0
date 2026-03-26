@@ -15,6 +15,7 @@ import UIModal from "../components/UIModal";
 import PasswordModal from "../components/PasswordModal";
 import { toast } from 'react-hot-toast';
 import LogsModal from "../components/LogsModal";
+import AttackStatusModal from "../components/AttackStatusModal";
 import ErrorModal from "../components/ErrorModal";
 import { getMachineIps } from "../utils/ipUtils";
 
@@ -37,6 +38,9 @@ function Topology() {
 
   // Logs Modal State
   const [logsModal, setLogsModal] = useState({ isOpen: false, containerName: "" });
+
+  // Attack Status Modal State
+  const [attackStatusModal, setAttackStatusModal] = useState({ isOpen: false, attackerName: "" });
 
   // Password Modal State
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
@@ -391,6 +395,10 @@ function Topology() {
                     const machineName = nodeId.replace("machine-", "");
                     setLogsModal({ isOpen: true, containerName: machineName });
                   }}
+                  onOpenAttackStatus={(nodeId) => {
+                    const machineName = nodeId.replace("machine-", "");
+                    setAttackStatusModal({ isOpen: true, attackerName: machineName });
+                  }}
                   onStartAttack={(nodeId) => simulateAttack(nodeId)}
                   onStopAttack={(nodeId) => stopAttack(nodeId)}
                 />
@@ -548,6 +556,11 @@ function Topology() {
         isOpen={logsModal.isOpen}
         onClose={() => setLogsModal({ ...logsModal, isOpen: false })}
         containerName={logsModal.containerName}
+      />
+      <AttackStatusModal
+        isOpen={attackStatusModal.isOpen}
+        onClose={() => setAttackStatusModal({ ...attackStatusModal, isOpen: false })}
+        attackerName={attackStatusModal.attackerName}
       />
       <PasswordModal
         isOpen={passwordModalOpen}

@@ -186,6 +186,19 @@ export const api = {
         }
     },
 
+    async getAttackStatus(): Promise<{ isRunning: boolean; output: string }> {
+        if (isElectron()) {
+            return window.electron.ipcRenderer.invoke('get-attack-status');
+        }
+        const response = await fetch(`${API_BASE_URL}/attack-status`);
+        return response.json();
+    },
+    async clearAttackStatus(): Promise<void> {
+        if (isElectron()) {
+            return window.electron.ipcRenderer.invoke('clear-attack-status');
+        }
+        await fetch(`${API_BASE_URL}/attack-clear`, { method: 'POST' });
+    },
     // --- Terminal API ---
     async terminalCreate(container: string): Promise<string> {
         if (isElectron()) {

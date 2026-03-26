@@ -25,7 +25,7 @@ const BLACK = '#2B1B17';
 import { api } from '../api';
 const DIR = api.assetsUrl;
 
-function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs, simulationRun }) {
+function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs, onOpenAttackStatus, simulationRun }) {
 	const [ifNameAt, setIfNameAt] = useState({ checked: false });
 	const [ifOspfCost, setIfOspfCost] = useState({ checked: false });
 	const [routingLabel, setRoutingLabel] = useState({ checked: false });
@@ -227,6 +227,13 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs, simulat
 		}
 	};
 
+	const handleOpenAttackStatus = () => {
+		if (contextMenu && onOpenAttackStatus) {
+			onOpenAttackStatus(contextMenu.nodeId);
+			setContextMenu(null);
+		}
+	};
+
 	const showOpenUI = contextMenu && machines.find(m => {
 		// Find the machine corresponding to the clicked node ID
 		// Note: ID format is "machine-" + name
@@ -237,6 +244,11 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs, simulat
 	const showSaveProject = contextMenu && machines.find(m => {
 		const machineName = contextMenu.nodeId.replace("machine-", "");
 		return m.name === machineName && m.type === "scada";
+	});
+
+	const showAttackStatus = contextMenu && machines.find(m => {
+		const machineName = contextMenu.nodeId.replace("machine-", "");
+		return m.name === machineName && m.type === "attacker";
 	});
 
 
@@ -303,6 +315,14 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs, simulat
 							onClick={handleSaveProject}
 						>
 							Save Project
+						</button>
+					)}
+					{showAttackStatus && (
+						<button
+							className="w-full text-left px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 font-bold border-b border-zinc-100 dark:border-zinc-700"
+							onClick={handleOpenAttackStatus}
+						>
+							Attack Status
 						</button>
 					)}
 					<button

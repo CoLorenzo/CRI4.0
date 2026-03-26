@@ -21,6 +21,10 @@ router.get('/saves/:filename', controllers.loadProject);
 router.get('/saves/:filename/download', controllers.downloadProject);
 router.delete('/saves/:filename', controllers.deleteProject);
 
+// Attack Status Routes
+router.get('/attack-status', controllers.getAttackStatus);
+router.post('/attack-clear', controllers.clearAttackStatus);
+
 // SSE for logs
 router.get('/logs', controllers.subscribeToLogs);
 router.post('/loki-delete', controllers.deleteLokiLogs);

@@ -24,6 +24,9 @@ if (!fs.existsSync(SAVES_DIR)) {
     fs.mkdirSync(SAVES_DIR, { recursive: true });
 }
 
+let LAST_ATTACK_OUTPUT = "";
+let IS_ATTACK_RUNNING = false;
+
 
 // Helper to send logs to all connected clients
 const sendLog = (level: 'log' | 'error' | 'warn' | 'info' | 'debug', message: string) => {
@@ -258,16 +261,22 @@ export const simulateAttack = async (req: Request, res: Response) => {
             proc.stdout.on('data', (data) => {
                 const message = data.toString();
                 stdout += message;
+                LAST_ATTACK_OUTPUT += message;
+                // Keep only last 10000 chars roughly
+                if (LAST_ATTACK_OUTPUT.length > 50000) LAST_ATTACK_OUTPUT = LAST_ATTACK_OUTPUT.slice(-50000);
                 sendLog('log', message);
             });
 
             proc.stderr.on('data', (data) => {
                 const message = data.toString();
                 stderr += message;
+                LAST_ATTACK_OUTPUT += `\n[ERROR] ${message}`;
                 sendLog('error', message);
             });
 
+            IS_ATTACK_RUNNING = true;
             proc.on('close', (code) => {
+                IS_ATTACK_RUNNING = false;
                 if (code !== 0) {
                     const errorMessage = `❌ Command failed (code ${code}): ${stderr || `exit ${code}`}`;
                     sendLog('error', errorMessage);
@@ -290,6 +299,19 @@ export const simulateAttack = async (req: Request, res: Response) => {
         res.status(500).json({ error: error.toString() });
     }
 };
+
+export const getAttackStatus = async (req: Request, res: Response) => {
+    res.json({ 
+        isRunning: IS_ATTACK_RUNNING,
+        output: LAST_ATTACK_OUTPUT 
+    });
+};
+
+export const clearAttackStatus = async (req: Request, res: Response) => {
+    LAST_ATTACK_OUTPUT = "";
+    res.json({ success: true });
+};
+
 
 export const runSimulation = async (req: Request, res: Response) => {
     const { machines, labInfo, sudoPassword } = req.body;
