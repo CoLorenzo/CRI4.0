@@ -9,7 +9,7 @@ import { Card, CardBody, Input, Textarea } from "@nextui-org/react";
 import { Radio, RadioGroup } from "@nextui-org/react";
 import { CheckboxGroup, Checkbox } from "@nextui-org/react";
 import { Button } from "@nextui-org/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FaWrench } from "react-icons/fa6";
 import { FaArrowRotateLeft } from "react-icons/fa6";
 import { useContext } from "react";
@@ -60,6 +60,35 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
     }));
   };
 
+  useEffect(() => {
+    const attackerDomain = attacker?.interfaces?.if?.[0]?.eth?.domain;
+    const cleanIps = extractTargetIPs(targets || [], attackerDomain);
+    
+    if (cleanIps.length > 0) {
+      if (target1 !== cleanIps[0]) {
+        setTarget1(cleanIps[0]);
+        updateMachineConfig("target1", cleanIps[0]);
+      }
+    } else {
+      if (target1 !== "") {
+        setTarget1("");
+        updateMachineConfig("target1", "");
+      }
+    }
+
+    if (cleanIps.length > 1) {
+      if (target2 !== cleanIps[1]) {
+        setTarget2(cleanIps[1]);
+        updateMachineConfig("target2", cleanIps[1]);
+      }
+    } else {
+      if (target2 !== "") {
+        setTarget2("");
+        updateMachineConfig("target2", "");
+      }
+    }
+  }, [targets]);
+
   // Helper to update specific root-level properties of the attacker machine
   const updateMachineData = (updates) => {
     setMachines(prevMachines => prevMachines.map(m => {
@@ -106,13 +135,14 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
 
           if (val && val.includes("modbustcp-injection")) {
             // Per ModbusTCP injection, passiamo i parametri come variabili d'ambiente a entrypoint.sh
-            // Assumiamo eth0 come interfaccia di default se non diversamente specificato
             const iface = "eth1";
+            const finalTarget1 = target1 || cleanIps[0] || "";
+            const finalTarget2 = target2 || cleanIps[1] || "";
             attackArgs = [
               'env',
               `INTERFACE=${iface}`,
-              `TARGET1=${target1}`,
-              `TARGET2=${target2}`,
+              `TARGET1=${finalTarget1}`,
+              `TARGET2=${finalTarget2}`,
               '/usr/local/bin/entrypoint.sh'
             ];
           }
@@ -163,16 +193,20 @@ function Injection({ attacker, attacks, isLoading, machines, setMachines, handle
           <MachineSelector machines={machines} setTargets={handleTargetsChange} attacker={attacker} view={view} onViewChange={handleViewChange} />
           <AttackSelector type="injection" attacker={attacker} attacks={attacks} selectedImage={selectedImage} setSelectedImage={setSelectedImage} isLoading={isLoading} handleRefresh={handleRefresh} />
 
-          {selectedImage && selectedImage.includes("modbustcp-injection") && (
-            <Card>
-              <CardBody>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input label="Target 1 IP" value={target1} onValueChange={handleTarget1Change} placeholder="e.g. 192.168.1.10" />
-                  <Input label="Target 2 IP" value={target2} onValueChange={handleTarget2Change} placeholder="e.g. 192.168.1.20" />
-                </div>
-              </CardBody>
-            </Card>
-          )}
+          {selectedImage && selectedImage.includes("modbustcp-injection") && (() => {
+            const attackerDomain = attacker?.interfaces?.if?.[0]?.eth?.domain;
+            const cleanIps = extractTargetIPs(targets || [], attackerDomain);
+            return (
+              <Card>
+                <CardBody>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input label="Target 1 IP" value={target1} onValueChange={handleTarget1Change} placeholder={cleanIps[0] || "e.g. 192.168.1.10"} />
+                    <Input label="Target 2 IP" value={target2} onValueChange={handleTarget2Change} placeholder={cleanIps[1] || "e.g. 192.168.1.20"} />
+                  </div>
+                </CardBody>
+              </Card>
+            );
+          })()}
 
         </div>
       </div>

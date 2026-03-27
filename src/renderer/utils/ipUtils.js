@@ -63,6 +63,12 @@ export function extractTargetIPs(
     targets.forEach((t) => {
         if (!t || !t.interfaces || !Array.isArray(t.interfaces.if)) return;
 
+        // NEW: Check for an explicit override
+        if (t.selectedInterfaceIp) {
+            ips.push(t.selectedInterfaceIp);
+            return;
+        }
+
         // Filtra le interfacce escludendo quella di infrastruttura (_collector)
         const validInterfaces = t.interfaces.if.filter(
             (iface) => iface && iface.eth && iface.eth.domain !== "_collector" && iface.ip

@@ -36,13 +36,11 @@ __EOF__
     done
 
     echo "running smoloki 2:"
-    OUTPUT="$(cat scan_result_${TARGET_IP}.txt)"
-    #PAYLOAD=$(jq -n --arg msg "$OUTPUT" '{"message": "'"$msg"'"}')
-    PAYLOAD=$(jq -n --arg msg "$OUTPUT" '{message: $msg}')
-
     export SMOLOKI_BASE_ENDPOINT="http://10.1.0.254:3100"
     SMOLOKI_JOB="test"
-    SMOLOKI_LEVEL="info" #OR info, warning, error
+    SMOLOKI_LEVEL="error" #OR info, warning, error
+    MSG="Unable to scan target ${TARGET_IP} "
+    PAYLOAD=$(jq -n --arg msg "$MSG" '{message: $msg}')
 
     smoloki '{"job":"'"$SMOLOKI_JOB"'","level":"'"$SMOLOKI_LEVEL"'", "host": "'"$HOSTNAME"'"}' "$PAYLOAD"
 
