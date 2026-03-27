@@ -260,34 +260,12 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs, onOpenA
 				options={options}
 				events={events}
 				getNetwork={(network) => {
-					let edges = {};
-					let physics = {};
-
-					if (smoothEnabled.checked) {
-						edges = {
-							smooth: {
-								type: smoothEnabled.value,
-							},
-						};
-					} else {
-						edges = {
-							smooth: false,
-						};
-					}
-
-					if (physicsEnabled.checked) {
-						physics = {
-							enabled: true,
-							barnesHut: {
-								gravitationalConstant: parseInt(physicsEnabled.value),
-							},
-						};
-					} else {
-						physics = {
-							enabled: false,
-						};
-					}
-					network.setOptions({ edges, physics });
+					// Run a quick hidden stabilization to compute good positions,
+					// then freeze physics so the graph never wobbles.
+					network.once('stabilized', () => {
+						network.setOptions({ physics: { enabled: false } });
+					});
+					network.stabilize(300);
 				}}
 			/>
 			{contextMenu && (
