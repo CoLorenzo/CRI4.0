@@ -409,7 +409,10 @@ function Topology() {
       <div className="grid gap-2 items-start">
         {/* Run Simulation */}
         <Button
-          isDisabled={simulationRun}
+          isDisabled={
+            simulationRun ||
+            (machines.some((m) => m.type === "attacker") && !machines.find((m) => m.type === "attacker")?.attackLoaded)
+          }
           className="bg-success text-white"
           onClick={() => setPasswordModalOpen(true)}
         >

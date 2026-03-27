@@ -365,8 +365,9 @@ done
 
             if [[ "$REGISTRY_ADDR_PROTECT_BTN" == "yes" ]]; then
               export PATH="$PATH:/root/.asdf/shims"
-
-              snortadd 10.0.0.1:502 \${REGISTRY_ADDR_PROTECT_ADDR}:502 eth1 modbus-invalidreg 'alert tcp any 502 -> any any (msg: "Traffic detected"; sid:1000001; rev:1;)' 10m 5 1h
+              
+              INPUT_ADDRESS=$(ip -o addr show dev eth1 | awk '{split($4,a,"/"); print a[1]}')
+              snortadd \${INPUT_ADDRESS}:502 \${REGISTRY_ADDR_PROTECT_ADDR}:502 eth1 modbus-invalidreg 'alert tcp any 502 -> any any (msg: "Traffic detected"; sid:1000001; rev:1;)' 10m 5 1h
 
               yq -i '(.outputs[] | select(has("eve-log")).eve-log.types) |= (. + "modbus" | unique)' /etc/suricata/suricata.yaml
               yq -i '.app-layer.protocols.modbus.enabled = "yes"' /etc/suricata/suricata.yaml
@@ -379,6 +380,10 @@ done
               service f2bcompanion start
               sleep 1
               service fail2ban restart
+              sleep 1
+              service suricata stop
+              sleep 1
+              service suricata start
             fi
 
             smoloki -b "http://10.1.0.254:3100" '{"job":"job","level":"info","host":"'"$HOSTNAME"'"}' '{"message":"ready"}'

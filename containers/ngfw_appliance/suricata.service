@@ -16,8 +16,8 @@ do_start() {
 
     echo "Starting $NAME with command:"
     echo "suricata -c /etc/suricata/suricata.yaml -i ${INTERFACE} --runmode workers 1>> ${LOGFILE} 2>> ${ERRORFILE}"
-    echo "STARTING SURICATA at $(date)" >> ${LOGFILE}
-    echo "STARTING SURICATA at $(date)" >> ${ERRORFILE}
+    echo "STARTING SURICATA at $(date)" >>${LOGFILE}
+    echo "STARTING SURICATA at $(date)" >>${ERRORFILE}
     sh -c "suricata -c /etc/suricata/suricata.yaml -i ${INTERFACE} --runmode workers 1>> ${LOGFILE} 2>> ${ERRORFILE}" &
     echo $! >"$PIDFILE"
     echo "PID: $(cat $PIDFILE)"
@@ -68,7 +68,14 @@ do_clearlogs() {
     rm "${ERRORFILE}"
 }
 
-# dispatch   
+do_kill() {
+    PIDS=$(ps aux | grep "[s]uricata -c" | awk '{print $2}')
+    for pid in $PIDS; do
+        kill -9 $pid
+    done
+}
+
+# dispatch
 
 case "$1" in
 start) do_start ;;
@@ -77,8 +84,9 @@ status) do_status ;;
 log) do_log ;;
 error) do_error ;;
 clearlogs) do_clearlogs ;;
+kill) do_kill ;;
 *)
-    echo "Usage: $0 {start|stop|status|log|error|clearlogs}"
+    echo "Usage: $0 {start|stop|status|log|error|clearlogs|kill}"
     exit 1
     ;;
 esac
