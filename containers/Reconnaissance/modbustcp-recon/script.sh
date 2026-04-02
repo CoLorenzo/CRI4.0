@@ -5,8 +5,6 @@ if [ "$#" -lt 1 ]; then
 fi
 
 for TARGET_IP in "$@"; do
-    echo "running smoloki 1:"
-
     export SMOLOKI_BASE_ENDPOINT="http://10.1.0.254:3100"
     SMOLOKI_JOB="test"
     SMOLOKI_LEVEL="info" #OR info, warning, error
@@ -15,13 +13,13 @@ for TARGET_IP in "$@"; do
     smoloki '{"job":"'"$SMOLOKI_JOB"'","level":"'"$SMOLOKI_LEVEL"'", "host": "'"$HOSTNAME"'"}' '{"message":"'"$SMOLOKI_MESSAGE"'"}'
 
     REG_TYPES=("discreteInput" "inputRegister" "holdingRegister" "coil")
-    echo "Scanning for ${REG_TYPES[@]} on $TARGET_IP"
+    echo "Starting scan of $TARGET_IP"
     DEV_PORT="502"
     DEV_UID="1"
     LOG_FILE="./scan_result_${TARGET_IP}.txt"
 
     for REG_TYPE in ${REG_TYPES[@]}; do
-        echo "Scanning for ${REG_TYPE} on $TARGET_IP"
+        echo "Scanning ${REG_TYPE}s on $TARGET_IP"
         python2.7 /opt/ModTester/modTester.py <<__EOF__ >/tmp/raw_modtester.txt 2>&1
 use modbus/scanner/${REG_TYPE}Discover
 set RHOSTS ${TARGET_IP}
@@ -35,15 +33,11 @@ __EOF__
         rm -f /tmp/raw_modtester.txt
     done
 
-    echo "running smoloki 2:"
+    FILE="./scan_result_${TARGET_IP}.txt"
     export SMOLOKI_BASE_ENDPOINT="http://10.1.0.254:3100"
     SMOLOKI_JOB="test"
-    SMOLOKI_LEVEL="error" #OR info, warning, error
-    MSG="Unable to scan target ${TARGET_IP} "
-    PAYLOAD=$(jq -n --arg msg "$MSG" '{message: $msg}')
+    SMOLOKI_LEVEL="info" #OR info, warning, error
 
+    PAYLOAD=$(jq -n --arg msg "$(cat ${FILE})" '{message: $msg}')
     smoloki '{"job":"'"$SMOLOKI_JOB"'","level":"'"$SMOLOKI_LEVEL"'", "host": "'"$HOSTNAME"'"}' "$PAYLOAD"
-
-    #smoloki -b "http://10.1.0.254:3100" "{'job':'test','level':'info', 'host':'$HOSTNAME'}" "$PAYLOAD"
-
 done
