@@ -10,6 +10,10 @@ import {
   Radio,
   Select,
   SelectItem,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
 } from "@nextui-org/react";
 
 function LogInsightsPage() {
@@ -200,6 +204,56 @@ function LogInsightsPage() {
 
   const currentLogs = logs;
 
+  // Build a descriptive filename based on active filters
+  const buildFilename = (ext) => {
+    const now = new Date();
+    const ts = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const parts = ["report", ts];
+    if (hostnameSearch.trim()) parts.push(`host-${hostnameSearch.trim()}`);
+    if (severityFilter) parts.push(severityFilter.toLowerCase());
+    if (timeRange !== "custom") parts.push(timeRange);
+    return `${parts.join("_")}.${ext}`;
+  };
+
+  const downloadCSV = () => {
+    if (currentLogs.length === 0) return;
+    const header = ["Timestamp", "Hostname", "Severity", "Message"];
+    const rows = currentLogs.map((log) => [
+      new Date(log.timestamp).toISOString(),
+      log.hostname,
+      log.severity,
+      `"${String(log.message).replace(/"/g, '""')}"`,
+    ]);
+    const csv = [header.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = buildFilename("csv");
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadJSON = () => {
+    if (currentLogs.length === 0) return;
+    const data = currentLogs.map((log) => ({
+      timestamp: new Date(log.timestamp).toISOString(),
+      hostname: log.hostname,
+      severity: log.severity,
+      message: log.message,
+    }));
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = buildFilename("json");
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+
   const severityColors = {
     INFO: "bg-green-500",
     WARNING: "bg-orange-500",
@@ -348,6 +402,36 @@ function LogInsightsPage() {
         <Button color="warning" isLoading={isCleaning} onClick={handleCleanLogs}>
           {isCleaning ? "Cleaning..." : "Clean logs"}
         </Button>
+        <Dropdown isDisabled={currentLogs.length === 0}>
+          <DropdownTrigger>
+            <Button
+              color="secondary"
+              isDisabled={currentLogs.length === 0}
+              endContent={
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              }
+              startContent={
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+              }
+            >
+              Download Report
+            </Button>
+          </DropdownTrigger>
+          <DropdownMenu aria-label="Download format">
+            <DropdownItem key="csv" onPress={downloadCSV}>
+              📄 Download CSV
+            </DropdownItem>
+            <DropdownItem key="json" onPress={downloadJSON}>
+              🗂 Download JSON
+            </DropdownItem>
+          </DropdownMenu>
+        </Dropdown>
       </div>
 
       <div className="overflow-x-auto bg-gray-800 rounded-lg p-4">
