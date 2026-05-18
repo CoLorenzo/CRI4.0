@@ -52,6 +52,28 @@ export const subscribeToLogs = (req: Request, res: Response) => {
     });
 };
 
+export const dockerSearch = async (req: Request, res: Response) => {
+    const q = String(req.query.q || '').replace(/[^a-zA-Z0-9\-_.:/]/g, '').slice(0, 128);
+    if (!q) return res.json([]);
+    exec(`docker search "${q}" --format "{{json .}}" --limit 25`, (error, stdout) => {
+        if (error) { res.json([]); return; }
+        const results = stdout.trim().split('\n')
+            .filter(line => line.trim())
+            .map(line => { try { return JSON.parse(line); } catch { return null; } })
+            .filter(Boolean);
+        res.json(results);
+    });
+};
+
+export const getAllLocalImages = async (req: Request, res: Response) => {
+    exec('docker images --format "{{.Repository}}:{{.Tag}}"', (error, stdout) => {
+        if (error) { res.json([]); return; }
+        const images = stdout.trim().split('\n')
+            .filter(line => line.trim() && !line.includes('<none>'));
+        res.json(images);
+    });
+};
+
 export const getDockerImages = async (req: Request, res: Response) => {
     exec('docker images --format "{{.Repository}}" | grep "^icr/"', (error, stdout, stderr) => {
         if (error) {

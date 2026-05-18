@@ -11,6 +11,7 @@ export const backboneModel = {
   name: "",
   row: 1,
   type: "terminal",
+  customTemplateId: null,
   attackLoaded: false,
   attackImage: "",
   attackCommand: "",
@@ -56,6 +57,7 @@ export const backboneModel = {
     image: "",
     files: [],
     fileCounter: 0,
+    envDefs: [],
   },
 
   scripts: {

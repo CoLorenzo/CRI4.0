@@ -8,7 +8,7 @@ import { RadioGroup, Radio } from "@nextui-org/radio";
 import { Input } from "@nextui-org/input";
 import { Accordion, AccordionItem } from "@nextui-org/react";
 
-export function MachineInfo({ id, machine, machines, setMachines }) {
+export function MachineInfo({ id, machine, machines, setMachines, customTemplates }) {
   function handleChange(value, data) {
     setMachines(() =>
       machines.map((m) => {
@@ -21,12 +21,18 @@ export function MachineInfo({ id, machine, machines, setMachines }) {
     );
   }
 
+  function handleTypeChange(value) {
+    handleChange(value, { ...machine, type: value, customTemplateId: null });
+  }
+
   const attackerExistsElsewhere = machines.some(
     (m) => m.type === "attacker" && m.id !== machine.id
   );
 
   const exactlyOneOtherController =
     machines.filter((m) => m.type === "controller" && m.id !== machine.id).length === 1;
+
+  const templates = customTemplates || [];
 
   return (
     <div className="h-full">
@@ -55,13 +61,8 @@ export function MachineInfo({ id, machine, machines, setMachines }) {
             <AccordionItem key="general" aria-label="General" title="General">
               <RadioGroup
                 color="primary"
-                value={machine.type}
-                onValueChange={(value) =>
-                  handleChange(value, {
-                    ...machine,
-                    type: value,
-                  })
-                }
+                value={machine.customTemplateId ? "" : machine.type}
+                onValueChange={handleTypeChange}
               >
                 <Radio value="terminal">Terminal</Radio>
                 <Radio value="router">Router</Radio>
@@ -74,13 +75,8 @@ export function MachineInfo({ id, machine, machines, setMachines }) {
             <AccordionItem key="attack" aria-label="Attack" title="Attack">
               <RadioGroup
                 color="primary"
-                value={machine.type}
-                onValueChange={(value) =>
-                  handleChange(value, {
-                    ...machine,
-                    type: value,
-                  })
-                }
+                value={machine.customTemplateId ? "" : machine.type}
+                onValueChange={handleTypeChange}
               >
                 <Radio isDisabled={attackerExistsElsewhere} value="attacker">
                   Attacker
@@ -92,18 +88,11 @@ export function MachineInfo({ id, machine, machines, setMachines }) {
             <AccordionItem key="defense" aria-label="Defense" title="Defense">
               <RadioGroup
                 color="primary"
-                value={machine.type}
-                onValueChange={(value) =>
-                  handleChange(value, {
-                    ...machine,
-                    type: value,
-                  })
-                }
+                value={machine.customTemplateId ? "" : machine.type}
+                onValueChange={handleTypeChange}
               >
                 <Radio value="ngfw">NGFW Appliance</Radio>
                 <Radio value="tls_termination_proxy">TLS termination proxy</Radio>
-
-
               </RadioGroup>
             </AccordionItem>
 
@@ -111,13 +100,8 @@ export function MachineInfo({ id, machine, machines, setMachines }) {
             <AccordionItem key="industrial" aria-label="Industrial" title="Industrial">
               <RadioGroup
                 color="primary"
-                value={machine.type}
-                onValueChange={(value) =>
-                  handleChange(value, {
-                    ...machine,
-                    type: value,
-                  })
-                }
+                value={machine.customTemplateId ? "" : machine.type}
+                onValueChange={handleTypeChange}
               >
                 <Radio value="engine">Engine</Radio>
                 <Radio value="fan">Fan</Radio>
@@ -135,13 +119,8 @@ export function MachineInfo({ id, machine, machines, setMachines }) {
             <AccordionItem key="other" aria-label="Other" title="Other">
               <RadioGroup
                 color="primary"
-                value={machine.type}
-                onValueChange={(value) =>
-                  handleChange(value, {
-                    ...machine,
-                    type: value,
-                  })
-                }
+                value={machine.customTemplateId ? "" : machine.type}
+                onValueChange={handleTypeChange}
               >
                 {exactlyOneOtherController ? (
                   <Radio value="switch">Open vSwitch</Radio>
@@ -150,8 +129,39 @@ export function MachineInfo({ id, machine, machines, setMachines }) {
                 )}
                 <Radio value="other">Other</Radio>
               </RadioGroup>
+            </AccordionItem>
 
-
+            {/* CUSTOM */}
+            <AccordionItem key="custom" aria-label="Custom" title="Custom">
+              {templates.length === 0 ? (
+                <p className="text-xs text-default-400 pb-2">
+                  No custom machines yet. Use &ldquo;Create Machine&rdquo; to define one.
+                </p>
+              ) : (
+                <RadioGroup
+                  color="secondary"
+                  value={machine.customTemplateId || ""}
+                  onValueChange={(templateId) => {
+                    const tpl = templates.find(t => t.id === templateId);
+                    if (!tpl) return;
+                    handleChange(templateId, {
+                      ...machine,
+                      type: "other",
+                      customTemplateId: templateId,
+                      other: {
+                        ...machine.other,
+                        image: tpl.image,
+                        envDefs: tpl.envDefs || [],
+                      },
+                      scripts: { startup: tpl.startup || "" },
+                    });
+                  }}
+                >
+                  {templates.map((tpl) => (
+                    <Radio key={tpl.id} value={tpl.id}>{tpl.name}</Radio>
+                  ))}
+                </RadioGroup>
+              )}
             </AccordionItem>
           </Accordion>
         </div>

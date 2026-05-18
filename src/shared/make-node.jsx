@@ -500,7 +500,14 @@ function makeLabConfFile(netkit, lab) {
       lab.file["lab.conf"] += `${machineName}[image]=icr/kathara-base`;
     }
     if (machine.type == "other" && machine.other && machine.other.image && machine.other.image !== "") {
-      lab.file["lab.conf"] += `${machineName}[image]="${machine.other.image}"`;
+      lab.file["lab.conf"] += `${machineName}[image]="${machine.other.image}"\n`;
+      if (Array.isArray(machine.other.envDefs)) {
+        for (const envDef of machine.other.envDefs) {
+          if (envDef.key && envDef.value !== undefined && envDef.value !== "") {
+            lab.file["lab.conf"] += `${machineName}[env]="${envDef.key}=${envDef.value}"\n`;
+          }
+        }
+      }
     }
     if (machine.type == "ngfw") {
       lab.file["lab.conf"] += `${machineName}[image]=icr/ngfw\n`;

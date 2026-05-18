@@ -19,6 +19,22 @@ export const api = {
     isElectron: isElectron(),
     assetsUrl: isElectron() ? 'icr://images/' : `${BASE_URL}/assets/images/`,
 
+    async dockerSearch(query: string): Promise<any[]> {
+        if (isElectron()) {
+            return window.electron.ipcRenderer.invoke('docker-search', query);
+        }
+        const response = await fetch(`${API_BASE_URL}/docker-search?q=${encodeURIComponent(query)}`);
+        return response.json();
+    },
+
+    async getAllLocalImages(): Promise<string[]> {
+        if (isElectron()) {
+            return window.electron.ipcRenderer.invoke('all-docker-images');
+        }
+        const response = await fetch(`${API_BASE_URL}/all-docker-images`);
+        return response.json();
+    },
+
     async getDockerImages(): Promise<string[]> {
         if (isElectron()) {
             return window.electron.ipcRenderer.invoke('docker-images');

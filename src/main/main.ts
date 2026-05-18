@@ -127,6 +127,31 @@ ipcMain.handle('docker-images', async () => {
   });
 });
 
+ipcMain.handle('docker-search', async (event, query) => {
+  const safeQuery = String(query).replace(/[^a-zA-Z0-9\-_.:/]/g, '').slice(0, 128);
+  return new Promise((resolve) => {
+    exec(`docker search "${safeQuery}" --format "{{json .}}" --limit 25`, (error, stdout) => {
+      if (error) { resolve([]); return; }
+      const results = stdout.trim().split('\n')
+        .filter(line => line.trim())
+        .map(line => { try { return JSON.parse(line); } catch { return null; } })
+        .filter(Boolean);
+      resolve(results);
+    });
+  });
+});
+
+ipcMain.handle('all-docker-images', async () => {
+  return new Promise((resolve) => {
+    exec('docker images --format "{{.Repository}}:{{.Tag}}"', (error, stdout) => {
+      if (error) { resolve([]); return; }
+      const images = stdout.trim().split('\n')
+        .filter(line => line.trim() && !line.includes('<none>'));
+      resolve(images);
+    });
+  });
+});
+
 ipcMain.handle('docker-build', async (event, arg) => {
   return new Promise((resolve, reject) => {
     console.log("BUILDING:", arg);

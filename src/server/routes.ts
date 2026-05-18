@@ -3,6 +3,8 @@ import * as controllers from './controllers';
 
 export const router = Router();
 
+router.get('/docker-search', controllers.dockerSearch);
+router.get('/all-docker-images', controllers.getAllLocalImages);
 router.get('/docker-images', controllers.getDockerImages);
 router.post('/docker-build', controllers.buildDockerImage);
 router.post('/docker-inspect', controllers.getContainerInspect);
