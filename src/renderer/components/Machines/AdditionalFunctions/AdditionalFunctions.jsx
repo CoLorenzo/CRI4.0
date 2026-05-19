@@ -18,6 +18,7 @@ import { TlsTerminationProxyFunctions } from "./TlsTerminationProxyFunctions";
 import { NGFWFunctions } from "./NGFWFunctions";
 import { IndustrialFunctions } from "./IndustrialFunctions";
 import { ScadaFunctions } from "./ScadaFunctions";
+import { CustomMachineFunctions } from "./CustomMachineFunctions";
 
 export function AdditionalFunctions({ machine, machines, setMachines }) {
     return (
@@ -56,11 +57,17 @@ export function AdditionalFunctions({ machine, machines, setMachines }) {
                             setMachines={setMachines}
                         />
                     case "other":
-                        return <OtherFunctions
-                            machine={machine}
-                            machines={machines}
-                            setMachines={setMachines}
-                        />
+                        return machine.customTemplateId
+                            ? <CustomMachineFunctions
+                                machine={machine}
+                                machines={machines}
+                                setMachines={setMachines}
+                            />
+                            : <OtherFunctions
+                                machine={machine}
+                                machines={machines}
+                                setMachines={setMachines}
+                            />
                     case 'tls_termination_proxy':
                         return <TlsTerminationProxyFunctions
                             machine={machine}

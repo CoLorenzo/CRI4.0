@@ -29,27 +29,97 @@ let IS_ATTACK_RUNNING = false;
 
 
 // Helper to send logs to all connected clients
-const sendLog = (level: 'log' | 'error' | 'warn' | 'info' | 'debug', message: string) => {
+const sendLog = (level: 'log' | 'error' | 'warn' | 'info' | 'debug' | 'build-done', message: string) => {
     const logEntry = JSON.stringify({ level, message });
-    clients.forEach(client => client.write(`data: ${logEntry}\n\n`));
-    console.log(`[${level.toUpperCase()}] ${message}`); // Keep server console logs too
+    clients = clients.filter(client => {
+        try { client.write(`data: ${logEntry}\n\n`); return true; } catch { return false; }
+    });
+    console.log(`[${level.toUpperCase()}] ${message}`);
 };
 
 // --- Controllers ---
 
 export const subscribeToLogs = (req: Request, res: Response) => {
-    const headers = {
-        'Content-Type': 'text/event-stream',
-        'Connection': 'keep-alive',
-        'Cache-Control': 'no-cache'
-    };
-    res.writeHead(200, headers);
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders(); // send headers immediately so EventSource establishes
 
     clients.push(res);
 
     req.on('close', () => {
         clients = clients.filter(client => client !== res);
     });
+};
+
+type BuildState = { done: boolean; success?: boolean; image?: string; dockerOutput: string; scriptStdout?: string; scriptStderr?: string };
+const buildResults = new Map<string, BuildState>();
+
+export const buildCustomImage = async (req: Request, res: Response) => {
+    const { machineName, baseImage, buildScript } = req.body;
+    if (!machineName || !baseImage || !buildScript) {
+        return res.status(400).json({ started: false });
+    }
+    const buildId = `${Date.now()}-${String(machineName).replace(/[^a-z0-9]/gi, '')}`;
+
+    // Mutable state object stored by reference — polling sees partial dockerOutput in real time
+    const state: BuildState = { done: false, dockerOutput: '' };
+    buildResults.set(buildId, state);
+    res.json({ started: true, buildId });
+
+    const tag = `cri-custom-${String(machineName).toLowerCase().replace(/[^a-z0-9]/g, '-')}:latest`;
+    let tmpDir = '';
+    try {
+        tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'cri-build-'));
+        const dockerfile = [
+            `FROM ${baseImage}`,
+            `ENV DEBIAN_FRONTEND=noninteractive`,
+            `COPY build.sh /build.sh`,
+            `RUN chmod +x /build.sh && /bin/sh /build.sh 1>/build_stdout.log 2>/build_stderr.log`,
+        ].join('\n') + '\n';
+        await fsp.writeFile(path.join(tmpDir, 'Dockerfile'), dockerfile);
+        await fsp.writeFile(path.join(tmpDir, 'build.sh'), buildScript);
+
+        const success = await new Promise<boolean>((resolve) => {
+            const proc = spawn('docker', ['build', '--no-cache', '--progress=plain', '-t', tag, tmpDir]);
+            proc.stdout.on('data', (d: Buffer) => { state.dockerOutput += d.toString(); });
+            proc.stderr.on('data', (d: Buffer) => { state.dockerOutput += d.toString(); });
+            proc.on('close', (code) => resolve(code === 0));
+            proc.on('error', (err) => { state.dockerOutput += `Error: ${err.message}\n`; resolve(false); });
+        });
+
+        let scriptStdout = '';
+        let scriptStderr = '';
+        if (success) {
+            const catFile = (f: string) => new Promise<string>((resolve) => {
+                const p = spawn('docker', ['run', '--rm', tag, 'cat', f]);
+                let out = '';
+                p.stdout.on('data', (d: Buffer) => { out += d.toString(); });
+                p.on('close', () => resolve(out));
+                p.on('error', () => resolve(''));
+            });
+            [scriptStdout, scriptStderr] = await Promise.all([catFile('/build_stdout.log'), catFile('/build_stderr.log')]);
+        }
+
+        state.done = true;
+        state.success = success;
+        state.image = success ? tag : undefined;
+        state.scriptStdout = scriptStdout;
+        state.scriptStderr = scriptStderr;
+    } catch (err) {
+        state.done = true;
+        state.success = false;
+        state.dockerOutput += String(err);
+    } finally {
+        if (tmpDir) fsp.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+        setTimeout(() => buildResults.delete(buildId), 600_000);
+    }
+};
+
+export const getBuildResult = (req: Request, res: Response) => {
+    const result = buildResults.get(req.params.buildId);
+    if (!result) return res.json({ done: false, found: false });
+    res.json(result);
 };
 
 export const dockerSearch = async (req: Request, res: Response) => {
@@ -336,6 +406,9 @@ export const clearAttackStatus = async (req: Request, res: Response) => {
 
 
 export const runSimulation = async (req: Request, res: Response) => {
+    // Custom images may need to be pulled from Docker Hub — disable the socket
+    // timeout so the connection isn't dropped while Kathara pulls the image.
+    req.socket.setTimeout(0);
     const { machines, labInfo, sudoPassword } = req.body;
     sendLog('log', `machines? ${Array.isArray(machines)} ${machines?.length}`);
 
@@ -399,11 +472,20 @@ export const runSimulation = async (req: Request, res: Response) => {
                 stdio: ['pipe', 'pipe', 'pipe']
             });
 
-            // Write password to stdin only when using sudo
+            // Write password to stdin only when using sudo.
+            // Do NOT close stdin — Kathara may ask "pull new image? [y/n]:" at any
+            // point and needs to be able to read our answer.
             if (sudoPassword) {
                 childVal.stdin.write(sudoPassword + '\n');
             }
-            childVal.stdin.end();
+
+            // Auto-answer Kathara's interactive image-update prompts with "n"
+            // so the process never blocks waiting for human input.
+            const answerKatharaPrompts = (msg: string) => {
+                if (msg.includes('[y/n]:') || msg.includes('[Y/n]:') || msg.includes('[y/N]:')) {
+                    childVal.stdin.write('n\n');
+                }
+            };
 
             let stdoutData = '';
             let stderrData = '';
@@ -412,10 +494,12 @@ export const runSimulation = async (req: Request, res: Response) => {
                 const msg = data.toString();
                 stdoutData += msg;
                 sendLog('log', msg);
+                answerKatharaPrompts(msg);
             });
 
             childVal.stderr.on('data', (data) => {
                 const msg = data.toString();
+                answerKatharaPrompts(msg);
                 // Filter out standard sudo prompt if it leaks, though -S implies non-interactive
                 if (!msg.includes('[sudo] password for')) {
                     stderrData += msg;

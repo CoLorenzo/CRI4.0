@@ -41,14 +41,14 @@ function CustomMachinesTab() {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editTarget, setEditTarget] = useState(null);
 
-    function handleCreate({ name, image, envDefs, startup }) {
-        save([...templates, { id: uuidv4(), name, image, envDefs: envDefs || [], startup: startup || "" }]);
+    function handleCreate({ name, image, builtImage, buildScript, envDefs, startup }) {
+        save([...templates, { id: uuidv4(), name, image, builtImage: builtImage || "", buildScript: buildScript || "", envDefs: envDefs || [], startup: startup || "" }]);
         setIsCreateOpen(false);
     }
 
-    function handleUpdate({ name, image, envDefs, startup }) {
+    function handleUpdate({ name, image, builtImage, buildScript, envDefs, startup }) {
         save(templates.map(t =>
-            t.id === editTarget.id ? { ...t, name, image, envDefs: envDefs || [], startup: startup || "" } : t
+            t.id === editTarget.id ? { ...t, name, image, builtImage: builtImage || "", buildScript: buildScript || "", envDefs: envDefs || [], startup: startup || "" } : t
         ));
         setEditTarget(null);
     }

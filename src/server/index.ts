@@ -84,7 +84,7 @@ app.use('/assets', express.static(path.join(__dirname, '../../assets')));
 // Start server after cleanup
 let server: any;
 cleanupLabs().then(() => {
-    server = app.listen(PORT, '127.0.0.1', () => {
+    server = app.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
     });
     server.setTimeout(300000); // 5 minutes timeout for long docker builds

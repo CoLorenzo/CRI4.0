@@ -1,7 +1,11 @@
 import type { Channels } from '../../main/preload';
 
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = isElectronProcess() ? 'http://localhost:3001' : '';
 export const API_BASE_URL = `${BASE_URL}/api`;
+
+function isElectronProcess() {
+    try { return !!(window as any).electron; } catch { return false; }
+}
 
 const isElectron = () => !!(window.electron);
 
@@ -17,7 +21,7 @@ function getSocket() {
 
 export const api = {
     isElectron: isElectron(),
-    assetsUrl: isElectron() ? 'icr://images/' : `${BASE_URL}/assets/images/`,
+    assetsUrl: isElectron() ? 'icr://images/' : 'http://localhost:3001/assets/images/',
 
     async dockerSearch(query: string): Promise<any[]> {
         if (isElectron()) {
@@ -40,6 +44,26 @@ export const api = {
             return window.electron.ipcRenderer.invoke('docker-images');
         }
         const response = await fetch(`${API_BASE_URL}/docker-images`);
+        return response.json();
+    },
+
+    async buildCustomImage(machineName: string, baseImage: string, buildScript: string): Promise<{ started: boolean; buildId: string }> {
+        if (isElectron()) {
+            return window.electron.ipcRenderer.invoke('build-custom-image', { machineName, baseImage, buildScript });
+        }
+        const response = await fetch(`${API_BASE_URL}/build-custom-image`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ machineName, baseImage, buildScript }),
+        });
+        return response.json();
+    },
+
+    async getBuildResult(buildId: string): Promise<{ done: boolean; success?: boolean; image?: string; dockerOutput?: string; scriptStdout?: string; scriptStderr?: string }> {
+        if (isElectron()) {
+            return window.electron.ipcRenderer.invoke('get-build-result', buildId);
+        }
+        const response = await fetch(`${API_BASE_URL}/build-result/${encodeURIComponent(buildId)}`);
         return response.json();
     },
 

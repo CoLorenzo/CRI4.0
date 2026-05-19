@@ -111,7 +111,8 @@ function makeStartupFiles(netkit, lab) {
     // Use a minimal POSIX sh script without assumptions about the image's tools.
     if (machine.type === "other") {
       let otherScript = "#!/bin/sh\n\n";
-      // Best-effort: try to configure DNS and bring up interfaces, ignore failures
+
+      // ── 1. Network setup ───────────────────────────────────────────────────
       otherScript += "echo 'nameserver 8.8.8.8' > /etc/resolv.conf 2>/dev/null || true\n";
       otherScript += `ip addr add ${eth0Ip} dev eth0 2>/dev/null || true\n`;
       otherScript += "ip link set eth0 up 2>/dev/null || true\n";
@@ -126,7 +127,14 @@ function makeStartupFiles(netkit, lab) {
           }
         }
       }
+
+      // ── 2. User startup script ─────────────────────────────────────────────
       if (body) otherScript += "\n" + body + "\n";
+
+      // ── 3. Signal readiness (smoloki pre-installed via build script) ────────
+      otherScript += "\nexport PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$PATH\"\n";
+      otherScript += "smoloki -b http://10.1.0.254:3100 '{\"job\":\"test\",\"level\":\"info\", \"host\": \"'\"$(hostname)\"'\"}' '{\"message\":\"ready\"}' 2>/dev/null || true\n";
+
       lab.file[`${machineName}.startup`] = otherScript;
       continue;
     }

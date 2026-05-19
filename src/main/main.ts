@@ -15,7 +15,7 @@ import url from 'url';
 import { app, BrowserWindow, shell, ipcMain, protocol, net } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 import { generateZip } from "../renderer/components/Download4Run"; // percorso relativo corretto
@@ -50,7 +50,7 @@ class AppUpdater {
 
 let mainWindow: BrowserWindow | null = null;
 
-const sendLog = (level: 'log' | 'error' | 'warn' | 'info' | 'debug', message: string) => {
+const sendLog = (level: 'log' | 'error' | 'warn' | 'info' | 'debug' | 'build-done', message: string) => {
   if (mainWindow) {
     mainWindow.webContents.send('log-message', { level, message });
   }
@@ -150,6 +150,75 @@ ipcMain.handle('all-docker-images', async () => {
       resolve(images);
     });
   });
+});
+
+type IpcBuildState = { done: boolean; success?: boolean; image?: string; dockerOutput: string; scriptStdout?: string; scriptStderr?: string };
+const ipcBuildResults = new Map<string, IpcBuildState>();
+
+ipcMain.handle('build-custom-image', async (event, { machineName, baseImage, buildScript }) => {
+  const buildId = `${Date.now()}-${String(machineName).replace(/[^a-z0-9]/gi, '')}`;
+
+  // Mutable state object stored by reference — polling sees partial dockerOutput in real time
+  const state: IpcBuildState = { done: false, dockerOutput: '' };
+  ipcBuildResults.set(buildId, state);
+
+  const tag = `cri-custom-${String(machineName).toLowerCase().replace(/[^a-z0-9]/g, '-')}:latest`;
+  (async () => {
+    let tmpDir = '';
+    try {
+      tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'cri-build-'));
+      const dockerfile = [
+        `FROM ${baseImage}`,
+        `ENV DEBIAN_FRONTEND=noninteractive`,
+        `COPY build.sh /build.sh`,
+        `RUN chmod +x /build.sh && /bin/sh /build.sh 1>/build_stdout.log 2>/build_stderr.log`,
+      ].join('\n') + '\n';
+      await fsp.writeFile(path.join(tmpDir, 'Dockerfile'), dockerfile);
+      await fsp.writeFile(path.join(tmpDir, 'build.sh'), buildScript);
+
+      const success = await new Promise<boolean>((resolve) => {
+        const proc = spawn('docker', ['build', '--no-cache', '--progress=plain', '-t', tag, tmpDir]);
+        proc.stdout.on('data', (d: Buffer) => { state.dockerOutput += d.toString(); });
+        proc.stderr.on('data', (d: Buffer) => { state.dockerOutput += d.toString(); });
+        proc.on('close', (code) => resolve(code === 0));
+        proc.on('error', (err) => { state.dockerOutput += `Error: ${err.message}\n`; resolve(false); });
+      });
+
+      let scriptStdout = '';
+      let scriptStderr = '';
+      if (success) {
+        const catFile = (f: string) => new Promise<string>((resolve) => {
+          const p = spawn('docker', ['run', '--rm', tag, 'cat', f]);
+          let out = '';
+          p.stdout.on('data', (d: Buffer) => { out += d.toString(); });
+          p.on('close', () => resolve(out));
+          p.on('error', () => resolve(''));
+        });
+        [scriptStdout, scriptStderr] = await Promise.all([catFile('/build_stdout.log'), catFile('/build_stderr.log')]);
+      }
+
+      state.done = true;
+      state.success = success;
+      state.image = success ? tag : undefined;
+      state.scriptStdout = scriptStdout;
+      state.scriptStderr = scriptStderr;
+    } catch (err) {
+      state.done = true;
+      state.success = false;
+      state.dockerOutput += String(err);
+    } finally {
+      if (tmpDir) fsp.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+      setTimeout(() => ipcBuildResults.delete(buildId), 600_000);
+    }
+  })();
+
+  return { started: true, buildId };
+});
+
+ipcMain.handle('get-build-result', async (event, buildId: string) => {
+  const result = ipcBuildResults.get(buildId);
+  if (!result) return { done: false, found: false };
+  return result;
 });
 
 ipcMain.handle('docker-build', async (event, arg) => {
@@ -488,7 +557,14 @@ ipcMain.handle('run-simulation', async (event, { machines, labInfo, sudoPassword
     if (sudoPassword) {
       childVal.stdin.write(sudoPassword + '\n');
     }
-    childVal.stdin.end();
+    // Do NOT close stdin — Kathara may ask "pull new image? [y/n]:" interactively.
+
+    // Auto-answer Kathara's image-update prompts with "n" so the process never blocks.
+    const answerKatharaPrompts = (msg: string) => {
+      if (msg.includes('[y/n]:') || msg.includes('[Y/n]:') || msg.includes('[y/N]:')) {
+        childVal.stdin.write('n\n');
+      }
+    };
 
     let stdoutData = '';
     let stderrData = '';
@@ -497,10 +573,12 @@ ipcMain.handle('run-simulation', async (event, { machines, labInfo, sudoPassword
       const msg = data.toString();
       stdoutData += msg;
       sendLog('log', msg);
+      answerKatharaPrompts(msg);
     });
 
     childVal.stderr.on('data', (data) => {
       const msg = data.toString();
+      answerKatharaPrompts(msg);
       // Filter out the password prompt itself if strictly needed, but sudo -S usually just reads
       if (!msg.includes('[sudo] password for')) {
         stderrData += msg;
@@ -513,7 +591,8 @@ ipcMain.handle('run-simulation', async (event, { machines, labInfo, sudoPassword
         sendLog('log', "✅ Lab started.");
         resolve(stdoutData.trim());
       } else {
-        const errorMessage = `❌ Failed to start (code ${code}): ${stderrData}`;
+        const combined = [stdoutData, stderrData].filter(Boolean).join('\n').trim();
+        const errorMessage = `❌ Failed to start (code ${code}): ${combined}`;
         sendLog('error', errorMessage);
         reject(errorMessage);
       }

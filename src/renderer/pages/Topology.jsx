@@ -105,7 +105,15 @@ function Topology() {
       
     } catch (e) {
       console.error("Run simulation error:", e);
-      setErrorModalOpen({ isOpen: true, message: String(e.message || e) });
+      const raw = String(e.message || e);
+      const isNetworkError = raw.toLowerCase().includes('networkerror') || raw.toLowerCase().includes('failed to fetch');
+      const isContainerNotRunning = raw.includes('is not running') || raw.includes('container') && raw.includes('not running');
+      const message = isNetworkError
+        ? "Cannot reach the backend server. Make sure the server is running (npm run server) and try again. If you are using a custom machine image that needs to be pulled from Docker Hub, the first start may take several minutes."
+        : isContainerNotRunning
+        ? `A container exited before Kathara could configure it.\n\nThis usually means the Docker image is not designed for long-running standalone use — for example, images that require a Kubernetes cluster (like nginx/nginx-ingress) or an external orchestrator will crash immediately.\n\nUse a base image like ubuntu, alpine, or debian instead.\n\nFull error:\n${raw}`
+        : raw;
+      setErrorModalOpen({ isOpen: true, message });
       toast.error("Simulation failed.");
       setShowSimulationBanner(false);
     }

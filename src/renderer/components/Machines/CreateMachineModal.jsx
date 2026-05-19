@@ -1,10 +1,10 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable react/prop-types */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { v4 as uuidv4 } from 'uuid';
 import {
     Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
-    Button, Input, Textarea, RadioGroup, Radio,
+    Button, Input, RadioGroup, Radio,
     CheckboxGroup, Checkbox,
     Tabs, Tab, Select, SelectItem,
 } from "@nextui-org/react";
@@ -25,7 +25,13 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
     const [selectedLocalImage, setSelectedLocalImage] = useState("");
     const [envDefs, setEnvDefs] = useState([]);
     const [startupScript, setStartupScript] = useState("");
+    const [buildScript, setBuildScript] = useState("");
+    const [buildState, setBuildState] = useState(null); // null | { building: bool, dockerOutput, success?, image?, scriptStdout?, scriptStderr? }
+    const [builtImageTag, setBuiltImageTag] = useState("");
+    const dockerOutputRef = useRef(null);
     const [activeTab, setActiveTab] = useState("base");
+    const [showFullScript, setShowFullScript] = useState(false);
+    const [showFullBuildScript, setShowFullBuildScript] = useState(false);
 
     useEffect(() => {
         if (isOpen && initialValues) {
@@ -34,6 +40,9 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
             setManualImage(initialValues.image || "");
             setEnvDefs((initialValues.envDefs || []).map(e => ({ ...e, id: e.id || uuidv4() })));
             setStartupScript(initialValues.startup || "");
+            setBuildScript(initialValues.buildScript || "");
+            setBuildState(null);
+            setBuiltImageTag("");
         }
     }, [isOpen]);
 
@@ -46,6 +55,12 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
                 .finally(() => setIsLoadingLocal(false));
         }
     }, [baseMode]);
+
+    useEffect(() => {
+        if (dockerOutputRef.current) {
+            dockerOutputRef.current.scrollTop = dockerOutputRef.current.scrollHeight;
+        }
+    }, [buildState?.dockerOutput]);
 
     function handleSearch() {
         if (!searchQuery.trim()) return;
@@ -91,9 +106,52 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
         ));
     }
 
-    function handleCreate() {
+    async function handleCreate() {
         if (!name.trim()) return;
-        onCreate({ name: name.trim(), image: getSelectedImage(), envDefs, startup: startupScript });
+        const image = getSelectedImage();
+
+        if (buildScript.trim()) {
+            // Already built successfully — save and close
+            if (buildState?.success && !buildState?.building) {
+                onCreate({ name: name.trim(), image, builtImage: builtImageTag, buildScript, envDefs, startup: startupScript });
+                handleReset();
+                return;
+            }
+
+            // Start build, then poll for result with live docker output
+            setBuildState({ building: true, dockerOutput: '' });
+            setActiveTab('build');
+
+            const fullBuildScript = autoBuildTopPart.trim() + "\n\n" + buildScript.trim();
+
+            let buildId;
+            try {
+                const resp = await api.buildCustomImage(name.trim(), image, fullBuildScript);
+                buildId = resp.buildId;
+            } catch (e) {
+                setBuildState({ building: false, success: false, dockerOutput: String(e), scriptStdout: '', scriptStderr: '' });
+                return;
+            }
+
+            const result = await new Promise(resolve => {
+                const poll = async () => {
+                    try {
+                        const r = await api.getBuildResult(buildId);
+                        setBuildState({ building: !r.done, dockerOutput: r.dockerOutput || '' });
+                        if (r.done) { resolve(r); return; }
+                    } catch {}
+                    setTimeout(poll, 500);
+                };
+                poll();
+            });
+
+            setBuildState({ building: false, ...result });
+            if (result.success) setBuiltImageTag(result.image || "");
+            return;
+        }
+
+        // No build script — save and close directly
+        onCreate({ name: name.trim(), image, builtImage: initialValues?.builtImage || "", buildScript: "", envDefs, startup: startupScript });
         handleReset();
     }
 
@@ -108,12 +166,41 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
         setSelectedLocalImage("");
         setEnvDefs([]);
         setStartupScript("");
+        setBuildScript("");
+        setBuildState(null);
+        setBuiltImageTag("");
         setActiveTab("base");
+        setShowFullScript(false);
+        setShowFullBuildScript(false);
         onClose();
     }
 
-    const autoSetupPreview =
-        `#!/bin/sh\necho 'nameserver 8.8.8.8' > /etc/resolv.conf\nip addr add <eth0_ip> dev eth0\nip link set eth0 up\n# eth1+ added automatically if configured`;
+    const autoBuildTopPart =
+`#!/bin/sh
+export DEBIAN_FRONTEND=noninteractive
+
+# ── auto-generated: base tools ──
+apt-get update -y 2>/dev/null || apt update -y 2>/dev/null || true
+apt-get install -y iproute2 curl 2>/dev/null || apt install -y iproute2 curl 2>/dev/null || true
+
+# ── auto-generated: smoloki ──
+curl -LsSf https://astral.sh/uv/install.sh | sh 2>/dev/null || true
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+uv tool install smoloki --with requests 2>/dev/null || true`;
+
+    const autoTopPart =
+`#!/bin/sh
+
+# ── auto-generated: network setup ──
+echo 'nameserver 8.8.8.8' > /etc/resolv.conf 2>/dev/null || true
+ip addr add <eth0_ip> dev eth0 2>/dev/null || true
+ip link set eth0 up 2>/dev/null || true
+# eth1+ interfaces added automatically if configured`;
+
+    const autoBottomPart =
+`# ── auto-generated: ready signal ──
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info", "host": "'"$(hostname)"'"}' '{"message":"ready"}' 2>/dev/null || true`;
 
     return (
         <Modal isOpen={isOpen} onOpenChange={handleReset} size="3xl" scrollBehavior="inside">
@@ -361,27 +448,106 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
                                         </div>
                                     </Tab>
 
+                                    {/* ── BUILD SCRIPT ── */}
+                                    <Tab key="build" title="Build Script">
+                                        <div className="grid gap-2 pt-2">
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-sm text-default-500">
+                                                    Executed during <code className="text-xs bg-default-100 px-1 rounded font-mono">docker build</code> — pre-install packages, configure the image layer.
+                                                </p>
+                                                <Button
+                                                    size="sm"
+                                                    variant="flat"
+                                                    onPress={() => setShowFullBuildScript(v => !v)}
+                                                >
+                                                    {showFullBuildScript ? "Hide full script" : "Show full script"}
+                                                </Button>
+                                            </div>
+                                            <div className="border border-default-200 rounded-lg overflow-hidden font-mono text-xs">
+                                                {showFullBuildScript && (
+                                                    <pre className="px-3 py-2 text-default-400 bg-default-100 border-b border-default-200 whitespace-pre leading-relaxed select-none">{autoBuildTopPart}</pre>
+                                                )}
+                                                <textarea
+                                                    className="w-full px-3 py-2 bg-content1 resize-none outline-none text-foreground leading-relaxed"
+                                                    placeholder={"# e.g.\napt-get install -y python3 git"}
+                                                    value={buildScript}
+                                                    onChange={(e) => {
+                                                        setBuildScript(e.target.value);
+                                                        if (buildState?.success && !buildState?.building) {
+                                                            setBuildState(null);
+                                                            setBuiltImageTag("");
+                                                        }
+                                                    }}
+                                                    rows={10}
+                                                    spellCheck={false}
+                                                    style={{ fontFamily: "monospace", fontSize: "0.75rem" }}
+                                                />
+                                            </div>
+                                            {buildState && (
+                                                <div className="grid gap-2">
+                                                    {!buildState.building && (
+                                                        <p className={`text-sm font-semibold font-mono px-1 ${buildState.success ? 'text-success-600' : 'text-danger-600'}`}>
+                                                            {buildState.success ? `✓ ${buildState.image}` : '✗ Build failed'}
+                                                        </p>
+                                                    )}
+                                                    <div>
+                                                        <p className="text-xs text-default-400 font-mono mb-1">
+                                                            docker build{buildState.building ? ' — building…' : ''}
+                                                        </p>
+                                                        <pre
+                                                            ref={dockerOutputRef}
+                                                            className="border border-default-200 rounded-lg px-3 py-2 text-xs font-mono whitespace-pre overflow-auto max-h-56 bg-zinc-950 text-zinc-300 leading-relaxed"
+                                                        >{buildState.dockerOutput || ' '}</pre>
+                                                    </div>
+                                                    {!buildState.building && buildState.success && buildState.scriptStdout && (
+                                                        <div>
+                                                            <p className="text-xs text-default-400 font-mono mb-1">build.sh — stdout</p>
+                                                            <pre className="border border-default-200 rounded-lg px-3 py-2 text-xs font-mono whitespace-pre overflow-auto max-h-40 bg-zinc-950 text-zinc-100 leading-relaxed">{buildState.scriptStdout}</pre>
+                                                        </div>
+                                                    )}
+                                                    {!buildState.building && buildState.success && buildState.scriptStderr && (
+                                                        <div>
+                                                            <p className="text-xs text-default-400 font-mono mb-1">build.sh — stderr</p>
+                                                            <pre className="border border-default-200 rounded-lg px-3 py-2 text-xs font-mono whitespace-pre overflow-auto max-h-40 bg-zinc-950 text-amber-400 leading-relaxed">{buildState.scriptStderr}</pre>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Tab>
+
                                     {/* ── STARTUP ── */}
                                     <Tab key="startup" title="Startup Script">
-                                        <div className="grid gap-3 pt-2">
-                                            <p className="text-sm text-default-500">
-                                                IP setup is auto-generated from configured interfaces. Add custom commands below.
-                                            </p>
-                                            <Textarea
-                                                isReadOnly
-                                                label="Auto-generated (read-only)"
-                                                value={autoSetupPreview}
-                                                classNames={{ input: "font-mono text-xs" }}
-                                                minRows={5}
-                                            />
-                                            <Textarea
-                                                label="Custom startup commands"
-                                                placeholder="# Your startup commands here..."
-                                                value={startupScript}
-                                                onChange={(e) => setStartupScript(e.target.value)}
-                                                minRows={6}
-                                                classNames={{ input: "font-mono text-sm" }}
-                                            />
+                                        <div className="grid gap-2 pt-2">
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-sm text-default-500">
+                                                    Custom startup commands
+                                                </p>
+                                                <Button
+                                                    size="sm"
+                                                    variant="flat"
+                                                    onPress={() => setShowFullScript(v => !v)}
+                                                >
+                                                    {showFullScript ? "Hide full script" : "Show full script"}
+                                                </Button>
+                                            </div>
+                                            <div className="border border-default-200 rounded-lg overflow-hidden font-mono text-xs">
+                                                {showFullScript && (
+                                                    <pre className="px-3 py-2 text-default-400 bg-default-100 border-b border-default-200 whitespace-pre leading-relaxed select-none">{autoTopPart}</pre>
+                                                )}
+                                                <textarea
+                                                    className="w-full px-3 py-2 bg-content1 resize-none outline-none text-foreground leading-relaxed"
+                                                    placeholder="# Your startup commands here..."
+                                                    value={startupScript}
+                                                    onChange={(e) => setStartupScript(e.target.value)}
+                                                    rows={6}
+                                                    spellCheck={false}
+                                                    style={{ fontFamily: "monospace", fontSize: "0.75rem" }}
+                                                />
+                                                {showFullScript && (
+                                                    <pre className="px-3 py-2 text-default-400 bg-default-100 border-t border-default-200 whitespace-pre leading-relaxed select-none">{autoBottomPart}</pre>
+                                                )}
+                                            </div>
                                         </div>
                                     </Tab>
                                 </Tabs>
@@ -391,8 +557,17 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
                             <Button color="danger" variant="light" onPress={handleReset}>
                                 Cancel
                             </Button>
-                            <Button color="primary" onPress={handleCreate} isDisabled={!name.trim()}>
-                                {initialValues ? "Update Machine" : "Create Machine"}
+                            <Button
+                                color="primary"
+                                onPress={handleCreate}
+                                isDisabled={!name.trim() || buildState?.building === true}
+                                isLoading={buildState?.building === true}
+                            >
+                                {buildState?.success
+                                    ? "Save Machine"
+                                    : buildScript.trim() && !buildState
+                                        ? "Build & Save"
+                                        : initialValues ? "Update Machine" : "Create Machine"}
                             </Button>
                         </ModalFooter>
                     </>

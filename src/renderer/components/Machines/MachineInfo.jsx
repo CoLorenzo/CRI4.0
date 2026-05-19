@@ -150,7 +150,7 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
                       customTemplateId: templateId,
                       other: {
                         ...machine.other,
-                        image: tpl.image,
+                        image: tpl.builtImage || tpl.image,
                         envDefs: tpl.envDefs || [],
                       },
                       scripts: { startup: tpl.startup || "" },
