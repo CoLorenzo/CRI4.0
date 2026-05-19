@@ -136,6 +136,15 @@ function makeStartupFiles(netkit, lab) {
       otherScript += "smoloki -b http://10.1.0.254:3100 '{\"job\":\"test\",\"level\":\"info\", \"host\": \"'\"$(hostname)\"'\"}' '{\"message\":\"ready\"}' 2>/dev/null || true\n";
 
       lab.file[`${machineName}.startup`] = otherScript;
+
+      if (Array.isArray(machine.other?.fileDefs)) {
+        for (const fileDef of machine.other.fileDefs) {
+          if (fileDef.content && fileDef.fileName) {
+            const dir = (fileDef.filePath || "/etc/scripts/").replace(/\/?$/, "/");
+            lab.file[dir + fileDef.fileName] = fileDef.content;
+          }
+        }
+      }
       continue;
     }
 
@@ -511,10 +520,22 @@ function makeLabConfFile(netkit, lab) {
       lab.file["lab.conf"] += `${machineName}[image]="${machine.other.image}"\n`;
       if (Array.isArray(machine.other.envDefs)) {
         for (const envDef of machine.other.envDefs) {
-          if (envDef.key && envDef.value !== undefined && envDef.value !== "") {
+          if (envDef.type === "file") {
+            if (envDef.value && envDef.fileName) {
+              const dir = (envDef.filePath || "/etc/").replace(/\/?$/, "/");
+              lab.file[dir + envDef.fileName] = envDef.value;
+            }
+          } else if (envDef.key && envDef.value !== undefined && envDef.value !== "") {
             lab.file["lab.conf"] += `${machineName}[env]="${envDef.key}=${envDef.value}"\n`;
           }
         }
+      }
+      if (Array.isArray(machine.other.dockerFlags) && machine.other.dockerFlags.length > 0) {
+        const opts = machine.other.dockerFlags
+          .filter(f => f.flag && f.flag.trim())
+          .map(f => f.value.trim() ? `${f.flag.trim()}=${f.value.trim()}` : f.flag.trim())
+          .join(" ");
+        if (opts) lab.file["lab.conf"] += `${machineName}[docker_options]="${opts}"\n`;
       }
     }
     if (machine.type == "ngfw") {

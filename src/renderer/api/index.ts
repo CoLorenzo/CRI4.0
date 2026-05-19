@@ -47,6 +47,19 @@ export const api = {
         return response.json();
     },
 
+    async loadDockerImage(file?: File): Promise<{ tag?: string; error?: string; canceled?: boolean }> {
+        if (isElectron()) {
+            return window.electron.ipcRenderer.invoke('load-docker-image');
+        }
+        if (!file) return { error: 'No file provided' };
+        const response = await fetch(`${API_BASE_URL}/load-docker-image`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/octet-stream' },
+            body: file,
+        });
+        return response.json();
+    },
+
     async buildCustomImage(machineName: string, baseImage: string, buildScript: string): Promise<{ started: boolean; buildId: string }> {
         if (isElectron()) {
             return window.electron.ipcRenderer.invoke('build-custom-image', { machineName, baseImage, buildScript });

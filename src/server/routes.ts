@@ -5,6 +5,7 @@ export const router = Router();
 
 router.post('/build-custom-image', controllers.buildCustomImage);
 router.get('/build-result/:buildId', controllers.getBuildResult);
+router.post('/load-docker-image', controllers.loadDockerImage);
 router.get('/docker-search', controllers.dockerSearch);
 router.get('/all-docker-images', controllers.getAllLocalImages);
 router.get('/docker-images', controllers.getDockerImages);

@@ -116,6 +116,40 @@ export const buildCustomImage = async (req: Request, res: Response) => {
     }
 };
 
+export const loadDockerImage = async (req: Request, res: Response) => {
+    let tmpFile = '';
+    try {
+        tmpFile = path.join(os.tmpdir(), `cri-load-${Date.now()}.tar`);
+        await new Promise<void>((resolve, reject) => {
+            const ws = fs.createWriteStream(tmpFile);
+            req.pipe(ws);
+            ws.on('finish', resolve);
+            ws.on('error', reject);
+            req.on('error', reject);
+        });
+
+        const { tag, error } = await new Promise<{ tag?: string; error?: string }>((resolve) => {
+            let output = '';
+            const proc = spawn('docker', ['load', '-i', tmpFile]);
+            proc.stdout.on('data', (d: Buffer) => { output += d.toString(); });
+            proc.stderr.on('data', (d: Buffer) => { output += d.toString(); });
+            proc.on('close', (code) => {
+                if (code !== 0) { resolve({ error: output.trim() || 'docker load failed' }); return; }
+                const match = output.match(/Loaded image(?:: | ID: )(.+)/);
+                resolve({ tag: match ? match[1].trim() : '' });
+            });
+            proc.on('error', (err) => resolve({ error: err.message }));
+        });
+
+        if (error) return res.status(500).json({ error });
+        res.json({ tag });
+    } catch (err) {
+        res.status(500).json({ error: String(err) });
+    } finally {
+        if (tmpFile) fsp.rm(tmpFile, { force: true }).catch(() => {});
+    }
+};
+
 export const getBuildResult = (req: Request, res: Response) => {
     const result = buildResults.get(req.params.buildId);
     if (!result) return res.json({ done: false, found: false });

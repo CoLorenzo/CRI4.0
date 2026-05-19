@@ -41,14 +41,14 @@ function CustomMachinesTab() {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editTarget, setEditTarget] = useState(null);
 
-    function handleCreate({ name, image, builtImage, buildScript, envDefs, startup }) {
-        save([...templates, { id: uuidv4(), name, image, builtImage: builtImage || "", buildScript: buildScript || "", envDefs: envDefs || [], startup: startup || "" }]);
+    function handleCreate({ name, image, builtImage, buildScript, envDefs, fileDefs, dockerFlags, logo, startup }) {
+        save([...templates, { id: uuidv4(), name, image, builtImage: builtImage || "", buildScript: buildScript || "", envDefs: envDefs || [], fileDefs: fileDefs || [], dockerFlags: dockerFlags || [], logo: logo || "", startup: startup || "" }]);
         setIsCreateOpen(false);
     }
 
-    function handleUpdate({ name, image, builtImage, buildScript, envDefs, startup }) {
+    function handleUpdate({ name, image, builtImage, buildScript, envDefs, fileDefs, dockerFlags, logo, startup }) {
         save(templates.map(t =>
-            t.id === editTarget.id ? { ...t, name, image, builtImage: builtImage || "", buildScript: buildScript || "", envDefs: envDefs || [], startup: startup || "" } : t
+            t.id === editTarget.id ? { ...t, name, image, builtImage: builtImage || "", buildScript: buildScript || "", envDefs: envDefs || [], fileDefs: fileDefs || [], dockerFlags: dockerFlags || [], logo: logo || "", startup: startup || "" } : t
         ));
         setEditTarget(null);
     }

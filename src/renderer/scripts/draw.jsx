@@ -126,11 +126,16 @@ function generate_nodes_edges(lab, ifNameAt, ifOspfCost, routingLabel) {
 		// each machine is a node. beware of duplicates
 		let id = "machine-" + machine.name;
 		if (!containsNodeWithID(id, nodes)) {
-			nodes.push({
+			const nodeData = {
 				id: id,
 				label: (machine.type === "other") ? machine.name + " (" + machine.other.image + ")" : machine.name,
 				group: machine.type
-			});
+			};
+			if (machine.type === "other" && machine.other?.logo) {
+				nodeData.image = machine.other.logo;
+				nodeData.shape = "image";
+			}
+			nodes.push(nodeData);
 		}
 
 		if (machine.type === "router") {

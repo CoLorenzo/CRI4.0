@@ -152,6 +152,9 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
                         ...machine.other,
                         image: tpl.builtImage || tpl.image,
                         envDefs: tpl.envDefs || [],
+                        fileDefs: (tpl.fileDefs || []).map(f => ({ ...f })),
+                        dockerFlags: (tpl.dockerFlags || []).map(f => ({ ...f })),
+                        logo: tpl.logo || "",
                       },
                       scripts: { startup: tpl.startup || "" },
                     });

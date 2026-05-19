@@ -12,7 +12,7 @@
  */
 import path from 'path';
 import url from 'url';
-import { app, BrowserWindow, shell, ipcMain, protocol, net } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, protocol, net, dialog } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import { exec, spawn } from 'child_process';
@@ -219,6 +219,28 @@ ipcMain.handle('get-build-result', async (event, buildId: string) => {
   const result = ipcBuildResults.get(buildId);
   if (!result) return { done: false, found: false };
   return result;
+});
+
+ipcMain.handle('load-docker-image', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: 'Select Docker Image',
+    filters: [{ name: 'Docker Image', extensions: ['tar'] }],
+    properties: ['openFile'],
+  });
+  if (canceled || filePaths.length === 0) return { canceled: true };
+  const filePath = filePaths[0];
+  return new Promise<{ tag?: string; error?: string }>((resolve) => {
+    let output = '';
+    const proc = spawn('docker', ['load', '-i', filePath]);
+    proc.stdout.on('data', (d: Buffer) => { output += d.toString(); });
+    proc.stderr.on('data', (d: Buffer) => { output += d.toString(); });
+    proc.on('close', (code) => {
+      if (code !== 0) { resolve({ error: output.trim() || 'docker load failed' }); return; }
+      const match = output.match(/Loaded image(?:: | ID: )(.+)/);
+      resolve({ tag: match ? match[1].trim() : '' });
+    });
+    proc.on('error', (err) => resolve({ error: err.message }));
+  });
 });
 
 ipcMain.handle('docker-build', async (event, arg) => {
