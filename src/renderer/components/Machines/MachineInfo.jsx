@@ -144,19 +144,18 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
                   onValueChange={(templateId) => {
                     const tpl = templates.find(t => t.id === templateId);
                     if (!tpl) return;
+                    const manifest = tpl.manifest || {};
                     handleChange(templateId, {
                       ...machine,
                       type: "other",
                       customTemplateId: templateId,
                       other: {
                         ...machine.other,
-                        image: tpl.builtImage || tpl.image,
-                        envDefs: tpl.envDefs || [],
-                        fileDefs: (tpl.fileDefs || []).map(f => ({ ...f })),
-                        dockerFlags: (tpl.dockerFlags || []).map(f => ({ ...f })),
+                        image: tpl.image,
+                        fields: (manifest.fields || []).map(f => ({ ...f })),
+                        dockerFlags: (manifest.dockerFlags || []).map(f => ({ ...f })),
                         logo: tpl.logo || "",
                       },
-                      scripts: { startup: tpl.startup || "" },
                     });
                   }}
                 >

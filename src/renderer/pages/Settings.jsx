@@ -41,14 +41,14 @@ function CustomMachinesTab() {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editTarget, setEditTarget] = useState(null);
 
-    function handleCreate({ name, image, builtImage, buildScript, envDefs, fileDefs, dockerFlags, logo, startup }) {
-        save([...templates, { id: uuidv4(), name, image, builtImage: builtImage || "", buildScript: buildScript || "", envDefs: envDefs || [], fileDefs: fileDefs || [], dockerFlags: dockerFlags || [], logo: logo || "", startup: startup || "" }]);
+    function handleCreate({ name, image, logo, manifest }) {
+        save([...templates, { id: uuidv4(), name, image, logo: logo || "", manifest: manifest || { fields: [], dockerFlags: [] } }]);
         setIsCreateOpen(false);
     }
 
-    function handleUpdate({ name, image, builtImage, buildScript, envDefs, fileDefs, dockerFlags, logo, startup }) {
+    function handleUpdate({ name, image, logo, manifest }) {
         save(templates.map(t =>
-            t.id === editTarget.id ? { ...t, name, image, builtImage: builtImage || "", buildScript: buildScript || "", envDefs: envDefs || [], fileDefs: fileDefs || [], dockerFlags: dockerFlags || [], logo: logo || "", startup: startup || "" } : t
+            t.id === editTarget.id ? { ...t, name, image, logo: logo || "", manifest: manifest || { fields: [], dockerFlags: [] } } : t
         ));
         setEditTarget(null);
     }
@@ -75,7 +75,7 @@ function CustomMachinesTab() {
                 <TableHeader>
                     <TableColumn>Name</TableColumn>
                     <TableColumn>Image</TableColumn>
-                    <TableColumn>Env Vars</TableColumn>
+                    <TableColumn>Fields</TableColumn>
                     <TableColumn className="w-0">Actions</TableColumn>
                 </TableHeader>
                 <TableBody emptyContent="No custom machines yet. Click Create to add one.">
@@ -88,8 +88,8 @@ function CustomMachinesTab() {
                                 </span>
                             </TableCell>
                             <TableCell>
-                                {tpl.envDefs && tpl.envDefs.length > 0
-                                    ? <span className="text-sm">{tpl.envDefs.length} variable{tpl.envDefs.length !== 1 ? "s" : ""}</span>
+                                {tpl.manifest?.fields?.length > 0
+                                    ? <span className="text-sm">{tpl.manifest.fields.length} field{tpl.manifest.fields.length !== 1 ? "s" : ""}</span>
                                     : <span className="text-default-400 text-sm">—</span>
                                 }
                             </TableCell>
