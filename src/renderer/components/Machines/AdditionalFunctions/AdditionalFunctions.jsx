@@ -19,6 +19,7 @@ import { NGFWFunctions } from "./NGFWFunctions";
 import { IndustrialFunctions } from "./IndustrialFunctions";
 import { ScadaFunctions } from "./ScadaFunctions";
 import { CustomMachineFunctions } from "./CustomMachineFunctions";
+import { CustomAttackFunctions } from "./CustomAttackFunctions";
 
 export function AdditionalFunctions({ machine, machines, setMachines }) {
     return (
@@ -26,12 +27,23 @@ export function AdditionalFunctions({ machine, machines, setMachines }) {
             {(() => {
                 switch (machine.type) {
                     case 'terminal':
-                    case 'attacker':
                         return <TerminalFunctions
                             machine={machine}
                             machines={machines}
                             setMachines={setMachines}
                         />
+                    case 'attacker':
+                        return machine.customAttackId
+                            ? <CustomAttackFunctions
+                                machine={machine}
+                                machines={machines}
+                                setMachines={setMachines}
+                            />
+                            : <TerminalFunctions
+                                machine={machine}
+                                machines={machines}
+                                setMachines={setMachines}
+                            />
                     case 'ns':
                         return <NameserverFunctions
                             machine={machine}

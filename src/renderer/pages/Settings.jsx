@@ -9,19 +9,22 @@ import CreateMachineModal from "../components/Machines/CreateMachineModal";
 import { PlusSymbol } from "../components/Symbols/PlusSymbol";
 import { XSymbol } from "../components/Symbols/XSymbol";
 
-function useTemplates() {
-    const [templates, setTemplates] = useState(() => {
+function useLocalStorage(key) {
+    const [items, setItems] = useState(() => {
         try {
-            const saved = localStorage.getItem("customTemplates");
+            const saved = localStorage.getItem(key);
             return saved ? JSON.parse(saved) : [];
         } catch { return []; }
     });
-
     function save(updated) {
-        setTemplates(updated);
-        localStorage.setItem("customTemplates", JSON.stringify(updated));
+        setItems(updated);
+        localStorage.setItem(key, JSON.stringify(updated));
     }
+    return { items, save };
+}
 
+function useTemplates() {
+    const { items: templates, save } = useLocalStorage("customTemplates");
     return { templates, save };
 }
 
@@ -141,9 +144,90 @@ function CustomMachinesTab() {
 
 /* ── Custom Attacks sub-page ── */
 function CustomAttacksTab() {
+    const { items: attacks, save } = useLocalStorage("customAttacks");
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [editTarget, setEditTarget] = useState(null);
+
+    function handleCreate({ name, image, logo, manifest }) {
+        save([...attacks, { id: uuidv4(), name, image, logo: logo || "", manifest: manifest || { fields: [], dockerFlags: [] } }]);
+        setIsCreateOpen(false);
+    }
+
+    function handleUpdate({ name, image, logo, manifest }) {
+        save(attacks.map(t =>
+            t.id === editTarget.id ? { ...t, name, image, logo: logo || "", manifest: manifest || { fields: [], dockerFlags: [] } } : t
+        ));
+        setEditTarget(null);
+    }
+
+    function handleDelete(id) {
+        save(attacks.filter(t => t.id !== id));
+    }
+
     return (
-        <div className="pt-8 flex justify-center">
-            <p className="text-default-400 text-sm">No custom attacks defined yet.</p>
+        <div className="grid gap-4 pt-4">
+            <div className="flex justify-end">
+                <Button
+                    color="primary"
+                    size="sm"
+                    className="text-white"
+                    endContent={<PlusSymbol fill="white" size={18} />}
+                    onPress={() => setIsCreateOpen(true)}
+                >
+                    Create
+                </Button>
+            </div>
+
+            <Table aria-label="Custom attacks table" removeWrapper>
+                <TableHeader>
+                    <TableColumn>Name</TableColumn>
+                    <TableColumn>Image</TableColumn>
+                    <TableColumn>Fields</TableColumn>
+                    <TableColumn className="w-0">Actions</TableColumn>
+                </TableHeader>
+                <TableBody emptyContent="No custom attacks yet. Click Create to add one.">
+                    {attacks.map((tpl) => (
+                        <TableRow key={tpl.id}>
+                            <TableCell className="font-medium">{tpl.name}</TableCell>
+                            <TableCell>
+                                <span className="font-mono text-sm text-default-600">
+                                    {tpl.image || <span className="text-default-400 italic">—</span>}
+                                </span>
+                            </TableCell>
+                            <TableCell>
+                                {tpl.manifest?.fields?.length > 0
+                                    ? <span className="text-sm">{tpl.manifest.fields.length} field{tpl.manifest.fields.length !== 1 ? "s" : ""}</span>
+                                    : <span className="text-default-400 text-sm">—</span>
+                                }
+                            </TableCell>
+                            <TableCell>
+                                <div className="flex gap-2">
+                                    <Button isIconOnly size="sm" variant="flat" onPress={() => setEditTarget(tpl)} aria-label="Edit">
+                                        <EditIcon />
+                                    </Button>
+                                    <Button isIconOnly size="sm" color="danger" variant="flat" onPress={() => handleDelete(tpl.id)} aria-label="Delete">
+                                        <XSymbol size={16} />
+                                    </Button>
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+
+            <CreateMachineModal
+                isOpen={isCreateOpen}
+                onClose={() => setIsCreateOpen(false)}
+                onCreate={handleCreate}
+                title="Create Custom Attack"
+            />
+            <CreateMachineModal
+                isOpen={!!editTarget}
+                onClose={() => setEditTarget(null)}
+                onCreate={handleUpdate}
+                initialValues={editTarget}
+                title="Edit Custom Attack"
+            />
         </div>
     );
 }

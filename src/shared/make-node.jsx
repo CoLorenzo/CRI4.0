@@ -559,20 +559,30 @@ function makeLabConfFile(netkit, lab) {
 
     }
     if (machine.type == "attacker") {
-      if (machine.attackLoaded && machine.attackImage != "") {
-        //lab.file["lab.conf"] += `${machine.name}[image]=${machine.attackImage}`;
+      if (machine.customAttackId && machine.attacker?.image) {
+        lab.file["lab.conf"] += `${machineName}[image]="${machine.attacker.image}"\n`;
+        if (Array.isArray(machine.attacker.fields)) {
+          for (const field of machine.attacker.fields) {
+            if (field.key && field.value !== undefined && field.value !== "") {
+              lab.file["lab.conf"] += `${machineName}[env]="${field.key}=${field.value}"\n`;
+            }
+          }
+        }
+        if (Array.isArray(machine.attacker.dockerFlags) && machine.attacker.dockerFlags.length > 0) {
+          const opts = machine.attacker.dockerFlags
+            .filter(f => f.flag && f.flag.trim())
+            .map(f => f.value.trim() ? `${f.flag.trim()}=${f.value.trim()}` : f.flag.trim())
+            .join(" ");
+          if (opts) lab.file["lab.conf"] += `${machineName}[docker_options]="${opts}"\n`;
+        }
+      } else if (machine.attackLoaded && machine.attackImage != "") {
         lab.file["lab.conf"] += `${machineName}[image]=${machine.attackImage}\n`;
-
-        // Inject privileged options for ModbusTCP injection
         if (machine.attackImage.includes("modbustcp-injection")) {
           lab.file["lab.conf"] += `${machineName}[docker_options]="--privileged"\n`;
         }
       } else {
-        //lab.file["lab.conf"] += `${machine.name}[image]=kalilinux/kali-rolling`;
         lab.file["lab.conf"] += `${machineName}[image]=kalilinux/kali-rolling@sha256:eb500810d9d44236e975291205bfd45e9e19b7f63859e3a72ba30ea548ddb1df\n`;
-
       }
-      // Explicitly set hostname to avoid Docker utilizing image name or random string
       lab.file["lab.conf"] += `${machineName}[hostname]="attacker"\n`;
     }
     lab.file["lab.conf"] += "\n";

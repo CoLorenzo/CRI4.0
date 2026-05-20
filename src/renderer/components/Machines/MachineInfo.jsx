@@ -8,7 +8,7 @@ import { RadioGroup, Radio } from "@nextui-org/radio";
 import { Input } from "@nextui-org/input";
 import { Accordion, AccordionItem } from "@nextui-org/react";
 
-export function MachineInfo({ id, machine, machines, setMachines, customTemplates }) {
+export function MachineInfo({ id, machine, machines, setMachines, customTemplates, customAttackTemplates }) {
   function handleChange(value, data) {
     setMachines(() =>
       machines.map((m) => {
@@ -22,7 +22,7 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
   }
 
   function handleTypeChange(value) {
-    handleChange(value, { ...machine, type: value, customTemplateId: null });
+    handleChange(value, { ...machine, type: value, customTemplateId: null, customAttackId: null });
   }
 
   const attackerExistsElsewhere = machines.some(
@@ -33,6 +33,7 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
     machines.filter((m) => m.type === "controller" && m.id !== machine.id).length === 1;
 
   const templates = customTemplates || [];
+  const attackTemplates = customAttackTemplates || [];
 
   return (
     <div className="h-full">
@@ -61,7 +62,7 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
             <AccordionItem key="general" aria-label="General" title="General">
               <RadioGroup
                 color="primary"
-                value={machine.customTemplateId ? "" : machine.type}
+                value={(machine.customTemplateId || machine.customAttackId) ? "" : machine.type}
                 onValueChange={handleTypeChange}
               >
                 <Radio value="terminal">Terminal</Radio>
@@ -75,20 +76,48 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
             <AccordionItem key="attack" aria-label="Attack" title="Attack">
               <RadioGroup
                 color="primary"
-                value={machine.customTemplateId ? "" : machine.type}
+                value={(machine.customTemplateId || machine.customAttackId) ? "" : machine.type}
                 onValueChange={handleTypeChange}
               >
                 <Radio isDisabled={attackerExistsElsewhere} value="attacker">
                   Attacker
                 </Radio>
               </RadioGroup>
+              {attackTemplates.length > 0 && (
+                <RadioGroup
+                  color="secondary"
+                  value={machine.customAttackId || ""}
+                  onValueChange={(attackId) => {
+                    const tpl = attackTemplates.find(t => t.id === attackId);
+                    if (!tpl) return;
+                    const manifest = tpl.manifest || {};
+                    handleChange(attackId, {
+                      ...machine,
+                      type: "attacker",
+                      customAttackId: attackId,
+                      customTemplateId: null,
+                      attacker: {
+                        image: tpl.image,
+                        fields: (manifest.fields || []).map(f => ({ ...f })),
+                        dockerFlags: (manifest.dockerFlags || []).map(f => ({ ...f })),
+                        logo: tpl.logo || "",
+                      },
+                    });
+                  }}
+                  className="mt-2"
+                >
+                  {attackTemplates.map((tpl) => (
+                    <Radio key={tpl.id} value={tpl.id}>{tpl.name}</Radio>
+                  ))}
+                </RadioGroup>
+              )}
             </AccordionItem>
 
             {/* DEFENSE */}
             <AccordionItem key="defense" aria-label="Defense" title="Defense">
               <RadioGroup
                 color="primary"
-                value={machine.customTemplateId ? "" : machine.type}
+                value={(machine.customTemplateId || machine.customAttackId) ? "" : machine.type}
                 onValueChange={handleTypeChange}
               >
                 <Radio value="ngfw">NGFW Appliance</Radio>
@@ -100,7 +129,7 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
             <AccordionItem key="industrial" aria-label="Industrial" title="Industrial">
               <RadioGroup
                 color="primary"
-                value={machine.customTemplateId ? "" : machine.type}
+                value={(machine.customTemplateId || machine.customAttackId) ? "" : machine.type}
                 onValueChange={handleTypeChange}
               >
                 <Radio value="engine">Engine</Radio>
@@ -119,7 +148,7 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
             <AccordionItem key="other" aria-label="Other" title="Other">
               <RadioGroup
                 color="primary"
-                value={machine.customTemplateId ? "" : machine.type}
+                value={(machine.customTemplateId || machine.customAttackId) ? "" : machine.type}
                 onValueChange={handleTypeChange}
               >
                 {exactlyOneOtherController ? (

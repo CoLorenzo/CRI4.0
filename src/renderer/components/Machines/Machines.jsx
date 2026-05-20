@@ -29,9 +29,16 @@ export function Machines({ machines, setMachines, componentRefs }) {
       td: ["align-top h-auto"],
     }), [])
 
-  const [customTemplates, setCustomTemplates] = useState(() => {
+  const [customTemplates] = useState(() => {
     try {
       const saved = localStorage.getItem("customTemplates");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  const [customAttackTemplates] = useState(() => {
+    try {
+      const saved = localStorage.getItem("customAttacks");
       return saved ? JSON.parse(saved) : [];
     } catch { return []; }
   });
@@ -39,10 +46,6 @@ export function Machines({ machines, setMachines, componentRefs }) {
   useEffect(() => {
     localStorage.setItem("machines", JSON.stringify(machines));
   }, [machines]);
-
-  useEffect(() => {
-    localStorage.setItem("customTemplates", JSON.stringify(customTemplates));
-  }, [customTemplates]);
 
   function addMachine() {
     // Calculate the next progressive IP address
@@ -152,7 +155,7 @@ export function Machines({ machines, setMachines, componentRefs }) {
                 </div>
               </TableCell>
               <TableCell>
-                <MachineInfo id={index} machine={machine} machines={machines} setMachines={setMachines} customTemplates={customTemplates} />
+                <MachineInfo id={index} machine={machine} machines={machines} setMachines={setMachines} customTemplates={customTemplates} customAttackTemplates={customAttackTemplates} />
               </TableCell>
               <TableCell>
                 <NetworkInterface machine={machine} machines={machines} setMachines={setMachines} />

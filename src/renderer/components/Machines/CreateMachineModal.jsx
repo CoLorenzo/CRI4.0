@@ -4,14 +4,13 @@ import { useState, useEffect, useRef } from "react";
 import { v4 as uuidv4 } from 'uuid';
 import {
     Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
-    Button, Input, RadioGroup, Radio,
+    Button, RadioGroup, Radio,
     Tabs, Tab,
 } from "@nextui-org/react";
 import { api } from "../../api/index";
 import { XSymbol } from "../Symbols/XSymbol";
 
-export default function CreateMachineModal({ isOpen, onClose, onCreate, initialValues }) {
-    const [name, setName] = useState("");
+export default function CreateMachineModal({ isOpen, onClose, onCreate, initialValues, title = "Create Custom Machine" }) {
     const [baseMode, setBaseMode] = useState("local");
     const [localImages, setLocalImages] = useState([]);
     const [isLoadingLocal, setIsLoadingLocal] = useState(false);
@@ -30,7 +29,6 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
 
     useEffect(() => {
         if (!isOpen) return;
-        setName(initialValues?.name || "");
         setLogo(initialValues?.logo || "");
         setSelectedLocalImage(initialValues?.image || "");
         setUploadedImage("");
@@ -78,21 +76,19 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
     }
 
     function handleCreate() {
-        if (!name.trim()) return;
+        const machineName = manifestContent?.name?.trim();
+        if (!machineName) return;
         const image = getSelectedImage();
-        const manifest = manifestContent
-            ? {
-                ...manifestContent,
-                fields: (manifestContent.fields || []).map(f => ({ ...f, id: f.id || uuidv4() })),
-                dockerFlags: (manifestContent.dockerFlags || []).map(f => ({ ...f, id: f.id || uuidv4() })),
-              }
-            : { fields: [], dockerFlags: [] };
-        onCreate({ name: name.trim(), image, logo, manifest });
+        const manifest = {
+            ...manifestContent,
+            fields: (manifestContent.fields || []).map(f => ({ ...f, id: f.id || uuidv4() })),
+            dockerFlags: (manifestContent.dockerFlags || []).map(f => ({ ...f, id: f.id || uuidv4() })),
+        };
+        onCreate({ name: machineName, image, logo, manifest });
         handleReset();
     }
 
     function handleReset() {
-        setName("");
         setBaseMode("local");
         setLocalImages([]);
         setSelectedLocalImage("");
@@ -139,11 +135,11 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
             <ModalContent>
                 {() => (
                     <>
-                        <ModalHeader>Create Custom Machine</ModalHeader>
+                        <ModalHeader>{title}</ModalHeader>
                         <ModalBody>
                             <div className="grid gap-4">
-                                {/* Name + Logo */}
-                                <div className="flex items-center gap-3">
+                                {/* Logo */}
+                                <div className="flex items-center gap-2">
                                     <div
                                         className="w-12 h-12 rounded-xl border border-default-200 bg-default-100 flex items-center justify-center shrink-0 overflow-hidden cursor-pointer"
                                         onClick={() => logoInputRef.current?.click()}
@@ -160,15 +156,6 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
                                         )}
                                     </div>
                                     <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-                                    <div className="flex-1">
-                                        <Input
-                                            label="Machine Name"
-                                            placeholder="e.g. my-server"
-                                            value={name}
-                                            onValueChange={setName}
-                                            isRequired
-                                        />
-                                    </div>
                                     {logo && (
                                         <Button size="sm" variant="flat" color="danger" isIconOnly onPress={() => setLogo("")} title="Remove logo">
                                             <XSymbol size={14} />
@@ -306,8 +293,10 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
                                                 <div className="grid gap-2">
                                                     <div className="flex items-center justify-between p-3 bg-success-50 border border-success-200 rounded-xl">
                                                         <div>
-                                                            <p className="text-xs text-success-600 font-medium">Manifest loaded</p>
-                                                            <p className="font-mono text-sm text-success-800">{manifestFileName}</p>
+                                                            <p className="text-xs text-success-600 font-medium">Manifest loaded — {manifestFileName}</p>
+                                                            {manifestContent.name && (
+                                                                <p className="font-medium text-sm text-success-800">{manifestContent.name}</p>
+                                                            )}
                                                             <p className="text-xs text-success-600 mt-0.5">
                                                                 {fieldCount} field{fieldCount !== 1 ? "s" : ""}
                                                                 {flagCount > 0 ? `, ${flagCount} docker flag${flagCount !== 1 ? "s" : ""}` : ""}
@@ -334,7 +323,7 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
                             <Button
                                 color="primary"
                                 onPress={handleCreate}
-                                isDisabled={!name.trim()}
+                                isDisabled={!manifestContent?.name?.trim()}
                             >
                                 {initialValues ? "Update Machine" : "Create Machine"}
                             </Button>
