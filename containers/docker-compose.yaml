@@ -18,6 +18,11 @@ services:
     image: icr/kathara-base
     profiles:
       - kathara
+  cribase:
+    build: ./cribase
+    image: icr/cribase
+    profiles:
+      - kathara
   mitm-arp-spoofing:
     build: ./mitm/arp-spoofing
     image: icr/mitm-arp-spoofing
