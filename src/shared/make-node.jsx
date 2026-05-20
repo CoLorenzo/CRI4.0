@@ -110,30 +110,38 @@ function makeStartupFiles(netkit, lab) {
     // "other" machines can be any image (archlinux, alpine, custom, …)
     // Use a minimal POSIX sh script without assumptions about the image's tools.
     if (machine.type === "other") {
-      let otherScript = "#!/bin/sh\n\n";
+      let otherScript;
 
-      // ── 1. Network setup ───────────────────────────────────────────────────
-      otherScript += "echo 'nameserver 8.8.8.8' > /etc/resolv.conf 2>/dev/null || true\n";
-      otherScript += `ip addr add ${eth0Ip} dev eth0 2>/dev/null || true\n`;
-      otherScript += "ip link set eth0 up 2>/dev/null || true\n";
-      if (machine.interfaces && Array.isArray(machine.interfaces.if)) {
-        for (const iface of machine.interfaces.if) {
-          if (iface && iface.eth && iface.eth.number >= 1 && typeof iface.ip === "string" && iface.ip.trim() !== "") {
-            const interfaceNumber = iface.eth.number;
-            let ipAddress = String(iface.ip).trim();
-            if (!ipAddress.includes("/")) ipAddress += "/24";
-            otherScript += `ip addr add ${ipAddress} dev eth${interfaceNumber} 2>/dev/null || true\n`;
-            otherScript += `ip link set eth${interfaceNumber} up 2>/dev/null || true\n`;
+      if (machine.customTemplateId && body) {
+        // User edited the full startup script in the textbox — use verbatim,
+        // replacing the eth0 placeholder set when the template was applied.
+        otherScript = body.replace(/<eth0_ip>/g, eth0Ip);
+      } else {
+        otherScript = "#!/bin/sh\n\n";
+
+        // ── 1. Network setup ─────────────────────────────────────────────────
+        otherScript += "echo 'nameserver 8.8.8.8' > /etc/resolv.conf 2>/dev/null || true\n";
+        otherScript += `ip addr add ${eth0Ip} dev eth0 2>/dev/null || true\n`;
+        otherScript += "ip link set eth0 up 2>/dev/null || true\n";
+        if (machine.interfaces && Array.isArray(machine.interfaces.if)) {
+          for (const iface of machine.interfaces.if) {
+            if (iface && iface.eth && iface.eth.number >= 1 && typeof iface.ip === "string" && iface.ip.trim() !== "") {
+              const interfaceNumber = iface.eth.number;
+              let ipAddress = String(iface.ip).trim();
+              if (!ipAddress.includes("/")) ipAddress += "/24";
+              otherScript += `ip addr add ${ipAddress} dev eth${interfaceNumber} 2>/dev/null || true\n`;
+              otherScript += `ip link set eth${interfaceNumber} up 2>/dev/null || true\n`;
+            }
           }
         }
+
+        // ── 2. User startup script ───────────────────────────────────────────
+        if (body) otherScript += "\n" + body + "\n";
+
+        // ── 3. Signal readiness ──────────────────────────────────────────────
+        otherScript += "\nexport PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$PATH\"\n";
+        otherScript += "smoloki -b http://10.1.0.254:3100 '{\"job\":\"test\",\"level\":\"info\", \"host\": \"'\"$(hostname)\"'\"}' '{\"message\":\"ready\"}' 2>/dev/null || true\n";
       }
-
-      // ── 2. User startup script ─────────────────────────────────────────────
-      if (body) otherScript += "\n" + body + "\n";
-
-      // ── 3. Signal readiness (smoloki pre-installed via build script) ────────
-      otherScript += "\nexport PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$PATH\"\n";
-      otherScript += "smoloki -b http://10.1.0.254:3100 '{\"job\":\"test\",\"level\":\"info\", \"host\": \"'\"$(hostname)\"'\"}' '{\"message\":\"ready\"}' 2>/dev/null || true\n";
 
       lab.file[`${machineName}.startup`] = otherScript;
       continue;

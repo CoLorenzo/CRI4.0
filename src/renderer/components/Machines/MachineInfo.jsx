@@ -8,6 +8,23 @@ import { RadioGroup, Radio } from "@nextui-org/radio";
 import { Input } from "@nextui-org/input";
 import { Accordion, AccordionItem } from "@nextui-org/react";
 
+function generateCustomStartupScript(machine) {
+    let script = "#!/bin/sh\n\n";
+    script += "echo 'nameserver 8.8.8.8' > /etc/resolv.conf 2>/dev/null || true\n";
+    script += "ip addr add <eth0_ip> dev eth0 2>/dev/null || true\n";
+    script += "ip link set eth0 up 2>/dev/null || true\n";
+    for (const iface of (machine.interfaces?.if || [])) {
+        if (iface.ip && iface.ip !== '' && iface.eth?.number >= 1) {
+            const ip = String(iface.ip).trim().includes('/') ? iface.ip.trim() : iface.ip.trim() + '/24';
+            script += `ip addr add ${ip} dev eth${iface.eth.number} 2>/dev/null || true\n`;
+            script += `ip link set eth${iface.eth.number} up 2>/dev/null || true\n`;
+        }
+    }
+    script += "\nexport PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$PATH\"\n";
+    script += "smoloki -b http://10.1.0.254:3100 '{\"job\":\"test\",\"level\":\"info\",\"host\":\"'\"$(hostname)\"'\"}' '{\"message\":\"ready\"}' 2>/dev/null || true\n";
+    return script;
+}
+
 export function MachineInfo({ id, machine, machines, setMachines, customTemplates, customAttackTemplates }) {
   function handleChange(value, data) {
     setMachines(() =>
@@ -174,7 +191,7 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
                     const tpl = templates.find(t => t.id === templateId);
                     if (!tpl) return;
                     const manifest = tpl.manifest || {};
-                    handleChange(templateId, {
+                    const updated = {
                       ...machine,
                       type: "other",
                       customTemplateId: templateId,
@@ -185,6 +202,10 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
                         dockerFlags: (manifest.dockerFlags || []).map(f => ({ ...f })),
                         logo: tpl.logo || "",
                       },
+                    };
+                    handleChange(templateId, {
+                      ...updated,
+                      scripts: { ...(updated.scripts || {}), startup: generateCustomStartupScript(updated) },
                     });
                   }}
                 >
