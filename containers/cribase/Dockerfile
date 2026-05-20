@@ -1,5 +1,5 @@
 FROM debian:trixie
-RUN apt-get update && apt-get install -y curl iproute2
+RUN apt-get update && apt-get install -y curl iproute2 jq
 
 #Install uv
 RUN apt-get update \

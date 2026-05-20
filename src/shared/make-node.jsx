@@ -3,6 +3,23 @@ import AdmZip from "adm-zip";
 
 /** ───────────────── Helpers identici al renderer (adattati a Node) ───────────────── */
 
+function buildCriInterfaces(machine) {
+  const ifaces = [];
+  if (machine.computedEth0Ip) {
+    ifaces.push({ name: "eth0", address: machine.computedEth0Ip });
+  }
+  if (machine.interfaces && Array.isArray(machine.interfaces.if)) {
+    for (const iface of machine.interfaces.if) {
+      if (iface && iface.eth && iface.eth.number >= 1 && typeof iface.ip === "string" && iface.ip.trim() !== "") {
+        let addr = iface.ip.trim();
+        if (!addr.includes("/")) addr += "/24";
+        ifaces.push({ name: `eth${iface.eth.number}`, address: addr });
+      }
+    }
+  }
+  return JSON.stringify(ifaces);
+}
+
 function makeMachineFolders(netkit, lab) {
   for (let machine of netkit) lab.folders.push(machine.name);
 }
@@ -147,19 +164,34 @@ function makeStartupFiles(netkit, lab) {
         otherScript += "smoloki -b http://10.1.0.254:3100 '{\"job\":\"test\",\"level\":\"info\", \"host\": \"'\"$(hostname)\"'\"}' '{\"message\":\"ready\"}' 2>/dev/null || true\n";
       }
 
-      // ── Inject manifest field values into /etc/environment ────────────────
-      // This makes them visible via `env` in every shell opened with kathara connect,
-      // regardless of whether Kathara's [env] lab.conf option is processed correctly.
-      const customFields = (machine.other?.fields || []).filter(
-        f => f.key && f.value !== undefined && f.value !== ""
-      );
-      if (customFields.length > 0) {
-        const envBlock = customFields
-          .map(f => `echo '${String(f.key).replace(/'/g, "'\\''")}=${String(f.value).replace(/'/g, "'\\''")}' >> /etc/environment 2>/dev/null || true`)
-          .join("\n");
-        // Insert right after the shebang line so it runs before anything else.
-        otherScript = otherScript.replace(/^(#![^\n]*\n)/, `$1${envBlock}\n`);
-      }
+      // ── Inject env vars right after the shebang ─────────────────────────
+      // CRI_INTERFACES (JSON) cannot go in lab.conf [env] because Kathara's
+      // parser rejects double-quoted values that contain double quotes.
+      // Instead, write it to /root/.cri_env via heredoc (no quoting issues)
+      // and source that file from /root/.bashrc — docker exec -it /bin/bash
+      // opens an interactive bash which sources ~/.bashrc.
+      // Manifest field values are already set via Docker -e (lab.conf [env]);
+      // /etc/environment writes below are a fallback for non-bash shells.
+      const criJson = buildCriInterfaces(machine);
+      const safeJson = criJson.replace(/'/g, "'\\''");
+
+      // 1. export inline — makes $CRI_INTERFACES available to the startup script body
+      // 2. write /root/.cri_env + source from .bashrc — makes it visible via `env`
+      //    in interactive shells opened with docker exec -it /bin/bash
+      const criBlock = [
+        `export CRI_INTERFACES='${safeJson}'`,
+        `cat > /root/.cri_env << '__CRI_ENV_EOF__'`,
+        `export CRI_INTERFACES='${safeJson}'`,
+        `__CRI_ENV_EOF__`,
+        `grep -qxF '. /root/.cri_env' /root/.bashrc 2>/dev/null || echo '. /root/.cri_env' >> /root/.bashrc`,
+      ].join("\n") + "\n";
+
+      const fieldEnvLines = (machine.other?.fields || [])
+        .filter(f => f.key && f.value !== undefined && f.value !== "")
+        .map(f => `echo '${String(f.key).replace(/'/g, "'\\''")}=${String(f.value).replace(/'/g, "'\\''")}' >> /etc/environment 2>/dev/null || true`);
+
+      const injectedBlock = criBlock + (fieldEnvLines.length > 0 ? fieldEnvLines.join("\n") + "\n" : "");
+      otherScript = otherScript.replace(/^(#![^\n]*\n)/, (_, shebang) => shebang + injectedBlock);
 
       lab.file[`${machineName}.startup`] = otherScript;
       continue;

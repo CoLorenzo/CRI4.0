@@ -8,21 +8,22 @@ import { RadioGroup, Radio } from "@nextui-org/radio";
 import { Input } from "@nextui-org/input";
 import { Accordion, AccordionItem } from "@nextui-org/react";
 
-function generateCustomStartupScript(machine) {
-    let script = "#!/bin/sh\n\n";
-    script += "echo 'nameserver 8.8.8.8' > /etc/resolv.conf 2>/dev/null || true\n";
-    script += "ip addr add <eth0_ip> dev eth0 2>/dev/null || true\n";
-    script += "ip link set eth0 up 2>/dev/null || true\n";
-    for (const iface of (machine.interfaces?.if || [])) {
-        if (iface.ip && iface.ip !== '' && iface.eth?.number >= 1) {
-            const ip = String(iface.ip).trim().includes('/') ? iface.ip.trim() : iface.ip.trim() + '/24';
-            script += `ip addr add ${ip} dev eth${iface.eth.number} 2>/dev/null || true\n`;
-            script += `ip link set eth${iface.eth.number} up 2>/dev/null || true\n`;
-        }
-    }
-    script += "\nexport PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$PATH\"\n";
-    script += "smoloki -b http://10.1.0.254:3100 '{\"job\":\"test\",\"level\":\"info\",\"host\":\"'\"$(hostname)\"'\"}' '{\"message\":\"ready\"}' 2>/dev/null || true\n";
-    return script;
+function generateCustomStartupScript() {
+    return `#!/bin/sh
+
+CRI_INTERFACES_LEN=$(echo $CRI_INTERFACES | jq "length")
+for (( i=0; i<=\${CRI_INTERFACES_LEN} - 1; i+=1 )); do
+    CRIINTERFACE_NAME=$(echo $CRI_INTERFACES | jq -r ".[\${i}].name")
+    CRIINTERFACE_ADDRESS=$(echo $CRI_INTERFACES | jq -r ".[\${i}].address")
+
+    ip addr add \${CRIINTERFACE_ADDRESS} dev \${CRIINTERFACE_NAME}
+    ip link set \${CRIINTERFACE_NAME} up
+    echo "interface \${CRIINTERFACE_NAME} set with \${CRIINTERFACE_ADDRESS}"
+done
+
+
+smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info","host":"'"$(hostname)"'"}' '{"message":"ready"}'
+`;
 }
 
 export function MachineInfo({ id, machine, machines, setMachines, customTemplates, customAttackTemplates }) {
@@ -205,7 +206,7 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
                     };
                     handleChange(templateId, {
                       ...updated,
-                      scripts: { ...(updated.scripts || {}), startup: generateCustomStartupScript(updated) },
+                      scripts: { ...(updated.scripts || {}), startup: generateCustomStartupScript() },
                     });
                   }}
                 >
