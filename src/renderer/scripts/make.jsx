@@ -646,11 +646,12 @@ function makeOther(netkit, lab) {
 				: '') || (machine.interfaces && typeof machine.interfaces.free === 'string'
 					? machine.interfaces.free
 					: '');
-			if (machine.customTemplateId && userScript && userScript.trim()) {
-				lab.file[machine.name + '.startup'] = userScript;
+			const trimmedScript = userScript ? userScript.trim() : '';
+			let otherStartup;
+			if (trimmedScript.startsWith('#!/')) {
+				otherStartup = trimmedScript.replace(/<eth0_ip>/g, '');
 			} else {
-				let otherStartup = '#!/bin/sh\n\n';
-				// 1. Network setup
+				otherStartup = '#!/bin/sh\n\n';
 				otherStartup += "echo 'nameserver 8.8.8.8' > /etc/resolv.conf 2>/dev/null || true\n";
 				for (let machineInterface of machine.interfaces.if) {
 					if (machineInterface.ip && machineInterface.ip != '') {
@@ -658,15 +659,22 @@ function makeOther(netkit, lab) {
 						otherStartup += 'ip link set eth' + machineInterface.eth.number + ' up 2>/dev/null || true\n';
 					}
 				}
-				// 2. User script
-				if (userScript && userScript.trim() !== '') {
-					otherStartup += '\n' + userScript.trim() + '\n';
+				if (trimmedScript !== '') {
+					otherStartup += '\n' + trimmedScript + '\n';
 				}
-				// 3. Ready signal (smoloki pre-installed via build script)
 				otherStartup += "\nexport PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$PATH\"\n";
 				otherStartup += "smoloki -b http://10.1.0.254:3100 '{\"job\":\"test\",\"level\":\"info\", \"host\": \"'\"$(hostname)\"'\"}' '{\"message\":\"ready\"}' 2>/dev/null || true\n";
-				lab.file[machine.name + '.startup'] = otherStartup;
 			}
+			const customFields = (machine.other?.fields || []).filter(
+				f => f.key && f.value !== undefined && f.value !== ''
+			);
+			if (customFields.length > 0) {
+				const envBlock = customFields
+					.map(f => `echo '${String(f.key).replace(/'/g, "'\\''")}=${String(f.value).replace(/'/g, "'\\''")}' >> /etc/environment 2>/dev/null || true`)
+					.join('\n');
+				otherStartup = otherStartup.replace(/^(#![^\n]*\n)/, `$1${envBlock}\n`);
+			}
+			lab.file[machine.name + '.startup'] = otherStartup;
 			for (let file of machine.other.files) {
 				lab.file["/etc/scripts/" + file.name] = file.contents;
 			}
