@@ -3,6 +3,27 @@ import AdmZip from "adm-zip";
 
 /** ───────────────── Helpers identici al renderer (adattati a Node) ───────────────── */
 
+function buildCriTargets(machine) {
+  const targets = machine.targets || [];
+  const result = [];
+  for (const t of targets) {
+    if (!t || !t.interfaces || !Array.isArray(t.interfaces.if)) continue;
+    let ip = null;
+    if (t.selectedInterfaceIp) {
+      ip = t.selectedInterfaceIp;
+    } else {
+      const validIfaces = t.interfaces.if.filter(
+        i => i && i.eth && i.eth.domain !== "_collector" && i.ip
+      );
+      if (validIfaces.length > 0) {
+        ip = String(validIfaces[0].ip).split('/')[0].trim();
+      }
+    }
+    if (ip) result.push({ name: t.name || "", address: ip });
+  }
+  return JSON.stringify(result);
+}
+
 function buildCriInterfaces(machine) {
   const ifaces = [];
   if (machine.computedEth0Ip) {
@@ -194,6 +215,55 @@ function makeStartupFiles(netkit, lab) {
       otherScript = otherScript.replace(/^(#![^\n]*\n)/, (_, shebang) => shebang + injectedBlock);
 
       lab.file[`${machineName}.startup`] = otherScript;
+      continue;
+    }
+
+    if (machine.type === "attacker") {
+      const isCompleteScript = body.startsWith("#!/");
+      let attackerScript;
+
+      if (isCompleteScript) {
+        attackerScript = body.replace(/<eth0_ip>/g, eth0Ip);
+      } else {
+        attackerScript = `#!/bin/sh
+
+CRI_INTERFACES_LEN=$(echo $CRI_INTERFACES | jq "length")
+for (( i=0; i<=\${CRI_INTERFACES_LEN} - 1; i+=1 )); do
+    CRIINTERFACE_NAME=$(echo $CRI_INTERFACES | jq -r ".[\${i}].name")
+    CRIINTERFACE_ADDRESS=$(echo $CRI_INTERFACES | jq -r ".[\${i}].address")
+
+    ip addr add \${CRIINTERFACE_ADDRESS} dev \${CRIINTERFACE_NAME}
+    ip link set \${CRIINTERFACE_NAME} up
+    echo "interface \${CRIINTERFACE_NAME} set with \${CRIINTERFACE_ADDRESS}"
+done
+
+
+smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info","host":"'"$(hostname)"'"}' '{"message":"ready"}'
+`;
+      }
+
+      const criJson = buildCriInterfaces(machine);
+      const safeJson = criJson.replace(/'/g, "'\\''");
+      const targetsJson = buildCriTargets(machine);
+      const safeTargetsJson = targetsJson.replace(/'/g, "'\\''");
+      const criBlock = [
+        `export CRI_INTERFACES='${safeJson}'`,
+        `export CRI_TARGETS='${safeTargetsJson}'`,
+        `cat > /root/.cri_env << '__CRI_ENV_EOF__'`,
+        `export CRI_INTERFACES='${safeJson}'`,
+        `export CRI_TARGETS='${safeTargetsJson}'`,
+        `__CRI_ENV_EOF__`,
+        `grep -qxF '. /root/.cri_env' /root/.bashrc 2>/dev/null || echo '. /root/.cri_env' >> /root/.bashrc`,
+      ].join("\n") + "\n";
+
+      const fieldEnvLines = (machine.attacker?.fields || [])
+        .filter(f => f.key && f.value !== undefined && f.value !== "")
+        .map(f => `echo '${String(f.key).replace(/'/g, "'\\''")}=${String(f.value).replace(/'/g, "'\\''")}' >> /etc/environment 2>/dev/null || true`);
+
+      const injectedBlock = criBlock + (fieldEnvLines.length > 0 ? fieldEnvLines.join("\n") + "\n" : "");
+      attackerScript = attackerScript.replace(/^(#![^\n]*\n)/, (_, shebang) => shebang + injectedBlock);
+
+      lab.file[`${machineName}.startup`] = attackerScript;
       continue;
     }
 

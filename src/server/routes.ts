@@ -29,6 +29,7 @@ router.delete('/saves/:filename', controllers.deleteProject);
 // Attack Status Routes
 router.get('/attack-status', controllers.getAttackStatus);
 router.post('/attack-clear', controllers.clearAttackStatus);
+router.post('/attack-log-read', controllers.readAttackLog);
 
 // SSE for logs
 router.get('/logs', controllers.subscribeToLogs);

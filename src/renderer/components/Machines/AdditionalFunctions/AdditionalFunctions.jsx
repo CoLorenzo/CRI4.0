@@ -33,17 +33,7 @@ export function AdditionalFunctions({ machine, machines, setMachines }) {
                             setMachines={setMachines}
                         />
                     case 'attacker':
-                        return machine.customAttackId
-                            ? <CustomAttackFunctions
-                                machine={machine}
-                                machines={machines}
-                                setMachines={setMachines}
-                            />
-                            : <TerminalFunctions
-                                machine={machine}
-                                machines={machines}
-                                setMachines={setMachines}
-                            />
+                        return null
                     case 'ns':
                         return <NameserverFunctions
                             machine={machine}

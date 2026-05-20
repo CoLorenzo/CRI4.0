@@ -40,7 +40,11 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
   }
 
   function handleTypeChange(value) {
-    handleChange(value, { ...machine, type: value, customTemplateId: null, customAttackId: null });
+    const updated = { ...machine, type: value, customTemplateId: null, customAttackId: null };
+    if (value === "attacker" && !machine.scripts?.startup) {
+      updated.scripts = { ...(machine.scripts || {}), startup: generateCustomStartupScript() };
+    }
+    handleChange(value, updated);
   }
 
   const attackerExistsElsewhere = machines.some(
@@ -101,34 +105,6 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
                   Attacker
                 </Radio>
               </RadioGroup>
-              {attackTemplates.length > 0 && (
-                <RadioGroup
-                  color="secondary"
-                  value={machine.customAttackId || ""}
-                  onValueChange={(attackId) => {
-                    const tpl = attackTemplates.find(t => t.id === attackId);
-                    if (!tpl) return;
-                    const manifest = tpl.manifest || {};
-                    handleChange(attackId, {
-                      ...machine,
-                      type: "attacker",
-                      customAttackId: attackId,
-                      customTemplateId: null,
-                      attacker: {
-                        image: tpl.image,
-                        fields: (manifest.fields || []).map(f => ({ ...f })),
-                        dockerFlags: (manifest.dockerFlags || []).map(f => ({ ...f })),
-                        logo: tpl.logo || "",
-                      },
-                    });
-                  }}
-                  className="mt-2"
-                >
-                  {attackTemplates.map((tpl) => (
-                    <Radio key={tpl.id} value={tpl.id}>{tpl.name}</Radio>
-                  ))}
-                </RadioGroup>
-              )}
             </AccordionItem>
 
             {/* DEFENSE */}

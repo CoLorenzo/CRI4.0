@@ -19,6 +19,7 @@ import MITM from "../components/Attacks/MITM"
 import Injection from "../components/Attacks/Injection"
 import Sniffing from "../components/Attacks/Sniffing";
 import AccessGain from "../components/Attacks/AccessGain";
+import CustomAttacks from "../components/Attacks/CustomAttacks";
 
 function Attack() {
     const [machines, setMachines] = useState(() => {
@@ -55,7 +56,8 @@ function Attack() {
     };
 
     const initialActiveTab = useMemo(() => {
-        if (!attacker || !attacker.attackLoaded || !attacker.attackImage) return "Reconnaissance";
+        if (!attacker || (!attacker.attackLoaded && !attacker.customAttackId)) return "Reconnaissance";
+        if (attacker.customAttackId) return "Custom";
         let category = "Reconnaissance";
 
         // Find the attack in our model
@@ -130,6 +132,9 @@ function Attack() {
                                             <h1>Not Implemented Yet</h1>
                                         </CardBody>
                                     </Card>
+                                </Tab>
+                                <Tab key="Custom" title="Custom" className="grid gap-2 w-full">
+                                    <CustomAttacks attacker={attacker} machines={machines} setMachines={setMachines} />
                                 </Tab>
                             </Tabs>
                         </div>

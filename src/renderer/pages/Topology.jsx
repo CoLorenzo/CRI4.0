@@ -40,7 +40,7 @@ function Topology() {
   const [logsModal, setLogsModal] = useState({ isOpen: false, containerName: "" });
 
   // Attack Status Modal State
-  const [attackStatusModal, setAttackStatusModal] = useState({ isOpen: false, attackerName: "" });
+  const [attackStatusModal, setAttackStatusModal] = useState({ isOpen: false, attackerName: "", isCustomAttack: false });
 
   // Password Modal State
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
@@ -209,8 +209,21 @@ function Topology() {
       return;
     }
 
-    if (!attacker.attackLoaded) {
+    if (!attacker.attackLoaded && !attacker.customAttackId) {
       console.warn("⚠️ Attack not loaded on attacker.");
+      return;
+    }
+
+    const targetContainer = attacker.type === "attacker" ? "attacker" : attacker.name;
+
+    // Custom attacks: launch /attack.sh in background, log to /attack.log
+    if (attacker.customAttackId) {
+      try {
+        await api.simulateAttack(targetContainer, ["sh", "-c", "/attack.sh > /attack.log 2>&1 & echo $! > /attack.pid"]);
+        toast.success("Custom attack started. Check Attack Status for live output.");
+      } catch (e) {
+        toast.error("Failed to start custom attack: " + e.message);
+      }
       return;
     }
 
@@ -231,8 +244,6 @@ function Topology() {
 
     setAttackInProgress(true);
 
-    // Fix: attacker machine is always named "attacker" in Kathara, but state might have image name.
-    const targetContainer = attacker.type === "attacker" ? "attacker" : attacker.name;
     try {
       const output = await api.simulateAttack(targetContainer, commandArgs);
       console.log("Attack output:", output);
@@ -254,7 +265,6 @@ function Topology() {
       toast.error("Attack failed: " + e.message);
       setAttackInProgress(false);
     }
-    // nota: lo stato (attackInProgress/showTimer) viene chiuso dal timer sopra
   };
 
   const stopAttack = async (nodeId) => {
@@ -269,7 +279,18 @@ function Topology() {
     if (!attacker) return;
     const targetContainer = attacker.type === "attacker" ? "attacker" : attacker.name;
 
-    // Use a composite command to stop known processes
+    // Custom attacks: kill by stored PID
+    if (attacker.customAttackId) {
+      try {
+        await api.simulateAttack(targetContainer, ["sh", "-c", "kill $(cat /attack.pid 2>/dev/null) 2>/dev/null; rm -f /attack.pid"]);
+        toast.success("Custom attack stopped.");
+      } catch (e) {
+        toast.error("Failed to stop custom attack: " + e.message);
+      }
+      return;
+    }
+
+    // Standard attacks: kill known processes
     const stopCmd = [
       "sh",
       "-c",
@@ -405,7 +426,8 @@ function Topology() {
                   }}
                   onOpenAttackStatus={(nodeId) => {
                     const machineName = nodeId.replace("machine-", "");
-                    setAttackStatusModal({ isOpen: true, attackerName: machineName });
+                    const m = machines.find(m => m.name === machineName || m.type === "attacker");
+                    setAttackStatusModal({ isOpen: true, attackerName: machineName, isCustomAttack: !!m?.customAttackId });
                   }}
                   onStartAttack={(nodeId) => simulateAttack(nodeId)}
                   onStopAttack={(nodeId) => stopAttack(nodeId)}
@@ -572,6 +594,7 @@ function Topology() {
         isOpen={attackStatusModal.isOpen}
         onClose={() => setAttackStatusModal({ ...attackStatusModal, isOpen: false })}
         attackerName={attackStatusModal.attackerName}
+        isCustomAttack={attackStatusModal.isCustomAttack}
       />
       <PasswordModal
         isOpen={passwordModalOpen}

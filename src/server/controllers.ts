@@ -438,6 +438,30 @@ export const clearAttackStatus = async (req: Request, res: Response) => {
     res.json({ success: true });
 };
 
+export const readAttackLog = async (req: Request, res: Response) => {
+    const { container } = req.body;
+    if (!container) return res.status(400).json({ error: 'Container name required' });
+
+    const patterns = [
+        CURRENT_LAB ? `kathara_.*_${CURRENT_LAB.name}_${container}_` : `_${container}_`,
+        `_${container}_`
+    ];
+
+    let resolvedName: string | null = null;
+    for (const pattern of patterns) {
+        const name = await new Promise<string | null>(r => {
+            exec(`docker ps --filter name=${pattern} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
+        });
+        if (name) { resolvedName = name; break; }
+    }
+
+    if (!resolvedName) return res.json({ log: '' });
+
+    exec(`docker exec ${resolvedName} cat /attack.log 2>/dev/null`, (err, stdout) => {
+        res.json({ log: err ? '' : stdout });
+    });
+};
+
 
 export const runSimulation = async (req: Request, res: Response) => {
     // Custom images may need to be pulled from Docker Hub — disable the socket

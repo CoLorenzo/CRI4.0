@@ -529,6 +529,24 @@ ipcMain.handle("simulate-attack", async (event, { container, command }) => {
 });
 
 
+ipcMain.handle('attack-log-read', async (event, container: string) => {
+  const patterns = [
+    CURRENT_LAB ? `kathara_.*_${CURRENT_LAB.name}_${container}_` : `_${container}_`,
+    `_${container}_`
+  ];
+  let resolvedName: string | null = null;
+  for (const pattern of patterns) {
+    const name = await new Promise<string | null>(r => {
+      exec(`docker ps --filter name=${pattern} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
+    });
+    if (name) { resolvedName = name; break; }
+  }
+  if (!resolvedName) return '';
+  return new Promise<string>(r => {
+    exec(`docker exec ${resolvedName} cat /attack.log 2>/dev/null`, (err, stdout) => r(err ? '' : stdout));
+  });
+});
+
 ipcMain.handle('run-simulation', async (event, { machines, labInfo, sudoPassword }) => {
   sendLog('log', `machines? ${Array.isArray(machines)} ${machines?.length}`);
 

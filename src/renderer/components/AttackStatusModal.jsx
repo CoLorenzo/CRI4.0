@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Chip } from "@nextui-org/react";
 import { api } from '../api';
 
-export default function AttackStatusModal({ isOpen, onClose, attackerName }) {
+export default function AttackStatusModal({ isOpen, onClose, attackerName, isCustomAttack }) {
     const [attackOutput, setAttackOutput] = useState("");
     const [isRunning, setIsRunning] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -14,9 +14,16 @@ export default function AttackStatusModal({ isOpen, onClose, attackerName }) {
 
     const fetchStatus = async () => {
         try {
-            const data = await api.getAttackStatus();
-            setAttackOutput(data.output);
-            setIsRunning(data.isRunning);
+            if (isCustomAttack) {
+                const log = await api.getAttackLog("attacker");
+                setAttackOutput(log);
+                // consider running if pid file exists (heuristic: non-empty log and no [finished] marker)
+                setIsRunning(log.length > 0);
+            } else {
+                const data = await api.getAttackStatus();
+                setAttackOutput(data.output);
+                setIsRunning(data.isRunning);
+            }
         } catch (error) {
             console.error("Failed to fetch attack status:", error);
         }
@@ -26,20 +33,19 @@ export default function AttackStatusModal({ isOpen, onClose, attackerName }) {
         let interval;
         if (isOpen) {
             fetchStatus();
-            // Poll for status while modal is open
             interval = setInterval(fetchStatus, 1500);
         }
         return () => clearInterval(interval);
-    }, [isOpen]);
+    }, [isOpen, isCustomAttack]);
 
     useEffect(() => {
-        if (isOpen) {
-            scrollToBottom();
-        }
+        if (isOpen) scrollToBottom();
     }, [attackOutput, isOpen]);
 
     const handleClear = async () => {
-        await api.clearAttackStatus();
+        if (!isCustomAttack) {
+            await api.clearAttackStatus();
+        }
         setAttackOutput("");
     };
 
@@ -56,12 +62,7 @@ export default function AttackStatusModal({ isOpen, onClose, attackerName }) {
     };
 
     return (
-        <Modal
-            isOpen={isOpen}
-            onClose={onClose}
-            size="5xl"
-            scrollBehavior="inside"
-        >
+        <Modal isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside">
             <ModalContent>
                 {(onClose) => (
                     <>
@@ -73,40 +74,36 @@ export default function AttackStatusModal({ isOpen, onClose, attackerName }) {
                                 ) : (
                                     <Chip color="default" variant="flat" size="sm">IDLE</Chip>
                                 )}
+                                {isCustomAttack && (
+                                    <Chip color="secondary" variant="flat" size="sm">CUSTOM</Chip>
+                                )}
                             </div>
-                            <span className="text-zinc-500 text-xs font-normal italic">Direct execution output from your attack script...</span>
+                            <span className="text-zinc-500 text-xs font-normal italic">
+                                {isCustomAttack ? "Live output from /attack.log" : "Direct execution output from your attack script..."}
+                            </span>
                         </ModalHeader>
                         <ModalBody className="bg-zinc-950">
                             <div className="flex flex-col gap-2">
                                 <div className="flex gap-2 mb-2">
-                                    <Button 
-                                        size="sm" 
-                                        color="primary" 
-                                        variant="flat" 
-                                        onPress={fetchDirectLogs}
-                                        isLoading={isLoading}
-                                    >
-                                        Sync Docker Logs
-                                    </Button>
-                                    <Button 
-                                        size="sm" 
-                                        color="default" 
-                                        variant="flat" 
-                                        onPress={handleClear}
-                                    >
+                                    {!isCustomAttack && (
+                                        <Button size="sm" color="primary" variant="flat" onPress={fetchDirectLogs} isLoading={isLoading}>
+                                            Sync Docker Logs
+                                        </Button>
+                                    )}
+                                    <Button size="sm" color="default" variant="flat" onPress={handleClear}>
                                         Clear Window
                                     </Button>
                                 </div>
                                 <pre className="text-zinc-100 p-3 rounded-md overflow-auto font-mono text-xs shadow-inner bg-black/40 whitespace-pre-wrap min-h-[450px]">
-                                    {attackOutput || 'Waiting for attack execution output...\n(Click "Start Attack" in the Topology or Attack page)'}
+                                    {attackOutput || (isCustomAttack
+                                        ? 'Waiting for /attack.log...\n(Click "Start Attack" in the Topology to run /attack.sh)'
+                                        : 'Waiting for attack execution output...\n(Click "Start Attack" in the Topology or Attack page)')}
                                 </pre>
                             </div>
                             <div ref={logsEndRef} />
                         </ModalBody>
                         <ModalFooter>
-                            <Button color="danger" variant="light" onPress={onClose}>
-                                Close
-                            </Button>
+                            <Button color="danger" variant="light" onPress={onClose}>Close</Button>
                         </ModalFooter>
                     </>
                 )}

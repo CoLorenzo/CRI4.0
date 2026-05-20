@@ -252,6 +252,18 @@ export const api = {
         }
         await fetch(`${API_BASE_URL}/attack-clear`, { method: 'POST' });
     },
+    async getAttackLog(container: string): Promise<string> {
+        if (isElectron()) {
+            return window.electron.ipcRenderer.invoke('attack-log-read', container);
+        }
+        const response = await fetch(`${API_BASE_URL}/attack-log-read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ container }),
+        });
+        const data = await response.json();
+        return data.log || '';
+    },
     // --- Terminal API ---
     async terminalCreate(container: string): Promise<string> {
         if (isElectron()) {
