@@ -219,7 +219,8 @@ function Topology() {
     // Custom attacks: launch /attack.sh in background, log to /attack.log
     if (attacker.customAttackId) {
       try {
-        await api.simulateAttack(targetContainer, ["sh", "-c", "/attack.sh > /attack.log 2>&1 & echo $! > /attack.pid"]);
+        await api.simulateAttack(targetContainer, ["sh", "-c", "bash -c '. /root/.cri_env; . /attack.sh' > /attack.log 2>&1 & echo $! > /attack.pid"]);
+        setAttackInProgress(true);
         toast.success("Custom attack started. Check Attack Status for live output.");
       } catch (e) {
         toast.error("Failed to start custom attack: " + e.message);
@@ -283,6 +284,7 @@ function Topology() {
     if (attacker.customAttackId) {
       try {
         await api.simulateAttack(targetContainer, ["sh", "-c", "kill $(cat /attack.pid 2>/dev/null) 2>/dev/null; rm -f /attack.pid"]);
+        setAttackInProgress(false);
         toast.success("Custom attack stopped.");
       } catch (e) {
         toast.error("Failed to stop custom attack: " + e.message);
