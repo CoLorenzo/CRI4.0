@@ -45,13 +45,13 @@ function CustomMachinesTab() {
     const [editTarget, setEditTarget] = useState(null);
 
     function handleCreate({ name, image, logo, manifest }) {
-        save([...templates, { id: uuidv4(), name, image, logo: logo || "", manifest: manifest || { fields: [], dockerFlags: [] } }]);
+        save([...templates, { id: uuidv4(), name, image, logo: logo || "", manifest: manifest || { fields: {}, dockerFlags: [] } }]);
         setIsCreateOpen(false);
     }
 
     function handleUpdate({ name, image, logo, manifest }) {
         save(templates.map(t =>
-            t.id === editTarget.id ? { ...t, name, image, logo: logo || "", manifest: manifest || { fields: [], dockerFlags: [] } } : t
+            t.id === editTarget.id ? { ...t, name, image, logo: logo || "", manifest: manifest || { fields: {}, dockerFlags: [] } } : t
         ));
         setEditTarget(null);
     }
@@ -149,13 +149,13 @@ function CustomAttacksTab() {
     const [editTarget, setEditTarget] = useState(null);
 
     function handleCreate({ name, image, logo, manifest }) {
-        save([...attacks, { id: uuidv4(), name, image, logo: logo || "", manifest: manifest || { fields: [], dockerFlags: [] } }]);
+        save([...attacks, { id: uuidv4(), name, image, logo: logo || "", manifest: manifest || { fields: {}, dockerFlags: [] } }]);
         setIsCreateOpen(false);
     }
 
     function handleUpdate({ name, image, logo, manifest }) {
         save(attacks.map(t =>
-            t.id === editTarget.id ? { ...t, name, image, logo: logo || "", manifest: manifest || { fields: [], dockerFlags: [] } } : t
+            t.id === editTarget.id ? { ...t, name, image, logo: logo || "", manifest: manifest || { fields: {}, dockerFlags: [] } } : t
         ));
         setEditTarget(null);
     }

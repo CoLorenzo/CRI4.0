@@ -76,7 +76,7 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
     }
 
     function handleCreate() {
-        const machineName = manifestContent?.name?.trim();
+        const machineName = manifestContent?.image_name?.trim();
         if (!machineName) return;
         const image = machineName;
         const manifest = {
@@ -294,8 +294,8 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
                                                     <div className="flex items-center justify-between p-3 bg-success-50 border border-success-200 rounded-xl">
                                                         <div>
                                                             <p className="text-xs text-success-600 font-medium">Manifest loaded — {manifestFileName}</p>
-                                                            {manifestContent.name && (
-                                                                <p className="font-medium text-sm text-success-800">{manifestContent.name}</p>
+                                                            {manifestContent.image_name && (
+                                                                <p className="font-mono text-sm text-success-800">{manifestContent.image_name}</p>
                                                             )}
                                                             <p className="text-xs text-success-600 mt-0.5">
                                                                 {fieldCount} field{fieldCount !== 1 ? "s" : ""}
@@ -323,7 +323,7 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
                             <Button
                                 color="primary"
                                 onPress={handleCreate}
-                                isDisabled={!manifestContent?.name?.trim()}
+                                isDisabled={!manifestContent?.image_name?.trim()}
                             >
                                 {initialValues ? "Update Machine" : "Create Machine"}
                             </Button>
