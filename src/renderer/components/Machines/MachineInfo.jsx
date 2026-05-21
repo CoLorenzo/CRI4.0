@@ -91,6 +91,7 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
                 <Radio value="router">Router</Radio>
                 <Radio value="ws">Web Server</Radio>
                 <Radio value="ns">Name Server</Radio>
+                <Radio value="netproxy">Net Proxy</Radio>
               </RadioGroup>
             </AccordionItem>
 

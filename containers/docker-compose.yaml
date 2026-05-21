@@ -208,6 +208,11 @@ services:
       - NET_ADMIN
     profiles:
       - kali
+  netproxy:
+    build:
+      context: ..
+      dockerfile: ./containers/netproxy/Dockerfile
+    image: icr/netproxy
   ngfw:
     build: ./ngfw_appliance
     image: icr/ngfw

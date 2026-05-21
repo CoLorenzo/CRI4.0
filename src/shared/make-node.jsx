@@ -278,6 +278,38 @@ smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info","host":"'"$(host
       continue;
     }
 
+    if (machine.type === "netproxy") {
+      const criJson = buildCriInterfaces(machine);
+      const safeJson = criJson.replace(/'/g, "'\\''");
+      const criBlock = [
+        `export CRI_INTERFACES='${safeJson}'`,
+        `cat > /root/.cri_env << '__CRI_ENV_EOF__'`,
+        `export CRI_INTERFACES='${safeJson}'`,
+        `__CRI_ENV_EOF__`,
+        `grep -qxF '. /root/.cri_env' /root/.bashrc 2>/dev/null || echo '. /root/.cri_env' >> /root/.bashrc`,
+      ].join("\n") + "\n\n";
+
+      const netproxyScript = `#!/bin/sh\n\n` + criBlock +
+`echo "nameserver 8.8.8.8" > /etc/resolv.conf
+CRI_INTERFACES_LEN=$(echo $CRI_INTERFACES | jq "length")
+for (( i=0; i<=\${CRI_INTERFACES_LEN} - 1; i+=1 )); do
+    CRIINTERFACE_NAME=$(echo $CRI_INTERFACES | jq -r ".[\${i}].name")
+    CRIINTERFACE_ADDRESS=$(echo $CRI_INTERFACES | jq -r ".[\${i}].address")
+
+    ip addr add \${CRIINTERFACE_ADDRESS} dev \${CRIINTERFACE_NAME}
+    ip link set \${CRIINTERFACE_NAME} up
+    echo "interface \${CRIINTERFACE_NAME} set with \${CRIINTERFACE_ADDRESS}"
+done
+if [ -f "/shared/\${HOSTNAME}.json" ]; then cp /shared/\${HOSTNAME}.json /config.json; fi
+netproxy & disown
+
+smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info","host":"'"$(hostname)"'"}' '{"message":"ready"}'
+`;
+
+      lab.file[`${machineName}.startup`] = netproxyScript;
+      continue;
+    }
+
     if (machine.type === "tls_termination_proxy") {
       const { in_addr = "0.0.0.0:50000", out_addr = "10.1.0.2:50001", verify = "0" } = machine.tls || {};
       const tlsScript = `
@@ -637,6 +669,7 @@ function makeLabConfFile(netkit, lab) {
     if (machine.type == "laser") { lab.file["lab.conf"] += machine.name + "[image]=icr/laser"; }
     if (machine.type == "conveyor") { lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
     if (machine.type == "plc") { lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
+    if (machine.type == "netproxy") { lab.file["lab.conf"] += `${machineName}[image]=icr/netproxy\n`; }
     if (machine.type == "router") {
       if (machine.routingSoftware == "frr") {
         //lab.file["lab.conf"] += `${machine.name}[image]=kathara/frr`;
@@ -881,6 +914,14 @@ export async function generateZipNode(machines, labInfo, outPath) {
       }
     }
 
+
+    if (machine.type === 'netproxy' && machine.netproxy?.configContent && machine.netproxy?.configName) {
+      const rawContent = machine.netproxy.configContent.split(';base64,').pop();
+      if (rawContent) {
+        const machineName = String(machine.name || "netproxy").replace(/[^\w.-]/g, "_");
+        lab.file[`shared/${machineName}.json`] = Buffer.from(rawContent, 'base64');
+      }
+    }
 
     if (machine.type === 'scada') {
       console.log(`[DEBUG] Found SCADA machine: ${machine.name}`);

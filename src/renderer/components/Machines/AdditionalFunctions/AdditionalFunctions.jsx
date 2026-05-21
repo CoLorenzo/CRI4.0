@@ -20,12 +20,19 @@ import { IndustrialFunctions } from "./IndustrialFunctions";
 import { ScadaFunctions } from "./ScadaFunctions";
 import { CustomMachineFunctions } from "./CustomMachineFunctions";
 import { CustomAttackFunctions } from "./CustomAttackFunctions";
+import { NetproxyFunctions } from "./NetproxyFunctions";
 
 export function AdditionalFunctions({ machine, machines, setMachines }) {
     return (
         <div className="h-full">
             {(() => {
                 switch (machine.type) {
+                    case 'netproxy':
+                        return <NetproxyFunctions
+                            machine={machine}
+                            machines={machines}
+                            setMachines={setMachines}
+                        />
                     case 'terminal':
                         return <TerminalFunctions
                             machine={machine}
