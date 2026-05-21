@@ -10,7 +10,7 @@ import {
 import { api } from "../../api/index";
 import { XSymbol } from "../Symbols/XSymbol";
 
-export default function CreateMachineModal({ isOpen, onClose, onCreate, initialValues, title = "Create Custom Machine" }) {
+export default function CreateMachineModal({ isOpen, onClose, onCreate, initialValues, title = "Create Custom Machine", hideLogo = false }) {
     const [baseMode, setBaseMode] = useState("upload");
     const [localImages, setLocalImages] = useState([]);
     const [isLoadingLocal, setIsLoadingLocal] = useState(false);
@@ -139,7 +139,7 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
                         <ModalBody>
                             <div className="grid gap-4">
                                 {/* Logo */}
-                                <div className="flex items-center gap-2">
+                                {!hideLogo && <div className="flex items-center gap-2">
                                     <div
                                         className="w-12 h-12 rounded-xl border border-default-200 bg-default-100 flex items-center justify-center shrink-0 overflow-hidden cursor-pointer"
                                         onClick={() => logoInputRef.current?.click()}
@@ -161,7 +161,7 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
                                             <XSymbol size={14} />
                                         </Button>
                                     )}
-                                </div>
+                                </div>}
 
                                 <Tabs selectedKey={activeTab} onSelectionChange={setActiveTab} aria-label="Machine configuration tabs">
                                     {/* ── BASE IMAGE ── */}

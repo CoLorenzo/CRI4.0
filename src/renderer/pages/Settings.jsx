@@ -220,6 +220,7 @@ function CustomAttacksTab() {
                 onClose={() => setIsCreateOpen(false)}
                 onCreate={handleCreate}
                 title="Create Custom Attack"
+                hideLogo
             />
             <CreateMachineModal
                 isOpen={!!editTarget}
@@ -227,6 +228,7 @@ function CustomAttacksTab() {
                 onCreate={handleUpdate}
                 initialValues={editTarget}
                 title="Edit Custom Attack"
+                hideLogo
             />
         </div>
     );

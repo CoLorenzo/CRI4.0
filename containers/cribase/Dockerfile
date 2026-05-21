@@ -1,4 +1,7 @@
 FROM debian:trixie
+
+RUN echo "nameserver 8.8.8.8" > /etc/resolv.conf 
+
 RUN apt-get update && apt-get install -y curl iproute2 jq
 
 #Install uv
