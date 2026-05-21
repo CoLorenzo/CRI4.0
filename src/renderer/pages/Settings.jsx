@@ -91,8 +91,8 @@ function CustomMachinesTab() {
                                 </span>
                             </TableCell>
                             <TableCell>
-                                {tpl.manifest?.fields?.length > 0
-                                    ? <span className="text-sm">{tpl.manifest.fields.length} field{tpl.manifest.fields.length !== 1 ? "s" : ""}</span>
+                                {Object.keys(tpl.manifest?.fields || {}).length > 0
+                                    ? <span className="text-sm">{Object.keys(tpl.manifest.fields).length} field{Object.keys(tpl.manifest.fields).length !== 1 ? "s" : ""}</span>
                                     : <span className="text-default-400 text-sm">—</span>
                                 }
                             </TableCell>
@@ -195,8 +195,8 @@ function CustomAttacksTab() {
                                 </span>
                             </TableCell>
                             <TableCell>
-                                {tpl.manifest?.fields?.length > 0
-                                    ? <span className="text-sm">{tpl.manifest.fields.length} field{tpl.manifest.fields.length !== 1 ? "s" : ""}</span>
+                                {Object.keys(tpl.manifest?.fields || {}).length > 0
+                                    ? <span className="text-sm">{Object.keys(tpl.manifest.fields).length} field{Object.keys(tpl.manifest.fields).length !== 1 ? "s" : ""}</span>
                                     : <span className="text-default-400 text-sm">—</span>
                                 }
                             </TableCell>

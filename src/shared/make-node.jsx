@@ -207,9 +207,9 @@ function makeStartupFiles(netkit, lab) {
         `grep -qxF '. /root/.cri_env' /root/.bashrc 2>/dev/null || echo '. /root/.cri_env' >> /root/.bashrc`,
       ].join("\n") + "\n";
 
-      const fieldEnvLines = (machine.other?.fields || [])
-        .filter(f => f.key && f.value !== undefined && f.value !== "")
-        .map(f => `echo '${String(f.key).replace(/'/g, "'\\''")}=${String(f.value).replace(/'/g, "'\\''")}' >> /etc/environment 2>/dev/null || true`);
+      const fieldEnvLines = Object.entries(machine.other?.fields || {})
+        .filter(([key, field]) => key && field.value !== undefined && field.value !== "")
+        .map(([key, field]) => `echo '${String(key).replace(/'/g, "'\\''")}=${String(field.value).replace(/'/g, "'\\''")}' >> /etc/environment 2>/dev/null || true`);
 
       const injectedBlock = criBlock + (fieldEnvLines.length > 0 ? fieldEnvLines.join("\n") + "\n" : "");
       otherScript = otherScript.replace(/^(#![^\n]*\n)/, (_, shebang) => shebang + injectedBlock);
@@ -256,9 +256,9 @@ smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info","host":"'"$(host
         `grep -qxF '. /root/.cri_env' /root/.bashrc 2>/dev/null || echo '. /root/.cri_env' >> /root/.bashrc`,
       ].join("\n") + "\n";
 
-      const fieldEnvLines = (machine.attacker?.fields || [])
-        .filter(f => f.key && f.value !== undefined && f.value !== "")
-        .map(f => `echo '${String(f.key).replace(/'/g, "'\\''")}=${String(f.value).replace(/'/g, "'\\''")}' >> /etc/environment 2>/dev/null || true`);
+      const fieldEnvLines = Object.entries(machine.attacker?.fields || {})
+        .filter(([key, field]) => key && field.value !== undefined && field.value !== "")
+        .map(([key, field]) => `echo '${String(key).replace(/'/g, "'\\''")}=${String(field.value).replace(/'/g, "'\\''")}' >> /etc/environment 2>/dev/null || true`);
 
       const injectedBlock = criBlock + (fieldEnvLines.length > 0 ? fieldEnvLines.join("\n") + "\n" : "");
       attackerScript = attackerScript.replace(/^(#![^\n]*\n)/, (_, shebang) => shebang + injectedBlock);
@@ -637,11 +637,19 @@ function makeLabConfFile(netkit, lab) {
     }
     if (machine.type == "other" && machine.other && machine.other.image && machine.other.image !== "") {
       lab.file["lab.conf"] += `${machineName}[image]="${machine.other.image}"\n`;
-      if (Array.isArray(machine.other.fields)) {
-        for (const field of machine.other.fields) {
-          if (field.key && field.value !== undefined && field.value !== "") {
-            lab.file["lab.conf"] += `${machineName}[env]="${field.key}=${field.value}"\n`;
-          }
+      for (const [key, field] of Object.entries(machine.other.fields || {})) {
+        if (key && field.value !== undefined && field.value !== "") {
+          lab.file["lab.conf"] += `${machineName}[env]="${key}=${field.value}"\n`;
+        }
+      }
+      for (const v of (machine.other.variables || [])) {
+        if (v.a && v.b !== undefined && v.b !== "") {
+          lab.file["lab.conf"] += `${machineName}[env]="${v.a}=${v.b}"\n`;
+        }
+      }
+      for (const vol of (machine.other.volumes || [])) {
+        if (vol.a && vol.b) {
+          lab.file["lab.conf"] += `${machineName}[volume]="${vol.a}|${vol.b}"\n`;
         }
       }
       if (Array.isArray(machine.other.dockerFlags) && machine.other.dockerFlags.length > 0) {
@@ -689,11 +697,19 @@ function makeLabConfFile(netkit, lab) {
     if (machine.type == "attacker") {
       if (machine.customAttackId && machine.attacker?.image) {
         lab.file["lab.conf"] += `${machineName}[image]="${machine.attacker.image}"\n`;
-        if (Array.isArray(machine.attacker.fields)) {
-          for (const field of machine.attacker.fields) {
-            if (field.key && field.value !== undefined && field.value !== "") {
-              lab.file["lab.conf"] += `${machineName}[env]="${field.key}=${field.value}"\n`;
-            }
+        for (const [key, field] of Object.entries(machine.attacker.fields || {})) {
+          if (key && field.value !== undefined && field.value !== "") {
+            lab.file["lab.conf"] += `${machineName}[env]="${key}=${field.value}"\n`;
+          }
+        }
+        for (const v of (machine.attacker.variables || [])) {
+          if (v.a && v.b !== undefined && v.b !== "") {
+            lab.file["lab.conf"] += `${machineName}[env]="${v.a}=${v.b}"\n`;
+          }
+        }
+        for (const vol of (machine.attacker.volumes || [])) {
+          if (vol.a && vol.b) {
+            lab.file["lab.conf"] += `${machineName}[volume]="${vol.a}|${vol.b}"\n`;
           }
         }
         if (Array.isArray(machine.attacker.dockerFlags) && machine.attacker.dockerFlags.length > 0) {

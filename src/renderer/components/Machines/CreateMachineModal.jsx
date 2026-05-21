@@ -11,7 +11,7 @@ import { api } from "../../api/index";
 import { XSymbol } from "../Symbols/XSymbol";
 
 export default function CreateMachineModal({ isOpen, onClose, onCreate, initialValues, title = "Create Custom Machine" }) {
-    const [baseMode, setBaseMode] = useState("local");
+    const [baseMode, setBaseMode] = useState("upload");
     const [localImages, setLocalImages] = useState([]);
     const [isLoadingLocal, setIsLoadingLocal] = useState(false);
     const [selectedLocalImage, setSelectedLocalImage] = useState("");
@@ -44,7 +44,7 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
         }
         setManifestError("");
 
-        setBaseMode("local");
+        setBaseMode("upload");
         setIsLoadingLocal(true);
         api.getAllLocalImages()
             .then(imgs => setLocalImages(imgs || []))
@@ -78,10 +78,10 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
     function handleCreate() {
         const machineName = manifestContent?.name?.trim();
         if (!machineName) return;
-        const image = getSelectedImage();
+        const image = machineName;
         const manifest = {
             ...manifestContent,
-            fields: (manifestContent.fields || []).map(f => ({ ...f, id: f.id || uuidv4() })),
+            fields: manifestContent.fields || {},
             dockerFlags: (manifestContent.dockerFlags || []).map(f => ({ ...f, id: f.id || uuidv4() })),
         };
         onCreate({ name: machineName, image, logo, manifest });
@@ -89,7 +89,7 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
     }
 
     function handleReset() {
-        setBaseMode("local");
+        setBaseMode("upload");
         setLocalImages([]);
         setSelectedLocalImage("");
         setUploadedImage("");
@@ -127,7 +127,7 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
         e.target.value = "";
     }
 
-    const fieldCount = manifestContent?.fields?.length || 0;
+    const fieldCount = Object.keys(manifestContent?.fields || {}).length;
     const flagCount = manifestContent?.dockerFlags?.length || 0;
 
     return (
@@ -178,8 +178,8 @@ export default function CreateMachineModal({ isOpen, onClose, onCreate, initialV
                                                 orientation="horizontal"
                                                 label="Image source"
                                             >
-                                                <Radio value="local">Local Registry</Radio>
                                                 <Radio value="upload">Upload .tar</Radio>
+                                                <Radio value="local">Local Registry</Radio>
                                             </RadioGroup>
 
                                             {baseMode === "local" && (

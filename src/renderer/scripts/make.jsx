@@ -665,12 +665,11 @@ function makeOther(netkit, lab) {
 				otherStartup += "\nexport PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:$PATH\"\n";
 				otherStartup += "smoloki -b http://10.1.0.254:3100 '{\"job\":\"test\",\"level\":\"info\", \"host\": \"'\"$(hostname)\"'\"}' '{\"message\":\"ready\"}' 2>/dev/null || true\n";
 			}
-			const customFields = (machine.other?.fields || []).filter(
-				f => f.key && f.value !== undefined && f.value !== ''
-			);
+			const customFields = Object.entries(machine.other?.fields || {})
+				.filter(([key, field]) => key && field.value !== undefined && field.value !== '');
 			if (customFields.length > 0) {
 				const envBlock = customFields
-					.map(f => `echo '${String(f.key).replace(/'/g, "'\\''")}=${String(f.value).replace(/'/g, "'\\''")}' >> /etc/environment 2>/dev/null || true`)
+					.map(([key, field]) => `echo '${String(key).replace(/'/g, "'\\''")}=${String(field.value).replace(/'/g, "'\\''")}' >> /etc/environment 2>/dev/null || true`)
 					.join('\n');
 				otherStartup = otherStartup.replace(/^(#![^\n]*\n)/, `$1${envBlock}\n`);
 			}

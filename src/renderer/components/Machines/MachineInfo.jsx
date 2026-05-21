@@ -175,7 +175,7 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
                       other: {
                         ...machine.other,
                         image: tpl.image,
-                        fields: (manifest.fields || []).map(f => ({ ...f })),
+                        fields: { ...(manifest.fields || {}) },
                         dockerFlags: (manifest.dockerFlags || []).map(f => ({ ...f })),
                         logo: tpl.logo || "",
                       },

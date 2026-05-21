@@ -9,18 +9,53 @@ import MachineSelector from "./MachineSelector";
 import { NotificationContext } from "../../contexts/NotificationContext";
 
 
+function EntryTable({ label, rows, colA, colB, onChange, isReadOnly }) {
+  const add = () => onChange([...rows, { a: "", b: "" }]);
+  const remove = (i) => onChange(rows.filter((_, idx) => idx !== i));
+  const update = (i, field, val) => onChange(rows.map((r, idx) => idx === i ? { ...r, [field]: val } : r));
+
+  return (
+    <div className="grid gap-1 mb-4">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-default-500 uppercase tracking-wider">{label}</span>
+        {!isReadOnly && (
+          <Button size="sm" isIconOnly variant="flat" onPress={add} className="h-6 w-6 min-w-6">
+            <span className="text-base leading-none">+</span>
+          </Button>
+        )}
+      </div>
+      {rows.length > 0 && (
+        <div className="grid gap-1">
+          {rows.map((row, i) => (
+            <div key={i} className="flex gap-1 items-center">
+              <Input size="sm" variant="flat" placeholder={colA} value={row.a} onValueChange={(v) => update(i, "a", v)} className="flex-1" isReadOnly={isReadOnly} />
+              <Input size="sm" variant="flat" placeholder={colB} value={row.b} onValueChange={(v) => update(i, "b", v)} className="flex-1" isReadOnly={isReadOnly} />
+              {!isReadOnly && (
+                <Button size="sm" isIconOnly variant="flat" color="danger" onPress={() => remove(i)} className="h-7 w-7 min-w-7 shrink-0">
+                  <XSymbol size={12} />
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FieldInputs({ fields, onFieldChange, isReadOnly }) {
-  if (fields.length === 0) return null;
+  const entries = Object.entries(fields || {});
+  if (entries.length === 0) return null;
   return (
     <div className="grid gap-3 mb-4">
-      {fields.map((field) => {
+      {entries.map(([key, field]) => {
         if (field.type === "textbox") {
           return (
             <Input
-              key={field.id}
-              label={field.key}
+              key={key}
+              label={key}
               value={field.value || ""}
-              onValueChange={(v) => onFieldChange(field.id, v)}
+              onValueChange={(v) => onFieldChange(key, v)}
               size="sm"
               variant="flat"
               isReadOnly={isReadOnly}
@@ -33,12 +68,12 @@ function FieldInputs({ fields, onFieldChange, isReadOnly }) {
           const step = isFloat ? Math.pow(10, -precision).toFixed(precision) : "1";
           return (
             <Input
-              key={field.id}
-              label={field.key}
+              key={key}
+              label={key}
               type="number"
               step={step}
               value={field.value || "0"}
-              onValueChange={(v) => onFieldChange(field.id, v)}
+              onValueChange={(v) => onFieldChange(key, v)}
               size="sm"
               variant="flat"
               isReadOnly={isReadOnly}
@@ -47,13 +82,13 @@ function FieldInputs({ fields, onFieldChange, isReadOnly }) {
         }
         if (field.type === "checkbox") {
           return (
-            <div key={field.id} className="flex items-center gap-3">
-              <span className="text-sm text-default-700">{field.key}</span>
+            <div key={key} className="flex items-center gap-3">
+              <span className="text-sm text-default-700">{key}</span>
               <Switch
                 size="sm"
                 isSelected={field.value === "true"}
                 isDisabled={isReadOnly}
-                onValueChange={(v) => onFieldChange(field.id, v ? "true" : "false")}
+                onValueChange={(v) => onFieldChange(key, v ? "true" : "false")}
               />
               <span className="text-xs text-default-400">{field.value === "true" ? "true" : "false"}</span>
             </div>
@@ -62,10 +97,10 @@ function FieldInputs({ fields, onFieldChange, isReadOnly }) {
         if (field.type === "dropdown") {
           return (
             <Select
-              key={field.id}
-              label={field.key}
+              key={key}
+              label={key}
               selectedKeys={field.value ? new Set([field.value]) : new Set()}
-              onSelectionChange={(keys) => onFieldChange(field.id, Array.from(keys)[0] || "")}
+              onSelectionChange={(keys) => onFieldChange(key, Array.from(keys)[0] || "")}
               size="sm"
               isDisabled={isReadOnly}
             >
@@ -97,12 +132,14 @@ function CustomAttacks({ attacker, machines, setMachines }) {
   const [expandedId, setExpandedId] = useState(loadedId || "");
   const [selectedId, setSelectedId] = useState(loadedId || "");
   const [fields, setFields] = useState(() => {
-    if (isLoaded && attacker?.attacker?.fields?.length > 0) {
-      return attacker.attacker.fields.map(f => ({ ...f }));
+    if (isLoaded && attacker?.attacker?.fields && !Array.isArray(attacker.attacker.fields)) {
+      return { ...attacker.attacker.fields };
     }
     const tpl = customAttackTemplates.find(t => t.id === (loadedId || customAttackTemplates[0]?.id));
-    return ((tpl?.manifest || {}).fields || []).map(f => ({ ...f }));
+    return { ...((tpl?.manifest || {}).fields || {}) };
   });
+  const [volumes, setVolumes] = useState(() => attacker?.attacker?.volumes || []);
+  const [variables, setVariables] = useState(() => attacker?.attacker?.variables || []);
   const [targets, setTargets] = useState(attacker?.targets || []);
 
   const { setAttackLoaded } = useContext(NotificationContext);
@@ -116,8 +153,8 @@ function CustomAttacks({ attacker, machines, setMachines }) {
     updateMachineData({ targets: val });
   };
 
-  const handleFieldChange = (fieldId, value) => {
-    setFields(prev => prev.map(f => f.id === fieldId ? { ...f, value } : f));
+  const handleFieldChange = (key, value) => {
+    setFields(prev => ({ ...prev, [key]: { ...prev[key], value } }));
   };
 
   const handleRowClick = (id) => {
@@ -132,7 +169,7 @@ function CustomAttacks({ attacker, machines, setMachines }) {
       setExpandedId(id);
       const tpl = customAttackTemplates.find(t => t.id === id);
       if (tpl) {
-        setFields(((tpl.manifest || {}).fields || []).map(f => ({ ...f })));
+        setFields({ ...((tpl.manifest || {}).fields || {}) });
       }
     }
   };
@@ -145,7 +182,7 @@ function CustomAttacks({ attacker, machines, setMachines }) {
         attackImage: "",
         attackCommand: "",
         attackCommandArgs: [],
-        attacker: { image: "", fields: [], dockerFlags: [], logo: "" },
+        attacker: { image: "", fields: {}, dockerFlags: [], logo: "", volumes: [], variables: [] },
       });
       setAttackLoaded(false);
       return;
@@ -161,9 +198,11 @@ function CustomAttacks({ attacker, machines, setMachines }) {
       attackCommandArgs: [],
       attacker: {
         image: tpl.image,
-        fields: fields.map(f => ({ ...f })),
+        fields: { ...fields },
         dockerFlags: (manifest.dockerFlags || []).map(f => ({ ...f })),
         logo: tpl.logo || "",
+        volumes: [...volumes],
+        variables: [...variables],
       },
       targets: targets,
     });
@@ -199,8 +238,14 @@ function CustomAttacks({ attacker, machines, setMachines }) {
                 const isExpanded = expandedId === tpl.id;
                 const isOtherLoaded = isLoaded && loadedId !== tpl.id;
                 const visibleFields = isLoaded && loadedId === tpl.id
-                  ? (attacker?.attacker?.fields || [])
+                  ? (attacker?.attacker?.fields || {})
                   : fields;
+                const visibleVolumes = isLoaded && loadedId === tpl.id
+                  ? (attacker?.attacker?.volumes || [])
+                  : volumes;
+                const visibleVariables = isLoaded && loadedId === tpl.id
+                  ? (attacker?.attacker?.variables || [])
+                  : variables;
                 return (
                   <React.Fragment key={tpl.id}>
                     <tr
@@ -230,6 +275,22 @@ function CustomAttacks({ attacker, machines, setMachines }) {
                           <FieldInputs
                             fields={visibleFields}
                             onFieldChange={handleFieldChange}
+                            isReadOnly={isLoaded}
+                          />
+                          <EntryTable
+                            label="Volumes"
+                            rows={visibleVolumes}
+                            colA="host path"
+                            colB="container path"
+                            onChange={setVolumes}
+                            isReadOnly={isLoaded}
+                          />
+                          <EntryTable
+                            label="Variables"
+                            rows={visibleVariables}
+                            colA="key"
+                            colB="value"
+                            onChange={setVariables}
                             isReadOnly={isLoaded}
                           />
                           <Button
