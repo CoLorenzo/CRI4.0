@@ -3,6 +3,17 @@ import AdmZip from "adm-zip";
 
 /** ───────────────── Helpers identici al renderer (adattati a Node) ───────────────── */
 
+function parseVolumeSrc(src) {
+  const colonIdx = src.lastIndexOf(':');
+  if (colonIdx > 0) {
+    const maybeOpt = src.slice(colonIdx + 1);
+    if (!maybeOpt.includes('/')) {
+      return { path: src.slice(0, colonIdx), opts: maybeOpt };
+    }
+  }
+  return { path: src, opts: '' };
+}
+
 function buildCriTargets(machine) {
   const targets = machine.targets || [];
   const result = [];
@@ -608,7 +619,12 @@ function makeLabConfFile(netkit, lab) {
     //lab.file["lab.conf"] += `${machine.name}[${lastIndex + 1}]=_collector\n`;
     lab.file["lab.conf"] += `${machineName}[0]=_collector\n`;
     lab.file["lab.conf"] += `${machineName}[bridged]=true\n`;
-    lab.file["lab.conf"] += `${machineName}[volume]="/lib/modules|/lib/modules|ro"\n`;
+    // Custom machines free up the volume slot for user-defined mounts
+    const hasUserVolumes = (machine.type === "other" && (machine.other?.volumes?.length > 0)) ||
+      (machine.type === "attacker" && machine.customAttackId && (machine.attacker?.volumes?.length > 0));
+    if (!hasUserVolumes) {
+      lab.file["lab.conf"] += `${machineName}[volume]="/lib/modules|/lib/modules|ro"\n`;
+    }
 
     // image per tipo
     if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
@@ -647,10 +663,12 @@ function makeLabConfFile(netkit, lab) {
           lab.file["lab.conf"] += `${machineName}[env]="${v.a}=${v.b}"\n`;
         }
       }
-      for (const vol of (machine.other.volumes || [])) {
-        if (vol.a && vol.b) {
-          lab.file["lab.conf"] += `${machineName}[volume]="${vol.a}|${vol.b}"\n`;
-        }
+      // Kathara only supports one [volume] per machine; use the first user volume
+      const otherVol = (machine.other.volumes || [])[0];
+      if (otherVol?.a && otherVol?.b) {
+        const { path, opts } = parseVolumeSrc(otherVol.a);
+        const volStr = opts ? `${path}|${otherVol.b}|${opts}` : `${path}|${otherVol.b}`;
+        lab.file["lab.conf"] += `${machineName}[volume]="${volStr}"\n`;
       }
       if (Array.isArray(machine.other.dockerFlags) && machine.other.dockerFlags.length > 0) {
         const opts = machine.other.dockerFlags
@@ -707,10 +725,12 @@ function makeLabConfFile(netkit, lab) {
             lab.file["lab.conf"] += `${machineName}[env]="${v.a}=${v.b}"\n`;
           }
         }
-        for (const vol of (machine.attacker.volumes || [])) {
-          if (vol.a && vol.b) {
-            lab.file["lab.conf"] += `${machineName}[volume]="${vol.a}|${vol.b}"\n`;
-          }
+        // Kathara only supports one [volume] per machine; use the first user volume
+        const attackerVol = (machine.attacker.volumes || [])[0];
+        if (attackerVol?.a && attackerVol?.b) {
+          const { path, opts } = parseVolumeSrc(attackerVol.a);
+          const volStr = opts ? `${path}|${attackerVol.b}|${opts}` : `${path}|${attackerVol.b}`;
+          lab.file["lab.conf"] += `${machineName}[volume]="${volStr}"\n`;
         }
         if (Array.isArray(machine.attacker.dockerFlags) && machine.attacker.dockerFlags.length > 0) {
           const opts = machine.attacker.dockerFlags

@@ -280,7 +280,7 @@ function CustomAttacks({ attacker, machines, setMachines }) {
                           <EntryTable
                             label="Volumes"
                             rows={visibleVolumes}
-                            colA="host path"
+                            colA="source (e.g. /host/path:ro)"
                             colB="container path"
                             onChange={setVolumes}
                             isReadOnly={isLoaded}

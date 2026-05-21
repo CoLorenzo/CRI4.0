@@ -118,7 +118,7 @@ export function CustomMachineFunctions({ machine, machines, setMachines }) {
             <EntryTable
                 label="Volumes"
                 rows={volumes}
-                colA="host path"
+                colA="source (e.g. /host/path:ro)"
                 colB="container path"
                 onChange={(rows) => updateMachineOther(other => ({ ...other, volumes: rows }))}
             />
