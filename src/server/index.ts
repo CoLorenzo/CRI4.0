@@ -50,16 +50,16 @@ function runCmd(cmd: string, args: string[], opts: { cwd?: string, timeoutMs?: n
 // Cleanup function
 async function cleanupLabs() {
     const labsDir = path.join(os.homedir(), 'kathara-labs');
+    console.log('🧹 Startup: cleaning previous labs...');
     try {
-        console.log('🧹 Startup: cleaning previous labs...');
-        // 1. Stop simulations
         await runCmd('kathara', ['lclean', '-d', labsDir], { timeoutMs: 20_000 });
-
-        // 2. Remove directory
+    } catch {
+        // kathara not available — that's fine
+    }
+    try {
         await fsp.rm(labsDir, { recursive: true, force: true });
-        console.log('✅ Startup: removed labs directory');
-    } catch (e) {
-        console.error('❌ Startup cleanup failed:', e);
+    } catch {
+        // directory may not exist — that's fine
     }
 }
 

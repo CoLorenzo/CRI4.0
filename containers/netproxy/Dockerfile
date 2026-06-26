@@ -1,4 +1,4 @@
 FROM icr/cribase
 
-COPY netproxy /netproxy
+COPY containers/netproxy/netproxy /netproxy
 RUN install /netproxy /bin
