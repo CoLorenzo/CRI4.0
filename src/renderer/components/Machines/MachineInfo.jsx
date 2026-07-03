@@ -151,6 +151,7 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
                 ) : (
                   <Radio value="controller">OpenFlow Ryu Controller</Radio>
                 )}
+                <Radio value="mosquitto">MQTT Broker (Mosquitto)</Radio>
                 <Radio value="other">Other</Radio>
               </RadioGroup>
             </AccordionItem>

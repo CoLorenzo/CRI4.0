@@ -208,6 +208,9 @@ services:
       - NET_ADMIN
     profiles:
       - kali
+  mosquitto:
+    build: ./mosquitto
+    image: icr/mosquitto
   netproxy:
     build:
       context: ..

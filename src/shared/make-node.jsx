@@ -278,6 +278,51 @@ smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info","host":"'"$(host
       continue;
     }
 
+    if (machine.type === "mosquitto") {
+      const criJson = buildCriInterfaces(machine);
+      const safeJson = criJson.replace(/'/g, "'\\''");
+      const criBlock = [
+        `export CRI_INTERFACES='${safeJson}'`,
+        `cat > /root/.cri_env << '__CRI_ENV_EOF__'`,
+        `export CRI_INTERFACES='${safeJson}'`,
+        `__CRI_ENV_EOF__`,
+        `grep -qxF '. /root/.cri_env' /root/.bashrc 2>/dev/null || echo '. /root/.cri_env' >> /root/.bashrc`,
+      ].join("\n") + "\n\n";
+
+      const mosquittoScript = `#!/bin/sh\n\n` + criBlock +
+`echo "nameserver 8.8.8.8" > /etc/resolv.conf
+CRI_INTERFACES_LEN=$(echo $CRI_INTERFACES | jq "length")
+i=0
+while [ "\$i" -lt "\$CRI_INTERFACES_LEN" ]; do
+    CRIINTERFACE_NAME=$(echo $CRI_INTERFACES | jq -r ".[\$i].name")
+    CRIINTERFACE_ADDRESS=$(echo $CRI_INTERFACES | jq -r ".[\$i].address")
+
+    ip addr add \${CRIINTERFACE_ADDRESS} dev \${CRIINTERFACE_NAME}
+    ip link set \${CRIINTERFACE_NAME} up
+    echo "interface \${CRIINTERFACE_NAME} set with \${CRIINTERFACE_ADDRESS}"
+
+    i=\$((i + 1))
+done
+
+mkdir -p /mosquitto/config /mosquitto/data /mosquitto/log
+cat > /mosquitto/config/mosquitto.conf << '__MOSQ_EOF__'
+listener 1883
+allow_anonymous true
+
+listener 9001
+protocol websockets
+allow_anonymous true
+__MOSQ_EOF__
+
+mosquitto -c /mosquitto/config/mosquitto.conf &
+
+smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info","host":"'"$(hostname)"'"}' '{"message":"ready"}'
+`;
+
+      lab.file[`${machineName}.startup`] = mosquittoScript;
+      continue;
+    }
+
     if (machine.type === "netproxy") {
       const criJson = buildCriInterfaces(machine);
       const safeJson = criJson.replace(/'/g, "'\\''");
@@ -292,13 +337,16 @@ smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info","host":"'"$(host
       const netproxyScript = `#!/bin/sh\n\n` + criBlock +
 `echo "nameserver 8.8.8.8" > /etc/resolv.conf
 CRI_INTERFACES_LEN=$(echo $CRI_INTERFACES | jq "length")
-for (( i=0; i<=\${CRI_INTERFACES_LEN} - 1; i+=1 )); do
-    CRIINTERFACE_NAME=$(echo $CRI_INTERFACES | jq -r ".[\${i}].name")
-    CRIINTERFACE_ADDRESS=$(echo $CRI_INTERFACES | jq -r ".[\${i}].address")
+i=0
+while [ "\$i" -lt "\$CRI_INTERFACES_LEN" ]; do
+    CRIINTERFACE_NAME=$(echo $CRI_INTERFACES | jq -r ".[\$i].name")
+    CRIINTERFACE_ADDRESS=$(echo $CRI_INTERFACES | jq -r ".[\$i].address")
 
     ip addr add \${CRIINTERFACE_ADDRESS} dev \${CRIINTERFACE_NAME}
     ip link set \${CRIINTERFACE_NAME} up
     echo "interface \${CRIINTERFACE_NAME} set with \${CRIINTERFACE_ADDRESS}"
+
+    i=\$((i + 1))
 done
 if [ -f "/shared/\${HOSTNAME}.json" ]; then cp /shared/\${HOSTNAME}.json /config.json; fi
 netproxy & disown
@@ -670,6 +718,11 @@ function makeLabConfFile(netkit, lab) {
     if (machine.type == "conveyor") { lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
     if (machine.type == "plc") { lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
     if (machine.type == "netproxy") { lab.file["lab.conf"] += `${machineName}[image]=icr/netproxy\n`; }
+    if (machine.type == "mosquitto") {
+      lab.file["lab.conf"] += `${machineName}[image]=icr/mosquitto\n`;
+      lab.file["lab.conf"] += `${machineName}[port]="1883:1883/tcp"\n`;
+      lab.file["lab.conf"] += `${machineName}[port]="9001:9001/tcp"\n`;
+    }
     if (machine.type == "router") {
       if (machine.routingSoftware == "frr") {
         //lab.file["lab.conf"] += `${machine.name}[image]=kathara/frr`;
