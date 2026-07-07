@@ -25,7 +25,7 @@ const BLACK = '#2B1B17';
 import { api } from '../api';
 const DIR = api.assetsUrl;
 
-function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs, onOpenAttackStatus, simulationRun }) {
+function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs, onOpenAttackStatus, onAnalyseTraffic, simulationRun }) {
 	const [ifNameAt, setIfNameAt] = useState({ checked: false });
 	const [ifOspfCost, setIfOspfCost] = useState({ checked: false });
 	const [routingLabel, setRoutingLabel] = useState({ checked: false });
@@ -235,6 +235,13 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs, onOpenA
 		}
 	};
 
+	const handleAnalyseTraffic = () => {
+		if (contextMenu && onAnalyseTraffic) {
+			onAnalyseTraffic(contextMenu.nodeId);
+			setContextMenu(null);
+		}
+	};
+
 	const showOpenUI = contextMenu && machines.find(m => {
 		// Find the machine corresponding to the clicked node ID
 		// Note: ID format is "machine-" + name
@@ -304,6 +311,12 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs, onOpenA
 							Attack Status
 						</button>
 					)}
+					<button
+						className="w-full text-left px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
+						onClick={handleAnalyseTraffic}
+					>
+						Analyse Traffic
+					</button>
 					<button
 						className="w-full text-left px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
 						onClick={handleOpenLogs}

@@ -6,6 +6,7 @@ import { promises as fsp } from 'fs';
 import os from 'os';
 import AdmZip from 'adm-zip';
 import { generateZipNode } from '../shared/make-node';
+import { startBettercap, stopBettercap, setBettercapFilter } from '../shared/bettercap';
 
 // Type definitions
 type CurrentLab = {
@@ -584,6 +585,11 @@ export const runSimulation = async (req: Request, res: Response) => {
                 reject(errorMessage);
             });
         });
+
+        // Keep a host bettercap running for the whole simulation so all machines'
+        // traffic is recorded and available in the "Analyse Traffic" modal.
+        startBettercap(sudoPassword, sendLog);
+
         res.json({ output });
 
     } catch (err: any) {
@@ -611,6 +617,10 @@ export const stopSimulation = async (req: Request, res: Response) => {
     }
 
     const { name, labsDir } = CURRENT_LAB;
+
+    // Tear down the always-on traffic capture together with the lab.
+    stopBettercap(sendLog);
+
     const safeName = String(name).replace(/"/g, '\"');
     const cmd = `kathara lclean -d "${labsDir}"`;
 
@@ -638,6 +648,61 @@ export const stopSimulation = async (req: Request, res: Response) => {
     } catch (err: any) {
         res.status(500).json({ error: err.toString() });
     }
+};
+
+async function resolveBridgeIp(machineName: string): Promise<string | null> {
+    const patterns = [
+        CURRENT_LAB ? `kathara_.*_${CURRENT_LAB.name}_${machineName}_` : `_${machineName}_`,
+        `_${machineName}_`,
+    ];
+    let containerName: string | null = null;
+    for (const pattern of patterns) {
+        containerName = await new Promise<string | null>(r => {
+            exec(`docker ps --filter name=${pattern} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
+        });
+        if (containerName) break;
+    }
+    if (!containerName) {
+        containerName = await new Promise<string | null>(r => {
+            exec(`docker ps --filter ancestor=${machineName} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
+        });
+    }
+    if (!containerName) return null;
+
+    return new Promise<string | null>((resolve) => {
+        exec(`docker inspect ${containerName}`, (err, stdout) => {
+            if (err) return resolve(null);
+            try {
+                const data = JSON.parse(stdout);
+                const nets = data?.[0]?.NetworkSettings?.Networks || {};
+                if (nets.bridge?.IPAddress) return resolve(nets.bridge.IPAddress);
+                for (const key of Object.keys(nets)) {
+                    if (nets[key]?.IPAddress) return resolve(nets[key].IPAddress);
+                }
+                resolve(null);
+            } catch {
+                resolve(null);
+            }
+        });
+    });
+}
+
+export const analyseTraffic = async (req: Request, res: Response) => {
+    const { machineName } = req.body;
+    if (!machineName) return res.status(400).json({ error: 'Machine name required' });
+
+    const ip = await resolveBridgeIp(machineName);
+    if (!ip) {
+        sendLog('warn', `🦈 Could not resolve bridge IP for ${machineName}; showing unfiltered traffic.`);
+    }
+    const url = await setBettercapFilter(ip, sendLog);
+    res.json({ url, ip });
+};
+
+export const resetTrafficFilter = async (_req: Request, res: Response) => {
+    // Resume capturing every machine once a traffic modal is closed.
+    await setBettercapFilter(null, sendLog);
+    res.json({ ok: true });
 };
 
 export const getMachineContent = async (req: Request, res: Response) => {

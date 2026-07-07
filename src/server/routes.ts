@@ -15,6 +15,8 @@ router.post('/docker-logs', controllers.getContainerLogs);
 router.post('/simulate-attack', controllers.simulateAttack);
 router.post('/run-simulation', controllers.runSimulation);
 router.post('/stop-simulation', controllers.stopSimulation);
+router.post('/analyse-traffic', controllers.analyseTraffic);
+router.post('/reset-traffic-filter', controllers.resetTrafficFilter);
 router.post('/machine-content', controllers.getMachineContent);
 router.post('/save-scada-project', controllers.saveScadaProject);
 

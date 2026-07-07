@@ -24,6 +24,7 @@ import fs from 'fs';
 import { promises as fsp } from "fs";
 import AdmZip from 'adm-zip';
 import { generateZipNode } from '../shared/make-node';
+import { startBettercap, stopBettercap, setBettercapFilter } from '../shared/bettercap';
 import * as pty from 'node-pty';
 import { IPty } from 'node-pty';
 
@@ -629,6 +630,9 @@ ipcMain.handle('run-simulation', async (event, { machines, labInfo, sudoPassword
     childVal.on('close', (code) => {
       if (code === 0) {
         sendLog('log', "✅ Lab started.");
+        // Keep a host bettercap running for the whole simulation so all machines'
+        // traffic is recorded and available in the "Analyse Traffic" modal.
+        startBettercap(sudoPassword, sendLog);
         resolve(stdoutData.trim());
       } else {
         const combined = [stdoutData, stderrData].filter(Boolean).join('\n').trim();
@@ -655,6 +659,9 @@ ipcMain.handle('stop-simulation', async () => {
 
   const { name, labsDir, labPath } = CURRENT_LAB;
 
+  // Tear down the always-on traffic capture together with the lab.
+  stopBettercap(sendLog);
+
   const safeName = String(name).replace(/"/g, '\"');
   const cmd = `kathara lclean -d "${labsDir}"`;
 
@@ -679,6 +686,61 @@ ipcMain.handle('stop-simulation', async () => {
   });
 });
 
+
+// --- Analyse Traffic (bettercap) IPC ---
+
+async function resolveBridgeIp(machineName: string): Promise<string | null> {
+  const patterns = [
+    CURRENT_LAB ? `kathara_.*_${CURRENT_LAB.name}_${machineName}_` : `_${machineName}_`,
+    `_${machineName}_`,
+  ];
+  let containerName: string | null = null;
+  for (const pattern of patterns) {
+    containerName = await new Promise<string | null>(r => {
+      exec(`docker ps --filter name=${pattern} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
+    });
+    if (containerName) break;
+  }
+  if (!containerName) {
+    containerName = await new Promise<string | null>(r => {
+      exec(`docker ps --filter ancestor=${machineName} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
+    });
+  }
+  if (!containerName) return null;
+
+  return new Promise<string | null>((resolve) => {
+    exec(`docker inspect ${containerName}`, (err, stdout) => {
+      if (err) return resolve(null);
+      try {
+        const data = JSON.parse(stdout);
+        const nets = data?.[0]?.NetworkSettings?.Networks || {};
+        // Prefer the default docker bridge (docker0), which is what bettercap sniffs.
+        if (nets.bridge?.IPAddress) return resolve(nets.bridge.IPAddress);
+        for (const key of Object.keys(nets)) {
+          if (nets[key]?.IPAddress) return resolve(nets[key].IPAddress);
+        }
+        resolve(null);
+      } catch {
+        resolve(null);
+      }
+    });
+  });
+}
+
+ipcMain.handle('analyse-traffic', async (event, machineName: string) => {
+  const ip = await resolveBridgeIp(machineName);
+  if (!ip) {
+    sendLog('warn', `🦈 Could not resolve bridge IP for ${machineName}; showing unfiltered traffic.`);
+  }
+  const url = await setBettercapFilter(ip, sendLog);
+  return { url, ip };
+});
+
+ipcMain.handle('reset-traffic-filter', async () => {
+  // Resume capturing every machine once a traffic modal is closed.
+  await setBettercapFilter(null, sendLog);
+  return { ok: true };
+});
 
 // --- Terminal IPC ---
 
@@ -902,6 +964,7 @@ async function gracefulShutdown() {
   try {
     // 🔽 qui metti il comando che vuoi eseguire alla chiusura
     // Esempio: pulizia Kathara SE c'è un lab attivo
+    stopBettercap((l, m) => console.log(m));
     if (CURRENT_LAB) {
       console.log('🧹 On-exit: kathara lclean …', CURRENT_LAB.labsDir);
       await runCmd('kathara', ['lclean', '-d', CURRENT_LAB.labsDir], { timeoutMs: 20_000 });

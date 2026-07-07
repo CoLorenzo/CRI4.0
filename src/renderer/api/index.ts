@@ -160,6 +160,26 @@ export const api = {
         return data.output;
     },
 
+    async analyseTraffic(machineName: string): Promise<{ url: string; ip: string | null }> {
+        if (isElectron()) {
+            return window.electron.ipcRenderer.invoke('analyse-traffic', machineName);
+        }
+        const response = await fetch(`${API_BASE_URL}/analyse-traffic`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ machineName }),
+        });
+        return response.json();
+    },
+
+    async resetTrafficFilter(): Promise<void> {
+        if (isElectron()) {
+            await window.electron.ipcRenderer.invoke('reset-traffic-filter');
+            return;
+        }
+        await fetch(`${API_BASE_URL}/reset-traffic-filter`, { method: 'POST' });
+    },
+
     async stopSimulation(): Promise<string> {
         if (isElectron()) {
             return window.electron.ipcRenderer.invoke('stop-simulation');

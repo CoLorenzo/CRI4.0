@@ -431,6 +431,22 @@ function Topology() {
                     const m = machines.find(m => m.name === machineName || m.type === "attacker");
                     setAttackStatusModal({ isOpen: true, attackerName: machineName, isCustomAttack: !!m?.customAttackId });
                   }}
+                  onAnalyseTraffic={async (nodeId) => {
+                    const machineName = nodeId.replace("machine-", "");
+                    try {
+                      const { url } = await api.analyseTraffic(machineName);
+                      setUiModal({
+                        isOpen: true,
+                        url,
+                        title: `Traffic — ${machineName}`,
+                        zoom: 1,
+                        isBettercap: true,
+                      });
+                    } catch (e) {
+                      console.error("Failed to open traffic analysis", e);
+                      toast.error("Failed to open traffic analysis: " + (e.message || e));
+                    }
+                  }}
                   onStartAttack={(nodeId) => simulateAttack(nodeId)}
                   onStopAttack={(nodeId) => stopAttack(nodeId)}
                 />
@@ -582,7 +598,13 @@ function Topology() {
       ))}
       <UIModal
         isOpen={uiModal.isOpen}
-        onClose={() => setUiModal({ ...uiModal, isOpen: false })}
+        onClose={() => {
+          // Resume capturing all machines when a traffic view is closed.
+          if (uiModal.isBettercap) {
+            api.resetTrafficFilter().catch(() => {});
+          }
+          setUiModal({ ...uiModal, isOpen: false });
+        }}
         url={uiModal.url}
         title={uiModal.title}
         zoom={uiModal.zoom}
