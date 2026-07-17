@@ -14,7 +14,8 @@ export function ScadaFunctions({ machine, machines, setMachines }) {
         "apg",
         "laser",
         "conveyor",
-        "plc"
+        "plc",
+        "device"
     ];
 
     const machineEth0Domain = machine.interfaces?.if?.[0]?.eth?.domain;

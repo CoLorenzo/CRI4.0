@@ -86,7 +86,8 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
         "apg",
         "laser",
         "conveyor",
-        "plc"
+        "plc",
+        "device"
     ];
 
     const availableMachinesForPlc = machines.filter((m) => {

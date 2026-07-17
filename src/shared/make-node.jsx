@@ -52,6 +52,61 @@ function buildCriInterfaces(machine) {
   return JSON.stringify(ifaces);
 }
 
+// Extract the Modbus endpoints exposed by a "device" machine from its
+// uploaded peripheral configs (one Modbus server per config, port from
+// modbus_bind, registers from the variables map). Mirrors the default
+// scenario baked into icr/device when no configs were uploaded.
+function getDeviceModbusEndpoints(machine) {
+  const MAIN_CONFIGS = ["simulation.json", "gateway.json", "visualization.json"];
+  const configs = (machine.device?.configs || []).filter(
+    (c) => c?.name && c?.content && !MAIN_CONFIGS.includes(c.name)
+  );
+
+  if (configs.length === 0) {
+    return [
+      {
+        name: "temp_sensor", deviceType: "TempSensor", port: 1502,
+        variables: [{ name: "reactor_temp", register: 100, kind: "input", type: "uint16" }],
+      },
+      {
+        name: "valve_actuator", deviceType: "ValveActuator", port: 1503,
+        variables: [
+          { name: "target_pos", register: 200, kind: "holding", type: "uint16" },
+          { name: "actual_pos", register: 201, kind: "holding", type: "uint16" },
+        ],
+      },
+    ];
+  }
+
+  const endpoints = [];
+  for (const cfg of configs) {
+    try {
+      const raw = String(cfg.content).split(";base64,").pop();
+      const json = JSON.parse(Buffer.from(raw, "base64").toString("utf8"));
+      if (!json.modbus_bind) continue;
+      const port = parseInt(String(json.modbus_bind).split(":").pop(), 10);
+      if (!port) continue;
+      const variables = Object.entries(json.variables || {})
+        .filter(([, v]) => v?.modbus)
+        .map(([varName, v]) => ({
+          name: varName,
+          register: v.modbus.address,
+          kind: v.modbus.kind || "input",
+          type: v.modbus.type || "uint16",
+        }));
+      endpoints.push({
+        name: cfg.name.replace(/\.json$/i, "").replace(/[^\w.-]/g, "_"),
+        deviceType: json.device_type || "unknown",
+        port,
+        variables,
+      });
+    } catch (e) {
+      console.error(`Failed to parse device config ${cfg.name}`, e);
+    }
+  }
+  return endpoints;
+}
+
 function makeMachineFolders(netkit, lab) {
   for (let machine of netkit) lab.folders.push(machine.name);
 }
@@ -452,7 +507,50 @@ stunnel
               }
 
               if (targetIp) {
-                extraCommands += `openplc-cli device add "${targetMachine.name}" "${targetIp}" "502"\n`;
+                if (targetMachine.type === "device") {
+                  // A device machine exposes one Modbus server per peripheral,
+                  // each on its own port. openplc-cli hardcodes the scan ranges
+                  // to 0..8, so after adding the device we point them at the
+                  // registers actually served (mbconfig.cfg is what the runtime
+                  // reads at startup; the DB keeps the web UI consistent).
+                  if (!extraCommands.includes("plc_device_set_ranges()")) {
+                    extraCommands += `plc_device_set_ranges() {
+  _NAME="$1"; _IR_START="$2"; _IR_SIZE="$3"; _HR_START="$4"; _HR_SIZE="$5"
+  _CFG=/opt/OpenPLC_v3/webserver/mbconfig.cfg
+  _DEV_ID=$(grep -oP "^device\\K[0-9]+(?=\\.name = \\"\${_NAME}\\")" "\$_CFG" || true)
+  if [ -n "\$_DEV_ID" ]; then
+    sed -i \\
+      -e "s|^device\${_DEV_ID}\\.Discrete_Inputs_Size = .*|device\${_DEV_ID}.Discrete_Inputs_Size = \\"0\\"|" \\
+      -e "s|^device\${_DEV_ID}\\.Coils_Size = .*|device\${_DEV_ID}.Coils_Size = \\"0\\"|" \\
+      -e "s|^device\${_DEV_ID}\\.Input_Registers_Start = .*|device\${_DEV_ID}.Input_Registers_Start = \\"\${_IR_START}\\"|" \\
+      -e "s|^device\${_DEV_ID}\\.Input_Registers_Size = .*|device\${_DEV_ID}.Input_Registers_Size = \\"\${_IR_SIZE}\\"|" \\
+      -e "s|^device\${_DEV_ID}\\.Holding_Registers_Read_Start = .*|device\${_DEV_ID}.Holding_Registers_Read_Start = \\"\${_HR_START}\\"|" \\
+      -e "s|^device\${_DEV_ID}\\.Holding_Registers_Read_Size = .*|device\${_DEV_ID}.Holding_Registers_Read_Size = \\"\${_HR_SIZE}\\"|" \\
+      -e "s|^device\${_DEV_ID}\\.Holding_Registers_Start = .*|device\${_DEV_ID}.Holding_Registers_Start = \\"\${_HR_START}\\"|" \\
+      -e "s|^device\${_DEV_ID}\\.Holding_Registers_Size = .*|device\${_DEV_ID}.Holding_Registers_Size = \\"\${_HR_SIZE}\\"|" \\
+      "\$_CFG"
+  fi
+  sqlite3 /opt/OpenPLC_v3/webserver/openplc.db "UPDATE Slave_dev SET di_size=0, coil_size=0, ir_start=\${_IR_START}, ir_size=\${_IR_SIZE}, hr_read_start=\${_HR_START}, hr_read_size=\${_HR_SIZE}, hr_write_start=\${_HR_START}, hr_write_size=\${_HR_SIZE} WHERE dev_name='\${_NAME}';" || true
+}
+`;
+                  }
+                  const wordLen = (t) => (String(t).includes("32") ? 2 : 1);
+                  const range = (vars) => {
+                    if (vars.length === 0) return [0, 0];
+                    const start = Math.min(...vars.map((v) => v.register));
+                    const end = Math.max(...vars.map((v) => v.register + wordLen(v.type)));
+                    return [start, end - start];
+                  };
+                  for (const ep of getDeviceModbusEndpoints(targetMachine)) {
+                    const devName = `${targetMachine.name}_${ep.name}`;
+                    const [irStart, irSize] = range(ep.variables.filter((v) => v.kind === "input"));
+                    const [hrStart, hrSize] = range(ep.variables.filter((v) => v.kind === "holding"));
+                    extraCommands += `openplc-cli device add "${devName}" "${targetIp}" "${ep.port}"\n`;
+                    extraCommands += `plc_device_set_ranges "${devName}" ${irStart} ${irSize} ${hrStart} ${hrSize}\n`;
+                  }
+                } else {
+                  extraCommands += `openplc-cli device add "${targetMachine.name}" "${targetIp}" "502"\n`;
+                }
               }
             }
           }
@@ -489,11 +587,38 @@ stunnel
                 targetIp = targetMachine.interfaces.if[0].ip.split("/")[0];
               }
 
-              monitoredMachines.push({
-                name: targetMachine.name || targetMachine.type,
-                type: targetMachine.type,
-                address: targetIp
-              });
+              if (targetMachine.type === "device") {
+                // One FUXA device per Modbus peripheral, with its variables as tags
+                const fuxaType = (t) => ({
+                  uint16: "UInt16", int16: "Int16",
+                  uint32: "UInt32", int32: "Int32",
+                  float32: "Float", bool: "Bool",
+                }[String(t).toLowerCase()] || "UInt16");
+
+                for (const ep of getDeviceModbusEndpoints(targetMachine)) {
+                  monitoredMachines.push({
+                    name: `${targetMachine.name || "device"}_${ep.name}`,
+                    type: "device",
+                    address: targetIp,
+                    port: ep.port,
+                    tags: ep.variables.map((v) => ({
+                      name: v.name,
+                      // FUXA tag addresses are 1-based: its modbus driver does
+                      // "address - 1" on the wire, while the peripheral serves
+                      // the 0-based address written in the config
+                      address: v.register + 1,
+                      type: fuxaType(v.type),
+                      registry: v.kind === "holding" ? "holding_register" : "input_register",
+                    })),
+                  });
+                }
+              } else {
+                monitoredMachines.push({
+                  name: targetMachine.name || targetMachine.type,
+                  type: targetMachine.type,
+                  address: targetIp
+                });
+              }
             }
           }
         }
@@ -549,8 +674,9 @@ for (( i=0; i<\${MONITORED_MACHINES_LEN}; i++ )); do
     MACHINE_NAME=$(echo \$MONITORED_MACHINES | jq -r .[$i].name)
     MACHINE_TYPE=$(echo \$MONITORED_MACHINES | jq -r .[$i].type)
     MACHINE_ADDRESS=$(echo \$MONITORED_MACHINES | jq -r .[$i].address)
-    fuxa_device_add localhost:1881 "\${MACHINE_NAME}" "\${MACHINE_ADDRESS}:502" 250
-    
+    MACHINE_PORT=$(echo \$MONITORED_MACHINES | jq -r '.['$i'].port // 502')
+    fuxa_device_add localhost:1881 "\${MACHINE_NAME}" "\${MACHINE_ADDRESS}:\${MACHINE_PORT}" 250
+
     #insert tag
     case "\$MACHINE_TYPE" in
     "temperature_sensor")
@@ -559,8 +685,18 @@ for (( i=0; i<\${MONITORED_MACHINES_LEN}; i++ )); do
     "fan")
 	    fuxa_tag_add localhost:1881 \${MACHINE_NAME} status 1 Bool coil_status status
         ;;
+    "device")
+        TAGS_LEN=$(echo \$MONITORED_MACHINES | jq -r '.['$i'].tags | length')
+        for (( j=0; j<\${TAGS_LEN}; j++ )); do
+            TAG_NAME=$(echo \$MONITORED_MACHINES | jq -r '.['$i'].tags['$j'].name')
+            TAG_ADDRESS=$(echo \$MONITORED_MACHINES | jq -r '.['$i'].tags['$j'].address')
+            TAG_TYPE=$(echo \$MONITORED_MACHINES | jq -r '.['$i'].tags['$j'].type')
+            TAG_REGISTRY=$(echo \$MONITORED_MACHINES | jq -r '.['$i'].tags['$j'].registry')
+            fuxa_tag_add localhost:1881 \${MACHINE_NAME} \${TAG_NAME} \${TAG_ADDRESS} \${TAG_TYPE} \${TAG_REGISTRY} \${TAG_NAME}
+        done
+        ;;
 	esac
-    
+
 done
 
 
