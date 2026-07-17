@@ -25,7 +25,7 @@ const BLACK = '#2B1B17';
 import { api } from '../api';
 const DIR = api.assetsUrl;
 
-function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs, onOpenAttackStatus, simulationRun }) {
+function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenModbusInfo, onOpenLogs, onOpenAttackStatus, simulationRun }) {
 	const [ifNameAt, setIfNameAt] = useState({ checked: false });
 	const [ifOspfCost, setIfOspfCost] = useState({ checked: false });
 	const [routingLabel, setRoutingLabel] = useState({ checked: false });
@@ -221,6 +221,13 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs, onOpenA
 		}
 	};
 
+	const handleOpenModbusInfo = () => {
+		if (contextMenu && onOpenModbusInfo) {
+			onOpenModbusInfo(contextMenu.nodeId);
+			setContextMenu(null);
+		}
+	};
+
 	const handleOpenLogs = () => {
 		if (contextMenu && onOpenLogs) {
 			onOpenLogs(contextMenu.nodeId);
@@ -239,7 +246,12 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs, onOpenA
 		// Find the machine corresponding to the clicked node ID
 		// Note: ID format is "machine-" + name
 		const machineName = contextMenu.nodeId.replace("machine-", "");
-		return m.name === machineName && (m.type === "plc" || m.type === "scada");
+		return m.name === machineName && (m.type === "plc" || m.type === "scada" || m.type === "device");
+	});
+
+	const showModbusInfo = contextMenu && machines.find(m => {
+		const machineName = contextMenu.nodeId.replace("machine-", "");
+		return m.name === machineName && m.type === "device";
 	});
 
 	const showSaveProject = contextMenu && machines.find(m => {
@@ -286,6 +298,14 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenLogs, onOpenA
 							onClick={handleOpenUI}
 						>
 							Open UI
+						</button>
+					)}
+					{showModbusInfo && (
+						<button
+							className="w-full text-left px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100"
+							onClick={handleOpenModbusInfo}
+						>
+							Modbus Endpoints
 						</button>
 					)}
 					{showSaveProject && (

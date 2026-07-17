@@ -15,6 +15,7 @@ import UIModal from "../components/UIModal";
 import PasswordModal from "../components/PasswordModal";
 import { toast } from 'react-hot-toast';
 import LogsModal from "../components/LogsModal";
+import ModbusEndpointsModal from "../components/ModbusEndpointsModal";
 import AttackStatusModal from "../components/AttackStatusModal";
 import ErrorModal from "../components/ErrorModal";
 import { getMachineIps } from "../utils/ipUtils";
@@ -38,6 +39,9 @@ function Topology() {
 
   // Logs Modal State
   const [logsModal, setLogsModal] = useState({ isOpen: false, containerName: "" });
+
+  // Modbus Endpoints Modal State (device machines)
+  const [modbusModal, setModbusModal] = useState({ isOpen: false, machineName: "", endpoints: [] });
 
   // Attack Status Modal State
   const [attackStatusModal, setAttackStatusModal] = useState({ isOpen: false, attackerName: "", isCustomAttack: false });
@@ -311,6 +315,77 @@ function Topology() {
 
 
 
+  // Resolve the container IP reachable from the host (same logic as onOpenUI)
+  const resolveContainerIp = async (machineName) => {
+    let ip = "127.0.0.1";
+    const inspectData = await api.getContainerInspect(machineName);
+    if (inspectData && inspectData.length > 0) {
+      const settings = inspectData[0].NetworkSettings;
+      if (settings.Networks) {
+        for (const key of Object.keys(settings.Networks)) {
+          const net = settings.Networks[key];
+          if (net.IPAddress) {
+            ip = net.IPAddress;
+            if (key === 'bridge') break;
+          }
+        }
+      }
+    }
+    return ip;
+  };
+
+  // Build the list of Modbus endpoints exposed by a device machine:
+  // one entry per uploaded peripheral config (its modbus_bind sets the port).
+  const getDeviceModbusEndpoints = (machine, ip) => {
+    const MAIN_CONFIGS = ["simulation.json", "gateway.json", "visualization.json"];
+    const configs = (machine.device?.configs || []).filter(
+      (c) => c?.name && c?.content && !MAIN_CONFIGS.includes(c.name)
+    );
+
+    // No uploads → the default scenario baked into icr/device is running
+    if (configs.length === 0) {
+      return [
+        {
+          name: "temp_sensor", deviceType: "TempSensor", address: `${ip}:1502`,
+          variables: [{ name: "reactor_temp", register: 100, kind: "input" }],
+        },
+        {
+          name: "valve_actuator", deviceType: "ValveActuator", address: `${ip}:1503`,
+          variables: [
+            { name: "target_pos", register: 200, kind: "holding" },
+            { name: "actual_pos", register: 201, kind: "holding" },
+          ],
+        },
+      ];
+    }
+
+    const endpoints = [];
+    for (const cfg of configs) {
+      try {
+        const b64 = String(cfg.content).split(";base64,").pop();
+        const json = JSON.parse(atob(b64));
+        if (!json.modbus_bind) continue;
+        const port = String(json.modbus_bind).split(":").pop();
+        const variables = Object.entries(json.variables || {})
+          .filter(([, v]) => v?.modbus)
+          .map(([varName, v]) => ({
+            name: varName,
+            register: v.modbus.address,
+            kind: v.modbus.kind || "",
+          }));
+        endpoints.push({
+          name: cfg.name.replace(/\.json$/i, ""),
+          deviceType: json.device_type || "unknown",
+          address: `${ip}:${port}`,
+          variables,
+        });
+      } catch (e) {
+        console.error(`Failed to parse device config ${cfg.name}`, e);
+      }
+    }
+    return endpoints;
+  };
+
   const handleStopSimulation = async () => {
     setStopSimulation(true);
     setAttackInProgress(false);
@@ -398,6 +473,7 @@ function Topology() {
                       let port = "80"; // Default
                       if (machine.type === "plc") port = "8080";
                       if (machine.type === "scada") port = "1881";
+                      if (machine.type === "device") port = "8080"; // physics-sim web UI
 
                       const url = `http://${ip}:${port}`;
                       setUiModal({
@@ -421,6 +497,37 @@ function Topology() {
                         zoom: machine.type === "plc" ? 0.8 : 1
                       });
                     }
+                  }}
+                  onOpenModbusInfo={async (nodeId) => {
+                    const machineName = nodeId.replace("machine-", "");
+                    const machine = machines.find((m) => m.name === machineName);
+                    if (!machine) return;
+
+                    // Use the IP configured on the machine's interfaces in the
+                    // Home page (the address the other lab machines use), not
+                    // the Docker bridge IP.
+                    const configuredIface = (machine.interfaces?.if || []).find(
+                      (i) => i && i.eth && i.eth.domain !== "_collector" && i.ip
+                    );
+                    let ip = configuredIface
+                      ? String(configuredIface.ip).split("/")[0].trim()
+                      : null;
+
+                    if (!ip) {
+                      // No interface configured: fall back to the runtime Docker IP
+                      try {
+                        ip = await resolveContainerIp(machineName);
+                      } catch (e) {
+                        console.error("Failed to resolve container IP", e);
+                        ip = "127.0.0.1";
+                      }
+                    }
+
+                    setModbusModal({
+                      isOpen: true,
+                      machineName,
+                      endpoints: getDeviceModbusEndpoints(machine, ip),
+                    });
                   }}
                   onOpenLogs={(nodeId) => {
                     const machineName = nodeId.replace("machine-", "");
@@ -591,6 +698,12 @@ function Topology() {
         isOpen={logsModal.isOpen}
         onClose={() => setLogsModal({ ...logsModal, isOpen: false })}
         containerName={logsModal.containerName}
+      />
+      <ModbusEndpointsModal
+        isOpen={modbusModal.isOpen}
+        onClose={() => setModbusModal({ ...modbusModal, isOpen: false })}
+        machineName={modbusModal.machineName}
+        endpoints={modbusModal.endpoints}
       />
       <AttackStatusModal
         isOpen={attackStatusModal.isOpen}

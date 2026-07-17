@@ -21,6 +21,7 @@ import { ScadaFunctions } from "./ScadaFunctions";
 import { CustomMachineFunctions } from "./CustomMachineFunctions";
 import { CustomAttackFunctions } from "./CustomAttackFunctions";
 import { NetproxyFunctions } from "./NetproxyFunctions";
+import { DeviceFunctions } from "./DeviceFunctions";
 
 export function AdditionalFunctions({ machine, machines, setMachines }) {
     return (
@@ -29,6 +30,12 @@ export function AdditionalFunctions({ machine, machines, setMachines }) {
                 switch (machine.type) {
                     case 'netproxy':
                         return <NetproxyFunctions
+                            machine={machine}
+                            machines={machines}
+                            setMachines={setMachines}
+                        />
+                    case 'device':
+                        return <DeviceFunctions
                             machine={machine}
                             machines={machines}
                             setMachines={setMachines}

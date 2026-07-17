@@ -136,6 +136,7 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
                 <Radio value="laser">Laser sensor</Radio>
                 <Radio value="conveyor">Conveyor</Radio>
                 <Radio value="plc">PLC</Radio>
+                <Radio value="device">Device (Physics Simulation)</Radio>
               </RadioGroup>
             </AccordionItem>
 

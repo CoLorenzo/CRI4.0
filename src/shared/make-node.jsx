@@ -358,6 +358,42 @@ smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info","host":"'"$(host
       continue;
     }
 
+    if (machine.type === "device") {
+      const criJson = buildCriInterfaces(machine);
+      const safeJson = criJson.replace(/'/g, "'\\''");
+      const criBlock = [
+        `export CRI_INTERFACES='${safeJson}'`,
+        `cat > /root/.cri_env << '__CRI_ENV_EOF__'`,
+        `export CRI_INTERFACES='${safeJson}'`,
+        `__CRI_ENV_EOF__`,
+        `grep -qxF '. /root/.cri_env' /root/.bashrc 2>/dev/null || echo '. /root/.cri_env' >> /root/.bashrc`,
+      ].join("\n") + "\n\n";
+
+      const deviceScript = `#!/bin/sh\n\n` + criBlock +
+`echo "nameserver 8.8.8.8" > /etc/resolv.conf
+CRI_INTERFACES_LEN=$(echo $CRI_INTERFACES | jq "length")
+i=0
+while [ "\$i" -lt "\$CRI_INTERFACES_LEN" ]; do
+    CRIINTERFACE_NAME=$(echo $CRI_INTERFACES | jq -r ".[\$i].name")
+    CRIINTERFACE_ADDRESS=$(echo $CRI_INTERFACES | jq -r ".[\$i].address")
+
+    ip addr add \${CRIINTERFACE_ADDRESS} dev \${CRIINTERFACE_NAME}
+    ip link set \${CRIINTERFACE_NAME} up
+    echo "interface \${CRIINTERFACE_NAME} set with \${CRIINTERFACE_ADDRESS}"
+
+    i=\$((i + 1))
+done
+mkdir -p /scenario
+if [ -d "/shared/\${HOSTNAME}" ]; then cp /shared/\${HOSTNAME}/*.json /scenario/ 2>/dev/null || true; fi
+/start.sh > /var/log/device.log 2>&1 & disown
+
+smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info","host":"'"$(hostname)"'"}' '{"message":"ready"}'
+`;
+
+      lab.file[`${machineName}.startup`] = deviceScript;
+      continue;
+    }
+
     if (machine.type === "tls_termination_proxy") {
       const { in_addr = "0.0.0.0:50000", out_addr = "10.1.0.2:50001", verify = "0" } = machine.tls || {};
       const tlsScript = `
@@ -718,6 +754,11 @@ function makeLabConfFile(netkit, lab) {
     if (machine.type == "conveyor") { lab.file["lab.conf"] += machine.name + "[image]=icr/conveyor"; }
     if (machine.type == "plc") { lab.file["lab.conf"] += machine.name + "[image]=icr/plc"; }
     if (machine.type == "netproxy") { lab.file["lab.conf"] += `${machineName}[image]=icr/netproxy\n`; }
+    if (machine.type == "device") {
+      lab.file["lab.conf"] += `${machineName}[image]=icr/device\n`;
+      // physics-sim web UI (only one device machine can map the host port)
+      lab.file["lab.conf"] += `${machineName}[port]="8080:8080/tcp"\n`;
+    }
     if (machine.type == "mosquitto") {
       lab.file["lab.conf"] += `${machineName}[image]=icr/mosquitto\n`;
       lab.file["lab.conf"] += `${machineName}[port]="1883:1883/tcp"\n`;
@@ -973,6 +1014,17 @@ export async function generateZipNode(machines, labInfo, outPath) {
       if (rawContent) {
         const machineName = String(machine.name || "netproxy").replace(/[^\w.-]/g, "_");
         lab.file[`shared/${machineName}.json`] = Buffer.from(rawContent, 'base64');
+      }
+    }
+
+    if (machine.type === 'device' && Array.isArray(machine.device?.configs)) {
+      const machineName = String(machine.name || "device").replace(/[^\w.-]/g, "_");
+      for (const cfg of machine.device.configs) {
+        if (!cfg?.name || !cfg?.content) continue;
+        const rawContent = String(cfg.content).split(';base64,').pop();
+        if (!rawContent) continue;
+        const safeFileName = String(cfg.name).replace(/[^\w.-]/g, "_");
+        lab.file[`shared/${machineName}/${safeFileName}`] = Buffer.from(rawContent, 'base64');
       }
     }
 
