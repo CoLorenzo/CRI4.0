@@ -15,6 +15,8 @@ router.post('/docker-logs', controllers.getContainerLogs);
 router.post('/simulate-attack', controllers.simulateAttack);
 router.post('/run-simulation', controllers.runSimulation);
 router.post('/stop-simulation', controllers.stopSimulation);
+router.post('/arkime-stats-url', controllers.arkimeStatsUrl);
+router.post('/arkime-netflow', controllers.arkimeNetFlow);
 router.post('/machine-content', controllers.getMachineContent);
 router.post('/save-scada-project', controllers.saveScadaProject);
 

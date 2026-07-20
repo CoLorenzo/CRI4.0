@@ -160,6 +160,30 @@ export const api = {
         return data.output;
     },
 
+    async arkimeStatsUrl(): Promise<string> {
+        if (isElectron()) {
+            const { url } = await window.electron.ipcRenderer.invoke('arkime-stats-url');
+            return url;
+        }
+        const response = await fetch(`${API_BASE_URL}/arkime-stats-url`, { method: 'POST' });
+        const data = await response.json();
+        return data.url;
+    },
+
+    async arkimeNetFlow(ips: string[]): Promise<string> {
+        if (isElectron()) {
+            const { url } = await window.electron.ipcRenderer.invoke('arkime-netflow', ips);
+            return url;
+        }
+        const response = await fetch(`${API_BASE_URL}/arkime-netflow`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ips }),
+        });
+        const data = await response.json();
+        return data.url;
+    },
+
     async stopSimulation(): Promise<string> {
         if (isElectron()) {
             return window.electron.ipcRenderer.invoke('stop-simulation');

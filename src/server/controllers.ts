@@ -6,6 +6,7 @@ import { promises as fsp } from 'fs';
 import os from 'os';
 import AdmZip from 'adm-zip';
 import { generateZipNode } from '../shared/make-node';
+import { startArkime, stopArkime, arkimeHomeUrl, arkimeSessionsUrl } from '../shared/arkime';
 
 // Type definitions
 type CurrentLab = {
@@ -584,6 +585,10 @@ export const runSimulation = async (req: Request, res: Response) => {
                 reject(errorMessage);
             });
         });
+
+        // Bring up the Arkime traffic-capture stack for the whole simulation.
+        startArkime(sendLog).catch((e) => sendLog('error', `🦈 Arkime start error: ${e?.message || e}`));
+
         res.json({ output });
 
     } catch (err: any) {
@@ -611,6 +616,10 @@ export const stopSimulation = async (req: Request, res: Response) => {
     }
 
     const { name, labsDir } = CURRENT_LAB;
+
+    // Tear down the Arkime capture stack together with the lab.
+    stopArkime(sendLog).catch(() => {});
+
     const safeName = String(name).replace(/"/g, '\"');
     const cmd = `kathara lclean -d "${labsDir}"`;
 
@@ -638,6 +647,15 @@ export const stopSimulation = async (req: Request, res: Response) => {
     } catch (err: any) {
         res.status(500).json({ error: err.toString() });
     }
+};
+
+export const arkimeStatsUrl = async (_req: Request, res: Response) => {
+    res.json({ url: arkimeHomeUrl() });
+};
+
+export const arkimeNetFlow = async (req: Request, res: Response) => {
+    const { ips } = req.body;
+    res.json({ url: arkimeSessionsUrl(Array.isArray(ips) ? ips : []) });
 };
 
 export const getMachineContent = async (req: Request, res: Response) => {

@@ -59,6 +59,12 @@ export function AppNavbar({ darkMode, setDarkMode }) {
             Logs
           </Link>
         </NavbarItem>
+        <NavbarItem isActive={pathname === '/statistics'}>
+          <Link
+            color={pathname === "/statistics" ? "primary" : "foreground"} href="/statistics">
+            Statistics
+          </Link>
+        </NavbarItem>
       </NavbarContent>
       <NavbarContent justify="end">
         <NavbarItem isActive={pathname === '/settings'}>

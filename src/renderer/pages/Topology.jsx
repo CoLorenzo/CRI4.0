@@ -538,6 +538,36 @@ function Topology() {
                     const m = machines.find(m => m.name === machineName || m.type === "attacker");
                     setAttackStatusModal({ isOpen: true, attackerName: machineName, isCustomAttack: !!m?.customAttackId });
                   }}
+                  onNetFlow={async (nodeId) => {
+                    const machineName = nodeId.replace("machine-", "");
+                    const machine = machines.find((m) => m.name === machineName);
+
+                    // Collect every IP the machine is configured with (lab
+                    // collision-domain IPs from Home + any auto-assigned eth0),
+                    // stripped of the netmask. Arkime `ip ==` matches src or dst,
+                    // so these cover inbound, outbound and forwarded traffic.
+                    const ips = [];
+                    if (machine) {
+                      for (const iface of machine.interfaces?.if || []) {
+                        if (iface?.ip) ips.push(String(iface.ip).split("/")[0].trim());
+                      }
+                      if (machine.computedEth0Ip) ips.push(String(machine.computedEth0Ip).split("/")[0].trim());
+                      if (machine.selectedInterfaceIp) ips.push(String(machine.selectedInterfaceIp).split("/")[0].trim());
+                    }
+
+                    try {
+                      const url = await api.arkimeNetFlow(ips);
+                      setUiModal({
+                        isOpen: true,
+                        url,
+                        title: `Net Flow — ${machineName}`,
+                        zoom: 1,
+                      });
+                    } catch (e) {
+                      console.error("Failed to open net flow", e);
+                      toast.error("Failed to open net flow: " + (e.message || e));
+                    }
+                  }}
                   onStartAttack={(nodeId) => simulateAttack(nodeId)}
                   onStopAttack={(nodeId) => stopAttack(nodeId)}
                 />

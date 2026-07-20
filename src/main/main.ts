@@ -24,6 +24,7 @@ import fs from 'fs';
 import { promises as fsp } from "fs";
 import AdmZip from 'adm-zip';
 import { generateZipNode } from '../shared/make-node';
+import { startArkime, stopArkime, arkimeHomeUrl, arkimeSessionsUrl } from '../shared/arkime';
 import * as pty from 'node-pty';
 import { IPty } from 'node-pty';
 
@@ -629,6 +630,9 @@ ipcMain.handle('run-simulation', async (event, { machines, labInfo, sudoPassword
     childVal.on('close', (code) => {
       if (code === 0) {
         sendLog('log', "✅ Lab started.");
+        // Bring up the Arkime traffic-capture stack for the whole simulation.
+        // Fire-and-forget: image pulls can take minutes, don't block the UI.
+        startArkime(sendLog).catch((e) => sendLog('error', `🦈 Arkime start error: ${e?.message || e}`));
         resolve(stdoutData.trim());
       } else {
         const combined = [stdoutData, stderrData].filter(Boolean).join('\n').trim();
@@ -655,6 +659,9 @@ ipcMain.handle('stop-simulation', async () => {
 
   const { name, labsDir, labPath } = CURRENT_LAB;
 
+  // Tear down the Arkime capture stack together with the lab.
+  stopArkime(sendLog).catch(() => {});
+
   const safeName = String(name).replace(/"/g, '\"');
   const cmd = `kathara lclean -d "${labsDir}"`;
 
@@ -677,6 +684,17 @@ ipcMain.handle('stop-simulation', async () => {
       resolve(stdout.trim());
     });
   });
+});
+
+
+// --- Arkime (traffic analysis) IPC ---
+
+ipcMain.handle('arkime-stats-url', async () => {
+  return { url: arkimeHomeUrl() };
+});
+
+ipcMain.handle('arkime-netflow', async (event, ips: string[]) => {
+  return { url: arkimeSessionsUrl(ips || []) };
 });
 
 
@@ -901,6 +919,8 @@ async function gracefulShutdown() {
 
   try {
     // 🔽 qui metti il comando che vuoi eseguire alla chiusura
+    // Tear down the Arkime capture stack on exit.
+    await stopArkime((_l, m) => console.log(m)).catch(() => {});
     // Esempio: pulizia Kathara SE c'è un lab attivo
     if (CURRENT_LAB) {
       console.log('🧹 On-exit: kathara lclean …', CURRENT_LAB.labsDir);
