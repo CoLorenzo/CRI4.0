@@ -52,6 +52,12 @@ const ARKIME_IMAGE = 'ghcr.io/arkime/arkime/arkime:v6-latest';
 const OPENSEARCH_NAME = 'cri40-arkime-opensearch';
 const VIEWER_NAME = 'cri40-arkime-viewer';
 const CAP_PREFIX = 'cri40-arkime-cap-';
+// A fixed hostname shared by the viewer (--host) and every capture (--host) so
+// Arkime's isLocalView() treats all per-machine capture nodes as local: the
+// single viewer then reads their pcap straight from the shared raw/ volume
+// instead of trying to proxy to a per-node viewer that doesn't exist. This is
+// what makes the packet/tcpflow ("Show Packets") view work.
+const ARKIME_VIEW_HOST = 'cri40-arkime';
 
 // Host paths bind-mounted into the containers (writable without sudo).
 const BASE_DIR = path.join(os.homedir(), '.cri40', 'arkime');
@@ -96,8 +102,14 @@ function configIni(): string {
 		`elasticsearch=http://localhost:${OPENSEARCH_PORT}`,
 		'interface=any',
 		'pcapDir=/opt/arkime/raw',
-		'snapLen=32768',
+		// 64K snaplen tolerates GRO/GSO-coalesced packets so capture doesn't die
+		// with "Arkime requires full packet captures" if offloading isn't fully off.
+		'snapLen=65536',
 		'pcapReadMethod=libpcap',
+		// Write pcap uncompressed so packets hit disk immediately — with the
+		// default zstd compression small flows stay buffered and the tcpflow view
+		// shows "No pcap data found" until a whole block accumulates.
+		'simpleCompression=none',
 		'packetThreads=1',
 		'authMode=anonymous',
 		`viewPort=${ARKIME_VIEWER_PORT}`,
@@ -192,7 +204,7 @@ export async function startArkime(log: Logger): Promise<void> {
 		await sh(
 			`docker run -d --name ${VIEWER_NAME} --network host ` +
 			`-v ${ETC_DIR}:/opt/arkime/etc -v ${RAW_DIR}:/opt/arkime/raw ` +
-			`${ARKIME_IMAGE} /opt/arkime/bin/docker.sh viewer`,
+			`${ARKIME_IMAGE} /opt/arkime/bin/docker.sh viewer --host ${ARKIME_VIEW_HOST}`,
 			120_000,
 		);
 
@@ -215,8 +227,11 @@ export async function startArkime(log: Logger): Promise<void> {
 			const captureCmd =
 				`for i in $(ls /sys/class/net); do [ "$i" = lo ] && continue; ` +
 				`ethtool -K "$i" gro off gso off tso off lro off rx off tx off 2>/dev/null; done; ` +
+				// --host matches the viewer's --host so the viewer treats this node's
+				// pcap as local and serves the packet/tcpflow view from the shared disk.
 				`exec /opt/arkime/bin/capture -c /opt/arkime/etc/config.ini ` +
-				`-n ${machine} -o elasticsearch=http://${HOST_FROM_CONTAINER}:${OPENSEARCH_PORT}`;
+				`-n ${machine} --host ${ARKIME_VIEW_HOST} ` +
+				`-o elasticsearch=http://${HOST_FROM_CONTAINER}:${OPENSEARCH_PORT}`;
 			const { code, err } = await dockerRun([
 				'run', '-d', '--name', `${CAP_PREFIX}${machine}`, `--net=container:${c}`,
 				'--cap-add=NET_RAW', '--cap-add=NET_ADMIN', '-w', '/opt/arkime',
