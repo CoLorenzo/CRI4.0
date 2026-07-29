@@ -291,20 +291,23 @@ function makeStartupFiles(netkit, lab) {
       if (isCompleteScript) {
         attackerScript = body.replace(/<eth0_ip>/g, eth0Ip);
       } else {
+        // Assign each interface IP with an explicit `ip addr add` instead of a
+        // jq/bash loop over $CRI_INTERFACES: some attacker images (e.g.
+        // icr/access-gain-crack-plc) ship without `jq`, which made the loop
+        // produce an empty length and leave eth0/eth1 with no IP. make-node
+        // already knows the interfaces via buildCriInterfaces, so we bake the
+        // commands in directly — POSIX-sh safe, works on any image.
+        const ifaceCmds = JSON.parse(buildCriInterfaces(machine))
+          .map((i) =>
+            `ip addr add ${i.address} dev ${i.name} 2>/dev/null || true\n` +
+            `ip link set ${i.name} up 2>/dev/null || true`
+          )
+          .join("\n");
         attackerScript = `#!/bin/sh
 
-CRI_INTERFACES_LEN=$(echo $CRI_INTERFACES | jq "length")
-for (( i=0; i<=\${CRI_INTERFACES_LEN} - 1; i+=1 )); do
-    CRIINTERFACE_NAME=$(echo $CRI_INTERFACES | jq -r ".[\${i}].name")
-    CRIINTERFACE_ADDRESS=$(echo $CRI_INTERFACES | jq -r ".[\${i}].address")
+${ifaceCmds}
 
-    ip addr add \${CRIINTERFACE_ADDRESS} dev \${CRIINTERFACE_NAME}
-    ip link set \${CRIINTERFACE_NAME} up
-    echo "interface \${CRIINTERFACE_NAME} set with \${CRIINTERFACE_ADDRESS}"
-done
-
-
-smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info","host":"'"$(hostname)"'"}' '{"message":"ready"}'
+smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info","host":"'"$(hostname)"'"}' '{"message":"ready"}' 2>/dev/null || true
 `;
       }
 

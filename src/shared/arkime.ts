@@ -67,8 +67,11 @@ const CONFIG_PATH = path.join(ETC_DIR, 'config.ini');
 
 type Logger = (level: 'log' | 'error' | 'warn' | 'info' | 'debug', message: string) => void;
 
-let starting = false;
-let started = false;
+// The static infrastructure (OpenSearch + viewer) is brought up once at platform
+// startup and stays up across simulations. Per-machine captures come and go with
+// each simulation and are tracked only by their running containers.
+let infraStarting = false;
+let infraUp = false;
 
 function sh(cmd: string, timeoutMs = 60_000): Promise<{ code: number; out: string; err: string }> {
 	return new Promise((resolve) => {
@@ -124,7 +127,7 @@ function configIni(): string {
 }
 
 export function isArkimeRunning(): boolean {
-	return started;
+	return infraUp;
 }
 
 /** List running Kathara lab containers (excluding the collector infrastructure). */
@@ -155,15 +158,19 @@ async function waitForOpenSearch(log: Logger, attempts = 40): Promise<boolean> {
 }
 
 /**
- * Start the whole Arkime stack for the current simulation. Fire-and-forget:
- * image pulls can take minutes, so this is not awaited by the sim flow.
+ * Bring up the static Arkime infrastructure (OpenSearch + DB + viewer). This is
+ * started once at platform startup and stays up across simulations, so the
+ * Statistics viewer is always reachable. Idempotent: repeated calls are no-ops
+ * while it is up or coming up. Does NOT attach per-machine captures — that
+ * happens per simulation via startArkimeCapture(). Fire-and-forget: the first
+ * run pulls images and can take minutes, so callers don't await it.
  */
-export async function startArkime(log: Logger): Promise<void> {
-	if (started || starting) {
-		log('log', '🦈 Arkime already running, skipping start.');
+export async function startArkimeInfra(log: Logger): Promise<void> {
+	if (infraUp || infraStarting) {
+		log('log', '🦈 Arkime infrastructure already running, skipping start.');
 		return;
 	}
-	starting = true;
+	infraStarting = true;
 	try {
 		fs.mkdirSync(ETC_DIR, { recursive: true });
 		fs.mkdirSync(RAW_DIR, { recursive: true });
@@ -171,7 +178,7 @@ export async function startArkime(log: Logger): Promise<void> {
 		// Capture writes pcap here as root inside the container; keep it open.
 		try { fs.chmodSync(RAW_DIR, 0o777); } catch { /* ignore */ }
 
-		// Clean any leftovers from a previous run.
+		// Clean any leftovers from a previous process (captures + infra).
 		await stopArkimeContainers();
 
 		log('log', '🦈 Starting OpenSearch (first run pulls images, may take a while)...');
@@ -185,7 +192,7 @@ export async function startArkime(log: Logger): Promise<void> {
 		);
 
 		if (!(await waitForOpenSearch(log))) {
-			starting = false;
+			infraStarting = false;
 			return;
 		}
 		log('log', '🦈 OpenSearch ready, initialising Arkime DB...');
@@ -208,63 +215,123 @@ export async function startArkime(log: Logger): Promise<void> {
 			120_000,
 		);
 
-		// One capture per lab machine, inside its netns.
-		const containers = await labContainers();
-		if (containers.length === 0) {
-			log('warn', '🦈 No lab containers found to capture.');
-		}
-		for (const c of containers) {
-			const machine = machineNameOf(c);
-			log('log', `🦈 Attaching capture to ${machine}...`);
-			// Disable NIC offloading on the machine's interfaces first: with GRO/GSO
-			// on, the kernel hands libpcap super-sized packets (tens of KB) that
-			// exceed snapLen and Arkime drops them. `docker.sh` does this via
-			// arkime_config_interfaces.sh, but that keys off a named interface and
-			// we capture on "any", so we loop over the netns interfaces ourselves.
-			// cwd=/opt/arkime so capture finds ./parsers. Passed as a single argv
-			// element (dockerRun uses spawn, no host shell) so the $(...)/$i stay
-			// intact for the container's shell.
-			const captureCmd =
-				`for i in $(ls /sys/class/net); do [ "$i" = lo ] && continue; ` +
-				`ethtool -K "$i" gro off gso off tso off lro off rx off tx off 2>/dev/null; done; ` +
-				// --host matches the viewer's --host so the viewer treats this node's
-				// pcap as local and serves the packet/tcpflow view from the shared disk.
-				`exec /opt/arkime/bin/capture -c /opt/arkime/etc/config.ini ` +
-				`-n ${machine} --host ${ARKIME_VIEW_HOST} ` +
-				`-o elasticsearch=http://${HOST_FROM_CONTAINER}:${OPENSEARCH_PORT}`;
-			const { code, err } = await dockerRun([
-				'run', '-d', '--name', `${CAP_PREFIX}${machine}`, `--net=container:${c}`,
-				'--cap-add=NET_RAW', '--cap-add=NET_ADMIN', '-w', '/opt/arkime',
-				'-v', `${ETC_DIR}:/opt/arkime/etc`, '-v', `${RAW_DIR}:/opt/arkime/raw`,
-				ARKIME_IMAGE, 'sh', '-c', captureCmd,
-			]);
-			if (code !== 0) log('warn', `🦈 capture for ${machine} failed: ${err.trim()}`);
-		}
-
-		started = true;
-		starting = false;
-		log('log', '🦈 Arkime stack up.');
+		infraUp = true;
+		infraStarting = false;
+		log('log', '🦈 Arkime infrastructure up.');
 		pushLokiReady(log);
 	} catch (e: any) {
-		starting = false;
-		log('error', `🦈 Failed to start Arkime: ${e?.message || e}`);
+		infraStarting = false;
+		log('error', `🦈 Failed to start Arkime infrastructure: ${e?.message || e}`);
 	}
+}
+
+/**
+ * Attach one Arkime capture sidecar per current lab machine, each inside its
+ * network namespace. Any capture sidecars left over from a previous simulation
+ * are removed first, so this doubles as the "start capturing the new lab" step.
+ * If the infrastructure isn't up yet (simulation started before boot finished),
+ * it is brought up on demand.
+ */
+export async function startArkimeCapture(log: Logger): Promise<void> {
+	if (!infraUp) {
+		await startArkimeInfra(log);
+		if (!infraUp) return;
+	}
+
+	// Never double-attach: drop capture sidecars from a previous simulation.
+	await stopCaptureContainers();
+
+	const containers = await labContainers();
+	if (containers.length === 0) {
+		log('warn', '🦈 No lab containers found to capture.');
+		return;
+	}
+	for (const c of containers) {
+		const machine = machineNameOf(c);
+		log('log', `🦈 Attaching capture to ${machine}...`);
+		// Disable NIC offloading on the machine's interfaces first: with GRO/GSO
+		// on, the kernel hands libpcap super-sized packets (tens of KB) that
+		// exceed snapLen and Arkime drops them. `docker.sh` does this via
+		// arkime_config_interfaces.sh, but that keys off a named interface and
+		// we capture on "any", so we loop over the netns interfaces ourselves.
+		// cwd=/opt/arkime so capture finds ./parsers. Passed as a single argv
+		// element (dockerRun uses spawn, no host shell) so the $(...)/$i stay
+		// intact for the container's shell.
+		const captureCmd =
+			`for i in $(ls /sys/class/net); do [ "$i" = lo ] && continue; ` +
+			`ethtool -K "$i" gro off gso off tso off lro off rx off tx off 2>/dev/null; done; ` +
+			// --host matches the viewer's --host so the viewer treats this node's
+			// pcap as local and serves the packet/tcpflow view from the shared disk.
+			`exec /opt/arkime/bin/capture -c /opt/arkime/etc/config.ini ` +
+			`-n ${machine} --host ${ARKIME_VIEW_HOST} ` +
+			`-o elasticsearch=http://${HOST_FROM_CONTAINER}:${OPENSEARCH_PORT}`;
+		const { code, err } = await dockerRun([
+			'run', '-d', '--name', `${CAP_PREFIX}${machine}`, `--net=container:${c}`,
+			'--cap-add=NET_RAW', '--cap-add=NET_ADMIN', '-w', '/opt/arkime',
+			'-v', `${ETC_DIR}:/opt/arkime/etc`, '-v', `${RAW_DIR}:/opt/arkime/raw`,
+			ARKIME_IMAGE, 'sh', '-c', captureCmd,
+		]);
+		if (code !== 0) log('warn', `🦈 capture for ${machine} failed: ${err.trim()}`);
+	}
+	log('log', '🦈 Arkime captures attached.');
+}
+
+/**
+ * Empty all captured traffic without tearing down the infrastructure: detach the
+ * capture sidecars, wipe the Arkime session/SPI indices (re-running db.pl init,
+ * the same known-good path used at boot) and clear the on-disk pcap. Called on
+ * every simulation (re)start so each run begins with a clean slate.
+ */
+export async function resetArkimeData(log: Logger): Promise<void> {
+	if (!infraUp) return;
+	log('log', '🦈 Emptying Arkime capture data...');
+	// Captures must be detached before wiping so nothing writes during the reset.
+	await stopCaptureContainers();
+
+	// Re-init drops and recreates the session/SPI indices. db.pl prompts for
+	// confirmation because the indices already exist; feed "INIT".
+	await sh(
+		`printf 'INIT\\n' | docker run -i --rm --network host ` +
+		`-v ${ETC_DIR}:/opt/arkime/etc ${ARKIME_IMAGE} ` +
+		`/opt/arkime/db/db.pl --insecure http://localhost:${OPENSEARCH_PORT} init`,
+		300_000,
+	);
+
+	// Remove leftover pcap files so old packets don't linger on disk.
+	try {
+		for (const f of fs.readdirSync(RAW_DIR)) {
+			try { fs.rmSync(path.join(RAW_DIR, f), { recursive: true, force: true }); } catch { /* ignore */ }
+		}
+	} catch { /* ignore */ }
+	log('log', '🦈 Arkime capture data emptied.');
+}
+
+/** Remove just the per-machine capture sidecars. */
+async function stopCaptureContainers(): Promise<void> {
+	const { out } = await sh(`docker ps -aq --filter name=${CAP_PREFIX}`);
+	const capIds = out.split('\n').map((s) => s.trim()).filter(Boolean);
+	if (capIds.length) await sh(`docker rm -f ${capIds.join(' ')}`);
 }
 
 async function stopArkimeContainers(): Promise<void> {
 	// Remove per-machine capture sidecars first, then viewer + opensearch.
-	const { out } = await sh(`docker ps -aq --filter name=${CAP_PREFIX}`);
-	const capIds = out.split('\n').map((s) => s.trim()).filter(Boolean);
-	if (capIds.length) await sh(`docker rm -f ${capIds.join(' ')}`);
+	await stopCaptureContainers();
 	await sh(`docker rm -f ${VIEWER_NAME} ${OPENSEARCH_NAME}`);
 }
 
+/** Detach the per-machine captures, leaving the infrastructure running. */
+export async function stopArkimeCapture(log: Logger): Promise<void> {
+	log('log', '🦈 Detaching Arkime captures...');
+	await stopCaptureContainers();
+}
+
+/** Full teardown of the whole Arkime stack (infra + captures). Used on exit. */
 export async function stopArkime(log: Logger): Promise<void> {
-	if (!started && !starting) return;
+	if (!infraUp && !infraStarting) return;
 	log('log', '🦈 Stopping Arkime stack...');
 	await stopArkimeContainers();
-	started = false;
-	starting = false;
+	infraUp = false;
+	infraStarting = false;
 }
 
 /** Push a "ready" line to Loki so Arkime shows up like the other machines. */
@@ -294,11 +361,36 @@ function pushLokiReady(log: Logger): void {
 	req.end();
 }
 
-// Relative (same-origin) URL under the app's /arkime reverse-proxy. Being
-// same-origin is what keeps Arkime's SameSite=Strict auth cookie working inside
-// the iframe; the browser resolves it against the CRI4.0 app origin.
-export function arkimeHomeUrl(): string {
-	return `${ARKIME_BASE_PATH}/`;
+// Default expression for the Statistics tab: show all traffic (ip == 0.0.0.0/0)
+// but drop the docker-bridge noise on 172.x (ip != 172.0.0.0/8), loopback
+// (ip != 127.0.0.1) and the collector/infrastructure node (ip != 10.1.0.254).
+// Arkime carries the `expression` query param across its views, so it applies
+// as the starting filter for the embedded viewer.
+const STATS_DEFAULT_EXPRESSION = '(ip != 172.0.0.0/8) && (ip != 127.0.0.1) && (ip == 0.0.0.0/0) && (ip != 10.1.0.254)';
+
+export type ArkimeViewUrls = {
+	general: string;
+	sessions: string;
+	packets: string;
+	connections: string;
+};
+
+// Relative (same-origin) URLs under the app's /arkime reverse-proxy, one per
+// Statistics sub-tab. Being same-origin is what keeps Arkime's SameSite=Strict
+// auth cookie working inside the iframe; the browser resolves them against the
+// CRI4.0 app origin. The default expression is carried on every view so the
+// docker-bridge noise is filtered out from the start. `general` points at
+// Arkime's own overview page (route /arkime, i.e. /arkime/arkime under the base
+// path) rather than the bare base path, which just redirects and drops the
+// query string.
+export function arkimeViewUrls(): ArkimeViewUrls {
+	const expr = `expression=${encodeURIComponent(STATS_DEFAULT_EXPRESSION)}`;
+	return {
+		general: `${ARKIME_BASE_PATH}/arkime?${expr}`,
+		sessions: `${ARKIME_BASE_PATH}/sessions?${expr}`,
+		packets: `${ARKIME_BASE_PATH}/spiview?${expr}`,
+		connections: `${ARKIME_BASE_PATH}/connections?${expr}`,
+	};
 }
 
 /**

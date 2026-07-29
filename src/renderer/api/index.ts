@@ -160,14 +160,14 @@ export const api = {
         return data.output;
     },
 
-    async arkimeStatsUrl(): Promise<string> {
+    async arkimeStatsUrls(): Promise<{ general: string; sessions: string; packets: string; connections: string }> {
         if (isElectron()) {
-            const { url } = await window.electron.ipcRenderer.invoke('arkime-stats-url');
-            return url;
+            const { urls } = await window.electron.ipcRenderer.invoke('arkime-stats-url');
+            return urls;
         }
         const response = await fetch(`${API_BASE_URL}/arkime-stats-url`, { method: 'POST' });
         const data = await response.json();
-        return data.url;
+        return data.urls;
     },
 
     async arkimeNetFlow(ips: string[]): Promise<string> {

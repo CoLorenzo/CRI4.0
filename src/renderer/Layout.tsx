@@ -18,7 +18,6 @@ import { TerminalProvider } from './contexts/TerminalContext';
 import Settings from './pages/Settings';
 import { LogProvider } from './contexts/LogContext';
 import Report from './pages/Report';
-import Statistics from './pages/Statistics';
 
 export default function App() {
   const navigate = useNavigate();
@@ -48,7 +47,6 @@ export default function App() {
                         <Route path="attack" element={<Attack />} />
                         <Route path="report" element={<Report />} />
                         <Route path="logs" element={<Logs />} />
-                        <Route path="statistics" element={<Statistics />} />
                         <Route path="settings" element={<Settings />} />
                       </Route>
                     </Routes>

@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import { router } from './routes';
+import { startArkimeInfra } from '../shared/arkime';
 import path from 'path';
 
 import os from 'os';
@@ -91,6 +92,13 @@ cleanupLabs().then(() => {
 
     // Initialize Socket.IO now that server is ready
     setupSocketIO(server);
+
+    // Bring up the Arkime infrastructure (OpenSearch + viewer) at platform
+    // startup so Statistics is always available; per-simulation captures attach
+    // later when a simulation starts. Fire-and-forget (image pulls are slow).
+    startArkimeInfra((_l, m) => console.log(m)).catch((e) =>
+        console.error(`🦈 Arkime infra start error: ${e?.message || e}`),
+    );
 });
 
 import { Server } from 'socket.io';

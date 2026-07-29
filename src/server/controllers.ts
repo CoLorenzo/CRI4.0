@@ -6,7 +6,7 @@ import { promises as fsp } from 'fs';
 import os from 'os';
 import AdmZip from 'adm-zip';
 import { generateZipNode } from '../shared/make-node';
-import { startArkime, stopArkime, arkimeHomeUrl, arkimeSessionsUrl } from '../shared/arkime';
+import { startArkimeCapture, resetArkimeData, stopArkimeCapture, arkimeViewUrls, arkimeSessionsUrl } from '../shared/arkime';
 
 // Type definitions
 type CurrentLab = {
@@ -586,8 +586,11 @@ export const runSimulation = async (req: Request, res: Response) => {
             });
         });
 
-        // Bring up the Arkime traffic-capture stack for the whole simulation.
-        startArkime(sendLog).catch((e) => sendLog('error', `🦈 Arkime start error: ${e?.message || e}`));
+        // Arkime infrastructure is already up (started at platform boot). Empty
+        // any data from a previous run, then attach captures to this new lab.
+        resetArkimeData(sendLog)
+            .then(() => startArkimeCapture(sendLog))
+            .catch((e) => sendLog('error', `🦈 Arkime start error: ${e?.message || e}`));
 
         res.json({ output });
 
@@ -617,8 +620,9 @@ export const stopSimulation = async (req: Request, res: Response) => {
 
     const { name, labsDir } = CURRENT_LAB;
 
-    // Tear down the Arkime capture stack together with the lab.
-    stopArkime(sendLog).catch(() => {});
+    // Detach the per-machine captures together with the lab, but keep the Arkime
+    // infrastructure (OpenSearch + viewer) running so Statistics stays reachable.
+    stopArkimeCapture(sendLog).catch(() => {});
 
     const safeName = String(name).replace(/"/g, '\"');
     const cmd = `kathara lclean -d "${labsDir}"`;
@@ -650,7 +654,7 @@ export const stopSimulation = async (req: Request, res: Response) => {
 };
 
 export const arkimeStatsUrl = async (_req: Request, res: Response) => {
-    res.json({ url: arkimeHomeUrl() });
+    res.json({ urls: arkimeViewUrls() });
 };
 
 export const arkimeNetFlow = async (req: Request, res: Response) => {

@@ -562,6 +562,7 @@ function Topology() {
                         url,
                         title: `Net Flow — ${machineName}`,
                         zoom: 1,
+                        hideArkimeNav: true,
                       });
                     } catch (e) {
                       console.error("Failed to open net flow", e);
@@ -723,6 +724,7 @@ function Topology() {
         url={uiModal.url}
         title={uiModal.title}
         zoom={uiModal.zoom}
+        hideArkimeNav={uiModal.hideArkimeNav}
       />
       <LogsModal
         isOpen={logsModal.isOpen}

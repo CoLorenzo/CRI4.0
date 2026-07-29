@@ -24,7 +24,7 @@ import fs from 'fs';
 import { promises as fsp } from "fs";
 import AdmZip from 'adm-zip';
 import { generateZipNode } from '../shared/make-node';
-import { startArkime, stopArkime, arkimeHomeUrl, arkimeSessionsUrl } from '../shared/arkime';
+import { startArkimeInfra, startArkimeCapture, resetArkimeData, stopArkimeCapture, stopArkime, arkimeViewUrls, arkimeSessionsUrl } from '../shared/arkime';
 import * as pty from 'node-pty';
 import { IPty } from 'node-pty';
 
@@ -630,9 +630,12 @@ ipcMain.handle('run-simulation', async (event, { machines, labInfo, sudoPassword
     childVal.on('close', (code) => {
       if (code === 0) {
         sendLog('log', "✅ Lab started.");
-        // Bring up the Arkime traffic-capture stack for the whole simulation.
+        // Arkime infrastructure is already up (started at app boot). Empty any
+        // data from a previous run, then attach captures to this new lab.
         // Fire-and-forget: image pulls can take minutes, don't block the UI.
-        startArkime(sendLog).catch((e) => sendLog('error', `🦈 Arkime start error: ${e?.message || e}`));
+        resetArkimeData(sendLog)
+          .then(() => startArkimeCapture(sendLog))
+          .catch((e) => sendLog('error', `🦈 Arkime start error: ${e?.message || e}`));
         resolve(stdoutData.trim());
       } else {
         const combined = [stdoutData, stderrData].filter(Boolean).join('\n').trim();
@@ -659,8 +662,9 @@ ipcMain.handle('stop-simulation', async () => {
 
   const { name, labsDir, labPath } = CURRENT_LAB;
 
-  // Tear down the Arkime capture stack together with the lab.
-  stopArkime(sendLog).catch(() => {});
+  // Detach the per-machine captures together with the lab, but keep the Arkime
+  // infrastructure (OpenSearch + viewer) running so Statistics stays reachable.
+  stopArkimeCapture(sendLog).catch(() => {});
 
   const safeName = String(name).replace(/"/g, '\"');
   const cmd = `kathara lclean -d "${labsDir}"`;
@@ -690,7 +694,7 @@ ipcMain.handle('stop-simulation', async () => {
 // --- Arkime (traffic analysis) IPC ---
 
 ipcMain.handle('arkime-stats-url', async () => {
-  return { url: arkimeHomeUrl() };
+  return { urls: arkimeViewUrls() };
 });
 
 ipcMain.handle('arkime-netflow', async (event, ips: string[]) => {
@@ -1073,6 +1077,14 @@ app
     }
 
     createWindow();
+
+    // Bring up the Arkime infrastructure (OpenSearch + viewer) at app startup so
+    // Statistics is always available; per-simulation captures attach later when a
+    // simulation starts. Fire-and-forget (image pulls are slow).
+    startArkimeInfra((_l, m) => console.log(m)).catch((e) =>
+      console.error(`🦈 Arkime infra start error: ${e?.message || e}`),
+    );
+
     app.on('activate', () => {
       // On macOS it's common to re-create a window in the app when the
       // dock icon is clicked and there are no other windows open.

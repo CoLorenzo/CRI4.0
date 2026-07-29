@@ -15,6 +15,7 @@ import {
   DropdownMenu,
   DropdownItem,
 } from "@nextui-org/react";
+import ArkimeViewer from "../components/ArkimeViewer";
 
 function LogInsightsPage() {
   const [logs, setLogs] = useState([]);
@@ -260,8 +261,9 @@ function LogInsightsPage() {
     ERROR: "bg-red-500",
   };
 
-  return (
-    <div className="min-h-screen p-4 bg-gray-900 text-white">
+  // The log-insights UI (filters + table), rendered as the first Statistics tab.
+  const logInsights = (
+    <div className="pt-2">
       <div className="flex justify-end items-center mb-6">
         <span
           className={`px-3 py-1 rounded-full text-sm font-semibold ${isFetching ? "bg-blue-500" : "bg-gray-600"
@@ -507,6 +509,22 @@ function LogInsightsPage() {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+
+  return (
+    <div className="h-[calc(100vh-4rem)] p-4 bg-gray-900 text-white flex flex-col">
+      <ArkimeViewer
+        grow
+        extraTabs={[
+          {
+            key: "logs",
+            label: "Log Insights",
+            description: "Loki logs collected from the simulation. Filter, inspect and export.",
+            content: logInsights,
+          },
+        ]}
+      />
     </div>
   );
 }
