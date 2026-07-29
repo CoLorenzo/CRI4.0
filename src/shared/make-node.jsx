@@ -551,6 +551,18 @@ stunnel
                     extraCommands += `openplc-cli device add "${devName}" "${targetIp}" "${ep.port}"\n`;
                     extraCommands += `plc_device_set_ranges "${devName}" ${irStart} ${irSize} ${hrStart} ${hrSize}\n`;
                   }
+                } else if (targetMachine.type === "netproxy") {
+                  // A netproxy exposes one Modbus listener per proxy rule, on
+                  // its own in_ip:in_port. Point OpenPLC at each listener so the
+                  // traffic flows through the proxy (and its interceptors).
+                  const proxyRules = Array.isArray(targetMachine.netproxy?.rules) ? targetMachine.netproxy.rules : [];
+                  for (const rule of proxyRules) {
+                    if (!rule?.in_ip || !rule?.in_port) continue;
+                    const devName = proxyRules.length > 1
+                      ? `${targetMachine.name}_${rule.name || "proxy"}`
+                      : (targetMachine.name || "netproxy");
+                    extraCommands += `openplc-cli device add "${devName}" "${rule.in_ip}" "${rule.in_port}"\n`;
+                  }
                 } else {
                   extraCommands += `openplc-cli device add "${targetMachine.name}" "${targetIp}" "502"\n`;
                 }
@@ -613,6 +625,21 @@ stunnel
                       type: fuxaType(v.type),
                       registry: v.kind === "holding" ? "holding_register" : "input_register",
                     })),
+                  });
+                }
+              } else if (targetMachine.type === "netproxy") {
+                // One monitored endpoint per proxy rule, at its in_ip:in_port,
+                // so SCADA polls through the proxy instead of the backend.
+                const proxyRules = Array.isArray(targetMachine.netproxy?.rules) ? targetMachine.netproxy.rules : [];
+                for (const rule of proxyRules) {
+                  if (!rule?.in_ip || !rule?.in_port) continue;
+                  monitoredMachines.push({
+                    name: proxyRules.length > 1
+                      ? `${targetMachine.name || "netproxy"}_${rule.name || "proxy"}`
+                      : (targetMachine.name || "netproxy"),
+                    type: "netproxy",
+                    address: rule.in_ip,
+                    port: rule.in_port,
                   });
                 }
               } else {

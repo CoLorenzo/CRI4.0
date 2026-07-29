@@ -15,7 +15,8 @@ export function ScadaFunctions({ machine, machines, setMachines }) {
         "laser",
         "conveyor",
         "plc",
-        "device"
+        "device",
+        "netproxy"
     ];
 
     const machineEth0Domain = machine.interfaces?.if?.[0]?.eth?.domain;
