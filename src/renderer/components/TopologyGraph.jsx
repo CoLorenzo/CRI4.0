@@ -67,6 +67,7 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenModbusInfo, o
 		},
 		groups: {
 			"tls_termination_proxy": { image: DIR + "tls_termination_proxy.png", shape: "image", },
+			"netproxy": { image: DIR + "netproxy.png", shape: "image", },
 			"engine": { image: DIR + "engine.png", shape: "image", },
 			"fan": { image: DIR + "fan.png", shape: "image", },
 			"temperature_sensor": { image: DIR + "temperature_sensor.png", shape: "image", },

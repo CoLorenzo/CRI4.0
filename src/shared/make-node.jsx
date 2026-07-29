@@ -1148,11 +1148,29 @@ export async function generateZipNode(machines, labInfo, outPath) {
     }
 
 
-    if (machine.type === 'netproxy' && machine.netproxy?.configContent && machine.netproxy?.configName) {
-      const rawContent = machine.netproxy.configContent.split(';base64,').pop();
-      if (rawContent) {
-        const machineName = String(machine.name || "netproxy").replace(/[^\w.-]/g, "_");
-        lab.file[`shared/${machineName}.json`] = Buffer.from(rawContent, 'base64');
+    if (machine.type === 'netproxy') {
+      const machineName = String(machine.name || "netproxy").replace(/[^\w.-]/g, "_");
+      // Rules defined via the "Proxy Rules" form take precedence over an
+      // uploaded config.json.
+      if (Array.isArray(machine.netproxy?.rules) && machine.netproxy.rules.length > 0) {
+        const rules = machine.netproxy.rules.map((r) => ({
+          name: r.name || "proxy",
+          proto: r.proto || "tcp",
+          in_ip: r.in_ip,
+          in_port: r.in_port,
+          out_ip: r.out_ip,
+          out_port: r.out_port,
+          interceptors: Array.isArray(r.interceptors) ? r.interceptors : [],
+        }));
+        lab.file[`shared/${machineName}.json`] = Buffer.from(
+          JSON.stringify({ rules }, null, 2),
+          "utf8"
+        );
+      } else if (machine.netproxy?.configContent && machine.netproxy?.configName) {
+        const rawContent = machine.netproxy.configContent.split(';base64,').pop();
+        if (rawContent) {
+          lab.file[`shared/${machineName}.json`] = Buffer.from(rawContent, 'base64');
+        }
       }
     }
 
