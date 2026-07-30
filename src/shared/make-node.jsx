@@ -118,7 +118,7 @@ function makeMachineFolders(netkit, lab) {
     //if (machine.name && machine.name !== "") {
       //lab.file[machine.name + ".startup"] = "";
     //}
-     const rawName = machine.type === "attacker" ? "attacker" : machine.name;
+     const rawName = machine.type === "attacker" ? (machine.name || "attacker") : machine.name;
     const machineName = String(rawName).replace(/[^\w.-]/g, "_");
 
     // prendi lo script dal nuovo campo, fallback al vecchio
@@ -149,7 +149,7 @@ function makeStartupFiles(netkit, lab) {
   let collectorIpCounter = 1; // New counter for 10.1.0.X subnet
 
   for (let machine of netkit) {
-    const rawName = machine.type === "attacker" ? "attacker" : machine.name;
+    const rawName = machine.type === "attacker" ? (machine.name || "attacker") : machine.name;
     const machineName = String(rawName || "node").replace(/[^\w.-]/g, "_");
 
     // Assign IP to eth0 from 10.1.0.0/24 subnet
@@ -175,7 +175,7 @@ function makeStartupFiles(netkit, lab) {
 
   // 2. Generate startup files
   for (let machine of netkit) {
-    const rawName = machine.type === "attacker" ? "attacker" : machine.name;
+    const rawName = machine.type === "attacker" ? (machine.name || "attacker") : machine.name;
     const machineName = String(rawName || "node").replace(/[^\w.-]/g, "_");
 
     // prendi lo script dal nuovo campo, fallback al vecchio
@@ -887,7 +887,7 @@ function makeLabConfFile(netkit, lab) {
   for (let machine of netkit) {
     // Nome “forzato” e sanificato per evitare slash ecc.
     const rawName =
-      machine.type === "attacker" ? "attacker" :
+      machine.type === "attacker" ? (machine.name || "attacker") :
         machine.name || "node";
     const machineName = String(rawName).replace(/[^\w.-]/g, "_");
 
@@ -1040,7 +1040,7 @@ function makeLabConfFile(netkit, lab) {
       } else {
         lab.file["lab.conf"] += `${machineName}[image]=kalilinux/kali-rolling@sha256:eb500810d9d44236e975291205bfd45e9e19b7f63859e3a72ba30ea548ddb1df\n`;
       }
-      lab.file["lab.conf"] += `${machineName}[hostname]="attacker"\n`;
+      lab.file["lab.conf"] += `${machineName}[hostname]="${machineName}"\n`;
     }
     lab.file["lab.conf"] += "\n";
 
@@ -1107,7 +1107,8 @@ export function toNetkitFormat(machines) {
         interfaces: { ...m.interfaces, if: updatedInterfaces }
       };
 
-      if (copy.type === "attacker") {
+      // Fallback name for an unnamed attacker; a custom name is preserved.
+      if (copy.type === "attacker" && !copy.name) {
         copy.name = "attacker";
       }
       return copy;
@@ -1129,8 +1130,8 @@ export function toNetkitFormat(machines) {
         : { if: Array.isArray(m.interfaces) ? convertIfList(m.interfaces) : [] },
     };
 
-    // 👇 Forziamo il nome se è un attacker
-    if (copy.type === "attacker") {
+    // Fallback name for an unnamed attacker; a custom name is preserved.
+    if (copy.type === "attacker" && !copy.name) {
       copy.name = "attacker";
     }
 

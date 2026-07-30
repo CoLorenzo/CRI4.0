@@ -113,7 +113,6 @@ function AccessGain({ attacker, attacks, isLoading, machines, setMachines, handl
           setAttackLoaded(true);
           return {
             ...m,
-            name: "attacker",
             targets: targets,
             attackLoaded: true,
             attackImage: val,

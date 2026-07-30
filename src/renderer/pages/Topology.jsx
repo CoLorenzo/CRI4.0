@@ -218,7 +218,7 @@ function Topology() {
       return;
     }
 
-    const targetContainer = attacker.type === "attacker" ? "attacker" : attacker.name;
+    const targetContainer = attacker.name;
 
     // Custom attacks: launch /attack.sh in background, log to /attack.log
     if (attacker.customAttackId) {
@@ -282,7 +282,7 @@ function Topology() {
     }
 
     if (!attacker) return;
-    const targetContainer = attacker.type === "attacker" ? "attacker" : attacker.name;
+    const targetContainer = attacker.name;
 
     // Custom attacks: kill by stored PID
     if (attacker.customAttackId) {
@@ -588,6 +588,16 @@ function Topology() {
         >
           Run Simulation
         </Button>
+
+        {/* Explain why Run Simulation is blocked when an attacker has no attack loaded */}
+        {!simulationRun &&
+          machines.some((m) => m.type === "attacker") &&
+          !machines.find((m) => m.type === "attacker")?.attackLoaded && (
+            <p className="text-xs text-warning-400 -mt-1 px-1">
+              An attacker is present but has no attack loaded. Load an attack in its{" "}
+              <span className="font-semibold">Attack</span> section to enable Run Simulation.
+            </p>
+          )}
 
         {/* Start/Stop Attack */}
         {!attackInProgress ? (

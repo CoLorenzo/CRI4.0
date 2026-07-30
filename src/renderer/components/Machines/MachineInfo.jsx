@@ -41,8 +41,12 @@ export function MachineInfo({ id, machine, machines, setMachines, customTemplate
 
   function handleTypeChange(value) {
     const updated = { ...machine, type: value, customTemplateId: null, customAttackId: null };
-    if (value === "attacker" && !machine.scripts?.startup) {
-      updated.scripts = { ...(machine.scripts || {}), startup: generateCustomStartupScript() };
+    if (value === "attacker") {
+      if (!machine.scripts?.startup) {
+        updated.scripts = { ...(machine.scripts || {}), startup: generateCustomStartupScript() };
+      }
+      // Default name so the container is resolvable; the user can rename it.
+      if (!machine.name) updated.name = "attacker";
     }
     handleChange(value, updated);
   }

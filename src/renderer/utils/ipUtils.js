@@ -32,7 +32,7 @@ export function getMachineIps(machines) {
     const machineIps = {};
 
     machines.forEach(machine => {
-        const rawName = machine.type === "attacker" ? "attacker" : machine.name;
+        const rawName = machine.type === "attacker" ? (machine.name || "attacker") : machine.name;
         const machineName = String(rawName || "node").replace(/[^\w.-]/g, "_");
         let ip = "";
 

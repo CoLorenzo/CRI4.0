@@ -15,7 +15,7 @@ export default function AttackStatusModal({ isOpen, onClose, attackerName, isCus
     const fetchStatus = async () => {
         try {
             if (isCustomAttack) {
-                const log = await api.getAttackLog("attacker");
+                const log = await api.getAttackLog(attackerName || "attacker");
                 setAttackOutput(log);
                 // consider running if pid file exists (heuristic: non-empty log and no [finished] marker)
                 setIsRunning(log.length > 0);

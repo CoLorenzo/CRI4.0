@@ -128,7 +128,7 @@ function makeLabConfFile(netkit, lab) {
 				lab.file["lab.conf"] += machine.name + "[image]=kalilinux/kali-rolling@sha256:eb500810d9d44236e975291205bfd45e9e19b7f63859e3a72ba30ea548ddb1df";
 			}
 			// Explicitly set hostname
-			lab.file["lab.conf"] += machine.name + '[hostname]="attacker"\n';
+			lab.file["lab.conf"] += machine.name + '[hostname]="' + machine.name + '"\n';
 		}
 		lab.file["lab.conf"] += "\n";
 	}
@@ -174,8 +174,8 @@ function makeTerminal(netkit, lab) {
 
 function makeAttacker(netkit, lab) {
 	for (let machine of netkit) {
-		// Enforce attacker name
-		if (machine.type === "attacker") machine.name = "attacker";
+		// Default name for an unnamed attacker; a custom name is preserved.
+		if (machine.type === "attacker" && !machine.name) machine.name = "attacker";
 
 		if (machine.type == "engine") { lab.file["lab.conf"] += machine.name + "[image]=icr/engine"; }
 		if (machine.type == "fan") { lab.file["lab.conf"] += machine.name + "[image]=icr/fan"; }
@@ -586,7 +586,7 @@ function makeStaticRouting(netkit, lab) {
 			}
 
 			lab.file[machine.name + ".startup"] += "ip address add " + availableIPs.shift() + "/" + availableSubnet.split("/")[1] + " dev eth" + (machine.interfaces.if[machine.interfaces.if.length - 1].eth.number + 2) + "\n";
-			if (machine.name != "attacker")
+			if (machine.type != "attacker")
 				lab.file[machine.name + ".startup"] += "COLLECTOR_HOST=" + collector_host + " /bin/bash /root/collector_client.sh &\n";
 
 			for (let gateway of machine.gateways.gw) {
@@ -1122,9 +1122,9 @@ function makeFilesStructure(netkit, labInfo) {
 	if (!isAllValidNames)
 		return { folders: [], file: [] }
 
-	// Enforce attacker name globally
+	// Default name for an unnamed attacker; a custom name is preserved.
 	netkit.forEach(m => {
-		if (m.type === "attacker") m.name = "attacker";
+		if (m.type === "attacker" && !m.name) m.name = "attacker";
 	});
 
 	var lab = {};
