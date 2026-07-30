@@ -564,7 +564,7 @@ ipcMain.handle('value-stream-read', async (event, container: string) => {
 
   // (Re)start the subscriber only if not already running (pidfile + kill -0),
   // so polling never spawns duplicate mosquitto_sub processes.
-  const startCmd = `docker exec -d ${resolvedName} sh -c 'if [ ! -f /value_stream.pid ] || ! kill -0 "$(cat /value_stream.pid 2>/dev/null)" 2>/dev/null; then nohup mosquitto_sub -h 127.0.0.1 -p 1883 -t "#" -v > /value_stream.log 2>&1 & echo $! > /value_stream.pid; fi'`;
+  const startCmd = `docker exec -d ${resolvedName} sh -c 'if [ ! -f /value_stream.pid ] || ! kill -0 "$(cat /value_stream.pid 2>/dev/null)" 2>/dev/null; then nohup mosquitto_sub -h 127.0.0.1 -p 1884 -t "#" -v > /value_stream.log 2>&1 & echo $! > /value_stream.pid; fi'`;
   await new Promise<void>(r => exec(startCmd, () => r()));
 
   return new Promise<string>(r => {

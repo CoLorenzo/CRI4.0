@@ -13,6 +13,8 @@ const DEFAULTS = {
     topic: "test/topic",
     message: '{"value": 100}',
     time: "1",
+    username: "",
+    password: "",
 };
 
 export function MqttPubFunctions({ machine, machines, setMachines }) {
@@ -77,6 +79,25 @@ export function MqttPubFunctions({ machine, machines, setMachines }) {
                 min={0}
                 step="0.1"
             />
+
+            <p className="text-xs text-default-500 mt-1">
+                Optional broker login (leave empty if the broker allows anonymous).
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+                <Input
+                    size="sm"
+                    label="Username"
+                    value={cfg.username}
+                    onValueChange={(v) => patch("username", v)}
+                />
+                <Input
+                    size="sm"
+                    type="password"
+                    label="Password"
+                    value={cfg.password}
+                    onValueChange={(v) => patch("password", v)}
+                />
+            </div>
         </div>
     );
 }

@@ -353,6 +353,29 @@ smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info","host":"'"$(host
         `grep -qxF '. /root/.cri_env' /root/.bashrc 2>/dev/null || echo '. /root/.cri_env' >> /root/.bashrc`,
       ].join("\n") + "\n\n";
 
+      // Optional username/password auth: the frontend "allowed list"
+      // (MosquittoFunctions) provides {username,password} pairs. When present we
+      // build a hashed password_file with mosquitto_passwd and require auth on the
+      // network listeners (1883/9001). A localhost-only listener (1884) is always
+      // kept anonymous so the local admin "Value Stream" keeps working.
+      const shq = (v) => String(v == null ? "" : v).replace(/'/g, "'\\''");
+      const users = Array.isArray(machine.mqtt?.users)
+        ? machine.mqtt.users.filter((u) => u && u.username)
+        : [];
+      let authSetup = "";
+      let listenerAuth = "allow_anonymous true";
+      // `user root` so the broker (which otherwise drops to the mosquitto user)
+      // can read the root-owned, 0600 password_file we generate in the container.
+      let userDirective = "";
+      if (users.length > 0) {
+        const pwLines = users
+          .map((u, i) => `mosquitto_passwd ${i === 0 ? "-c " : ""}-b /mosquitto/config/passwd '${shq(u.username)}' '${shq(u.password || "")}'`)
+          .join("\n");
+        authSetup = `rm -f /mosquitto/config/passwd\n${pwLines}\nchmod 600 /mosquitto/config/passwd\n`;
+        listenerAuth = "allow_anonymous false\npassword_file /mosquitto/config/passwd";
+        userDirective = "user root\n";
+      }
+
       const mosquittoScript = `#!/bin/sh\n\n` + criBlock +
 `echo "nameserver 8.8.8.8" > /etc/resolv.conf
 CRI_INTERFACES_LEN=$(echo $CRI_INTERFACES | jq "length")
@@ -369,12 +392,17 @@ while [ "\$i" -lt "\$CRI_INTERFACES_LEN" ]; do
 done
 
 mkdir -p /mosquitto/config /mosquitto/data /mosquitto/log
-cat > /mosquitto/config/mosquitto.conf << '__MOSQ_EOF__'
+${authSetup}cat > /mosquitto/config/mosquitto.conf << '__MOSQ_EOF__'
+${userDirective}per_listener_settings true
+
 listener 1883
-allow_anonymous true
+${listenerAuth}
 
 listener 9001
 protocol websockets
+${listenerAuth}
+
+listener 1884 127.0.0.1
 allow_anonymous true
 __MOSQ_EOF__
 
@@ -408,6 +436,8 @@ smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info","host":"'"$(host
       const topic = sh(cfg.topic, "test/topic");
       const message = sh(cfg.message, '{"value": 100}');
       const time = sh(cfg.time, "1");
+      const username = sh(cfg.username, "");
+      const password = sh(cfg.password, "");
 
       const mqttScript = `#!/bin/sh\n\n` + criBlock +
 `echo "nameserver 8.8.8.8" > /etc/resolv.conf
@@ -433,9 +463,11 @@ BROKER_PORT='${brokerPort}'
 TOPIC='${topic}'
 MESSAGE='${message}'
 TIME='${time}'
+USERNAME='${username}'
+PASSWORD='${password}'
 
 while true; do
-    mosquitto_pub -h "\${BROKER_ADDR}" -p "\${BROKER_PORT}" -t "\${TOPIC}" -m "\${MESSAGE}"
+    mosquitto_pub -h "\${BROKER_ADDR}" -p "\${BROKER_PORT}" \${USERNAME:+-u "$USERNAME" -P "$PASSWORD"} -t "\${TOPIC}" -m "\${MESSAGE}"
     sleep "\${TIME}"
 done
 `;
