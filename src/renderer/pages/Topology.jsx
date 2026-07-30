@@ -17,6 +17,7 @@ import { toast } from 'react-hot-toast';
 import LogsModal from "../components/LogsModal";
 import ModbusEndpointsModal from "../components/ModbusEndpointsModal";
 import AttackStatusModal from "../components/AttackStatusModal";
+import ValueStreamModal from "../components/ValueStreamModal";
 import ErrorModal from "../components/ErrorModal";
 import { getMachineIps } from "../utils/ipUtils";
 
@@ -45,6 +46,7 @@ function Topology() {
 
   // Attack Status Modal State
   const [attackStatusModal, setAttackStatusModal] = useState({ isOpen: false, attackerName: "", isCustomAttack: false });
+  const [valueStreamModal, setValueStreamModal] = useState({ isOpen: false, brokerName: "" });
 
   // Password Modal State
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
@@ -300,7 +302,7 @@ function Topology() {
     const stopCmd = [
       "sh",
       "-c",
-      "sudo nft delete table ip nat 2>/dev/null || true; while pgrep ettercap > /dev/null; do pkill -9 ettercap; sleep 0.5; done; pkill -f modbus_server.py || true",
+      "sudo nft delete table ip nat 2>/dev/null || true; while pgrep ettercap > /dev/null; do pkill -9 ettercap; sleep 0.5; done; pkill -f modbus_server.py || true; kill $(cat /attack.pid 2>/dev/null) 2>/dev/null || true; rm -f /attack.pid; pkill -f fluent-bit 2>/dev/null || true; pkill -f mosquitto_sub 2>/dev/null || true",
     ];
 
     try {
@@ -538,6 +540,10 @@ function Topology() {
                     const m = machines.find(m => m.name === machineName || m.type === "attacker");
                     setAttackStatusModal({ isOpen: true, attackerName: machineName, isCustomAttack: !!m?.customAttackId });
                   }}
+                  onValueStream={(nodeId) => {
+                    const machineName = nodeId.replace("machine-", "");
+                    setValueStreamModal({ isOpen: true, brokerName: machineName });
+                  }}
                   onNetFlow={async (nodeId) => {
                     const machineName = nodeId.replace("machine-", "");
                     const machine = machines.find((m) => m.name === machineName);
@@ -752,6 +758,11 @@ function Topology() {
         onClose={() => setAttackStatusModal({ ...attackStatusModal, isOpen: false })}
         attackerName={attackStatusModal.attackerName}
         isCustomAttack={attackStatusModal.isCustomAttack}
+      />
+      <ValueStreamModal
+        isOpen={valueStreamModal.isOpen}
+        onClose={() => setValueStreamModal({ ...valueStreamModal, isOpen: false })}
+        brokerName={valueStreamModal.brokerName}
       />
       <PasswordModal
         isOpen={passwordModalOpen}

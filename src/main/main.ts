@@ -548,6 +548,30 @@ ipcMain.handle('attack-log-read', async (event, container: string) => {
   });
 });
 
+ipcMain.handle('value-stream-read', async (event, container: string) => {
+  const patterns = [
+    CURRENT_LAB ? `kathara_.*_${CURRENT_LAB.name}_${container}_` : `_${container}_`,
+    `_${container}_`
+  ];
+  let resolvedName: string | null = null;
+  for (const pattern of patterns) {
+    const name = await new Promise<string | null>(r => {
+      exec(`docker ps --filter name=${pattern} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
+    });
+    if (name) { resolvedName = name; break; }
+  }
+  if (!resolvedName) return '';
+
+  // (Re)start the subscriber only if not already running (pidfile + kill -0),
+  // so polling never spawns duplicate mosquitto_sub processes.
+  const startCmd = `docker exec -d ${resolvedName} sh -c 'if [ ! -f /value_stream.pid ] || ! kill -0 "$(cat /value_stream.pid 2>/dev/null)" 2>/dev/null; then nohup mosquitto_sub -h 127.0.0.1 -p 1883 -t "#" -v > /value_stream.log 2>&1 & echo $! > /value_stream.pid; fi'`;
+  await new Promise<void>(r => exec(startCmd, () => r()));
+
+  return new Promise<string>(r => {
+    exec(`docker exec ${resolvedName} tail -c 200000 /value_stream.log 2>/dev/null`, (err, stdout) => r(err ? '' : stdout));
+  });
+});
+
 ipcMain.handle('run-simulation', async (event, { machines, labInfo, sudoPassword }) => {
   sendLog('log', `machines? ${Array.isArray(machines)} ${machines?.length}`);
 

@@ -181,6 +181,9 @@ services:
     cap_add:
       - NET_ADMIN
       - NET_RAW
+  sniffing-mqtt-eavesdropping:
+    build: ./sniffing/mqtt-eavesdropping
+    image: icr/sniffing-mqtt-eavesdropping
     profiles:
       - kali
   temperature_sensor:

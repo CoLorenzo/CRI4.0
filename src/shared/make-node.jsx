@@ -285,7 +285,13 @@ function makeStartupFiles(netkit, lab) {
     }
 
     if (machine.type === "attacker") {
-      const isCompleteScript = body.startsWith("#!/");
+      // Treat the auto-generated attacker startup as NOT complete so we fall back
+      // to the baked, POSIX-sh, jq-free interface setup below. Older projects have
+      // a saved startup that uses a bash `for (( ))` loop under `#!/bin/sh`; on
+      // dash-based images that is a syntax error that aborts the script before the
+      // interfaces are configured or the "ready" signal is sent, so the node never
+      // goes green. The `for ((` marker auto-migrates those saved scripts.
+      const isCompleteScript = body.startsWith("#!/") && !body.includes("for ((");
       let attackerScript;
 
       if (isCompleteScript) {

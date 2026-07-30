@@ -434,6 +434,20 @@ export const attacksModel = [
     }
   },
   {
+    name: "mqtt-eavesdropping",
+    displayName: "MQTT Eavesdropping",
+    category: "sniffing",
+    attackLoaded: false,
+    image: "",
+    isImage: false,
+    script: "/usr/local/bin/mqtt-eavesdropping.sh",
+    entrypoint: "bash",
+    parameters: {
+      argsBeforeTargets: [],
+      argsAfterTargets: []
+    }
+  },
+  {
     name: "modbus-read",
     displayName: "Modbus Read",
     category: "sniffing",

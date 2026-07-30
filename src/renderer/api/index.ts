@@ -288,6 +288,18 @@ export const api = {
         const data = await response.json();
         return data.log || '';
     },
+    async getValueStream(container: string): Promise<string> {
+        if (isElectron()) {
+            return window.electron.ipcRenderer.invoke('value-stream-read', container);
+        }
+        const response = await fetch(`${API_BASE_URL}/value-stream-read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ container }),
+        });
+        const data = await response.json();
+        return data.log || '';
+    },
     // --- Terminal API ---
     async terminalCreate(container: string): Promise<string> {
         if (isElectron()) {

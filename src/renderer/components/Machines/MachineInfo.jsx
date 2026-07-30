@@ -9,16 +9,23 @@ import { Input } from "@nextui-org/input";
 import { Accordion, AccordionItem } from "@nextui-org/react";
 
 function generateCustomStartupScript() {
+    // POSIX `while` loop (not bash `for (( ))`) so it runs under /bin/sh = dash on
+    // Debian-based attacker images; the C-style loop was a syntax error there,
+    // leaving eth0/eth1 unconfigured so the machine never reached Loki to signal
+    // "ready". Mirrors the working terminal/mqtt_pub startup.
     return `#!/bin/sh
 
 CRI_INTERFACES_LEN=$(echo $CRI_INTERFACES | jq "length")
-for (( i=0; i<=\${CRI_INTERFACES_LEN} - 1; i+=1 )); do
-    CRIINTERFACE_NAME=$(echo $CRI_INTERFACES | jq -r ".[\${i}].name")
-    CRIINTERFACE_ADDRESS=$(echo $CRI_INTERFACES | jq -r ".[\${i}].address")
+i=0
+while [ "$i" -lt "$CRI_INTERFACES_LEN" ]; do
+    CRIINTERFACE_NAME=$(echo $CRI_INTERFACES | jq -r ".[$i].name")
+    CRIINTERFACE_ADDRESS=$(echo $CRI_INTERFACES | jq -r ".[$i].address")
 
     ip addr add \${CRIINTERFACE_ADDRESS} dev \${CRIINTERFACE_NAME}
     ip link set \${CRIINTERFACE_NAME} up
     echo "interface \${CRIINTERFACE_NAME} set with \${CRIINTERFACE_ADDRESS}"
+
+    i=$((i + 1))
 done
 
 

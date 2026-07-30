@@ -25,7 +25,7 @@ const BLACK = '#2B1B17';
 import { api } from '../api';
 const DIR = api.assetsUrl;
 
-function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenModbusInfo, onOpenLogs, onOpenAttackStatus, onNetFlow, simulationRun }) {
+function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenModbusInfo, onOpenLogs, onOpenAttackStatus, onNetFlow, onValueStream, simulationRun }) {
 	const [ifNameAt, setIfNameAt] = useState({ checked: false });
 	const [ifOspfCost, setIfOspfCost] = useState({ checked: false });
 	const [routingLabel, setRoutingLabel] = useState({ checked: false });
@@ -252,6 +252,13 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenModbusInfo, o
 		}
 	};
 
+	const handleValueStream = () => {
+		if (contextMenu && onValueStream) {
+			onValueStream(contextMenu.nodeId);
+			setContextMenu(null);
+		}
+	};
+
 	const showOpenUI = contextMenu && machines.find(m => {
 		// Find the machine corresponding to the clicked node ID
 		// Note: ID format is "machine-" + name
@@ -272,6 +279,11 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenModbusInfo, o
 	const showAttackStatus = contextMenu && machines.find(m => {
 		const machineName = contextMenu.nodeId.replace("machine-", "");
 		return m.name === machineName && m.type === "attacker";
+	});
+
+	const showValueStream = contextMenu && machines.find(m => {
+		const machineName = contextMenu.nodeId.replace("machine-", "");
+		return m.name === machineName && m.type === "mosquitto";
 	});
 
 
@@ -332,6 +344,14 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenModbusInfo, o
 							onClick={handleOpenAttackStatus}
 						>
 							Attack Status
+						</button>
+					)}
+					{showValueStream && (
+						<button
+							className="w-full text-left px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 font-bold border-b border-zinc-100 dark:border-zinc-700"
+							onClick={handleValueStream}
+						>
+							Value Stream
 						</button>
 					)}
 					<button

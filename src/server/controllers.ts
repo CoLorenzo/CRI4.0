@@ -463,6 +463,38 @@ export const readAttackLog = async (req: Request, res: Response) => {
     });
 };
 
+// Live "value stream" for an MQTT broker: subscribes to all topics with
+// mosquitto_sub inside the broker container, writing to /value_stream.log, then
+// returns the accumulated output. The subscriber is (re)started idempotently via
+// a pidfile guard so polling this endpoint never spawns duplicate subscribers.
+export const readValueStream = async (req: Request, res: Response) => {
+    const { container } = req.body;
+    if (!container) return res.status(400).json({ error: 'Container name required' });
+
+    const patterns = [
+        CURRENT_LAB ? `kathara_.*_${CURRENT_LAB.name}_${container}_` : `_${container}_`,
+        `_${container}_`
+    ];
+
+    let resolvedName: string | null = null;
+    for (const pattern of patterns) {
+        const name = await new Promise<string | null>(r => {
+            exec(`docker ps --filter name=${pattern} --format "{{.Names}}"`, (e, s) => r(s ? s.trim().split("\n")[0] : null));
+        });
+        if (name) { resolvedName = name; break; }
+    }
+
+    if (!resolvedName) return res.json({ log: '' });
+
+    // Start the subscriber only if it isn't already running (pidfile + kill -0).
+    const startCmd = `docker exec -d ${resolvedName} sh -c 'if [ ! -f /value_stream.pid ] || ! kill -0 "$(cat /value_stream.pid 2>/dev/null)" 2>/dev/null; then nohup mosquitto_sub -h 127.0.0.1 -p 1883 -t "#" -v > /value_stream.log 2>&1 & echo $! > /value_stream.pid; fi'`;
+    await new Promise<void>(r => exec(startCmd, () => r()));
+
+    exec(`docker exec ${resolvedName} tail -c 200000 /value_stream.log 2>/dev/null`, (err, stdout) => {
+        res.json({ log: err ? '' : stdout });
+    });
+};
+
 
 export const runSimulation = async (req: Request, res: Response) => {
     // Custom images may need to be pulled from Docker Hub — disable the socket
