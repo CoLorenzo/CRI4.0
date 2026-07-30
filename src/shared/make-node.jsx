@@ -818,7 +818,17 @@ done
             smoloki -b "http://10.1.0.254:3100" '{"job":"job","level":"info","host":"'"$HOSTNAME"'"}' '{"message":"ready"}'
           `;
       }
-      lab.file[`${machineName}.startup`] = header + ipSetup + (body ? body + "\n\n" : "") + extraCommands;
+      // For plain terminals/attackers the "ready" signal (in extraCommands) is the
+      // only workload; put it right after the network setup, BEFORE the user's
+      // startup body. Otherwise a body that blocks in the foreground (a scan loop,
+      // a listener) or exits non-zero under `set -euo pipefail` would abort the
+      // script before "ready" is ever sent, stalling the deploy modal forever.
+      // "ready" here just means "container up + network configured".
+      if (machine.type === "terminal" || machine.type === "attacker") {
+        lab.file[`${machineName}.startup`] = header + ipSetup + extraCommands + (body ? "\n" + body + "\n" : "");
+      } else {
+        lab.file[`${machineName}.startup`] = header + ipSetup + (body ? body + "\n\n" : "") + extraCommands;
+      }
     }
 
   }
