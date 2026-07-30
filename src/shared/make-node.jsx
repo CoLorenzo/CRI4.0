@@ -381,6 +381,63 @@ smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info","host":"'"$(host
       continue;
     }
 
+    if (machine.type === "mqtt_pub") {
+      const criJson = buildCriInterfaces(machine);
+      const safeJson = criJson.replace(/'/g, "'\\''");
+      const criBlock = [
+        `export CRI_INTERFACES='${safeJson}'`,
+        `cat > /root/.cri_env << '__CRI_ENV_EOF__'`,
+        `export CRI_INTERFACES='${safeJson}'`,
+        `__CRI_ENV_EOF__`,
+        `grep -qxF '. /root/.cri_env' /root/.bashrc 2>/dev/null || echo '. /root/.cri_env' >> /root/.bashrc`,
+      ].join("\n") + "\n\n";
+
+      // Publisher parameters come from the frontend (MqttPubFunctions). Embed them
+      // as single-quoted shell literals (' escaped) so spaces/special chars in the
+      // message are safe. Defaults mirror the values requested in the UI.
+      const cfg = machine.mqtt || {};
+      const sh = (v, dflt) => String(v === undefined || v === null || v === "" ? dflt : v).replace(/'/g, "'\\''");
+      const brokerAddr = sh(cfg.broker_addr, "10.0.0.1");
+      const brokerPort = sh(cfg.broker_port, "1883");
+      const topic = sh(cfg.topic, "test/topic");
+      const message = sh(cfg.message, '{"value": 100}');
+      const time = sh(cfg.time, "1");
+
+      const mqttScript = `#!/bin/sh\n\n` + criBlock +
+`echo "nameserver 8.8.8.8" > /etc/resolv.conf
+CRI_INTERFACES_LEN=$(echo $CRI_INTERFACES | jq "length")
+i=0
+while [ "\$i" -lt "\$CRI_INTERFACES_LEN" ]; do
+    CRIINTERFACE_NAME=$(echo $CRI_INTERFACES | jq -r ".[\$i].name")
+    CRIINTERFACE_ADDRESS=$(echo $CRI_INTERFACES | jq -r ".[\$i].address")
+
+    ip addr add \${CRIINTERFACE_ADDRESS} dev \${CRIINTERFACE_NAME}
+    ip link set \${CRIINTERFACE_NAME} up
+    echo "interface \${CRIINTERFACE_NAME} set with \${CRIINTERFACE_ADDRESS}"
+
+    i=\$((i + 1))
+done
+
+# Signal readiness before the (blocking) publish loop, otherwise the deploy
+# modal would wait forever.
+smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info","host":"'"$(hostname)"'"}' '{"message":"ready"}'
+
+BROKER_ADDR='${brokerAddr}'
+BROKER_PORT='${brokerPort}'
+TOPIC='${topic}'
+MESSAGE='${message}'
+TIME='${time}'
+
+while true; do
+    mosquitto_pub -h "\${BROKER_ADDR}" -p "\${BROKER_PORT}" -t "\${TOPIC}" -m "\${MESSAGE}"
+    sleep "\${TIME}"
+done
+`;
+
+      lab.file[`${machineName}.startup`] = mqttScript;
+      continue;
+    }
+
     if (machine.type === "netproxy") {
       const criJson = buildCriInterfaces(machine);
       const safeJson = criJson.replace(/'/g, "'\\''");
@@ -939,6 +996,9 @@ function makeLabConfFile(netkit, lab) {
       lab.file["lab.conf"] += `${machineName}[image]=icr/mosquitto\n`;
       lab.file["lab.conf"] += `${machineName}[port]="1883:1883/tcp"\n`;
       lab.file["lab.conf"] += `${machineName}[port]="9001:9001/tcp"\n`;
+    }
+    if (machine.type == "mqtt_pub") {
+      lab.file["lab.conf"] += `${machineName}[image]=icr/mqtt_pub\n`;
     }
     if (machine.type == "router") {
       if (machine.routingSoftware == "frr") {

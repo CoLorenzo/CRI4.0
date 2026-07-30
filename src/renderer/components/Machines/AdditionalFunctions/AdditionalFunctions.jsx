@@ -22,6 +22,7 @@ import { CustomMachineFunctions } from "./CustomMachineFunctions";
 import { CustomAttackFunctions } from "./CustomAttackFunctions";
 import { NetproxyFunctions } from "./NetproxyFunctions";
 import { DeviceFunctions } from "./DeviceFunctions";
+import { MqttPubFunctions } from "./MqttPubFunctions";
 
 export function AdditionalFunctions({ machine, machines, setMachines }) {
     return (
@@ -36,6 +37,12 @@ export function AdditionalFunctions({ machine, machines, setMachines }) {
                         />
                     case 'device':
                         return <DeviceFunctions
+                            machine={machine}
+                            machines={machines}
+                            setMachines={setMachines}
+                        />
+                    case 'mqtt_pub':
+                        return <MqttPubFunctions
                             machine={machine}
                             machines={machines}
                             setMachines={setMachines}

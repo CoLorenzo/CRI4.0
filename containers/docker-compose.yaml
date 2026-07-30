@@ -209,6 +209,9 @@ services:
   mosquitto:
     build: ./mosquitto
     image: icr/mosquitto
+  mqtt_pub:
+    build: ./mqtt_pub
+    image: icr/mqtt_pub
   netproxy:
     build:
       context: ..
