@@ -573,6 +573,8 @@ accept = ${in_addr}
 connect = ${out_addr}
 __EOF__
 
+smoloki -b http://10.1.0.254:3100 '{"job":"test","level":"info","host":"'"$(hostname)"'"}' '{"message":"ready"}' 2>/dev/null || true
+
 stunnel
 `;
       lab.file[`${machineName}.startup`] = header + ipSetup + tlsScript;
