@@ -249,6 +249,13 @@ function Topology() {
 
     console.log("✅ Launching attack args:", commandArgs);
 
+    // Long-running attacks (e.g. MQTT eavesdropping) launch in the background and
+    // return immediately; keep the button in "Stop Attack" state until the user
+    // stops them explicitly.
+    const isLongRunning =
+      typeof attacker.attackImage === "string" &&
+      attacker.attackImage.includes("mqtt-eavesdropping");
+
     setAttackInProgress(true);
 
     try {
@@ -265,7 +272,7 @@ function Topology() {
       } else {
         toast.success("Attack command sent (no output returned).");
       }
-      setAttackInProgress(false);
+      if (!isLongRunning) setAttackInProgress(false);
 
     } catch (e) {
       console.error("Attack error", e);
