@@ -20,6 +20,7 @@ import AttackStatusModal from "../components/AttackStatusModal";
 import ValueStreamModal from "../components/ValueStreamModal";
 import ErrorModal from "../components/ErrorModal";
 import { getMachineIps } from "../utils/ipUtils";
+import { isPhysicalSim, isHolderDevice } from "../utils/deviceAutoCreate";
 
 import { api } from "../api";
 
@@ -62,9 +63,11 @@ function Topology() {
     setShowSimulationBanner(true);
     setAttackInProgress(false);
     
-    // Initialize statuses to 'pending'
+    // Initialize statuses to 'pending'. Config holders are not deployed, so
+    // they never signal readiness and must not block the deploy modal.
+    const deployedMachines = machines.filter((m) => !isHolderDevice(m));
     const initialStatuses = {};
-    machines.forEach(m => {
+    deployedMachines.forEach(m => {
       initialStatuses[m.name] = 'pending';
     });
     setMachineStatuses(initialStatuses);
@@ -79,7 +82,7 @@ function Topology() {
         let allReady = true;
         const newStatuses = { ...currentStatuses };
         
-        for (const machine of machines) {
+        for (const machine of deployedMachines) {
           if (newStatuses[machine.name] !== 'ready') {
             try {
               const query = `{host="${machine.name}"} |= "ready"`;
@@ -351,6 +354,9 @@ function Topology() {
       (c) => c?.name && c?.content && !MAIN_CONFIGS.includes(c.name)
     );
 
+    // The physics simulator only serves the scenario configs, no Modbus.
+    if (isPhysicalSim(machine)) return [];
+
     // No uploads → the default scenario baked into icr/device is running
     if (configs.length === 0) {
       return [
@@ -437,6 +443,10 @@ function Topology() {
                     const machineName = nodeId.replace("machine-", "");
                     const machine = machines.find((m) => m.name === machineName);
                     if (!machine) return;
+
+                    // The physics simulator is the only device machine with a
+                    // web UI (port 8080); peripherals only serve Modbus.
+                    if (machine.type === "device" && !isPhysicalSim(machine)) return;
 
                     // OLD LOGIC (internal IP):
                     // const machineIps = getMachineIps(machines);
@@ -650,7 +660,7 @@ function Topology() {
             </p>
             
             <div className="text-left space-y-2 bg-gray-800 p-4 rounded-lg mt-2 mb-2 max-h-60 overflow-y-auto">
-              {machines.map(m => (
+              {machines.filter(m => !isHolderDevice(m)).map(m => (
                 <div key={m.name} className="flex justify-between items-center">
                   <span className="text-sm text-gray-300">{m.name} ({m.type || 'node'})</span>
                   <span>{machineStatuses[m.name] === 'ready' ? '🟢' : '🟡'}</span>

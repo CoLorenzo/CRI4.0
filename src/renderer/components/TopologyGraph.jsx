@@ -263,7 +263,12 @@ function TopologyGraph({ machines, onOpenTerminal, onOpenUI, onOpenModbusInfo, o
 		// Find the machine corresponding to the clicked node ID
 		// Note: ID format is "machine-" + name
 		const machineName = contextMenu.nodeId.replace("machine-", "");
-		return m.name === machineName && (m.type === "plc" || m.type === "scada" || m.type === "device");
+		// Only the physics simulator device machine serves a web UI; the
+		// peripherals (Modbus) do not.
+		if (m.type === "device") {
+			return m.name === machineName && m.device?.role === "physical-sim";
+		}
+		return m.name === machineName && (m.type === "plc" || m.type === "scada");
 	});
 
 	const showModbusInfo = contextMenu && machines.find(m => {

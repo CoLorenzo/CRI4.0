@@ -5,6 +5,7 @@ import { RadioGroup, Radio } from "@nextui-org/radio";
 import { Input } from "@nextui-org/input";
 import { CheckboxGroup, Checkbox, Button } from "@nextui-org/react";
 import { MdFileUpload, MdDelete, MdSearch } from "react-icons/md";
+import { isHolderDevice } from "../../../utils/deviceAutoCreate";
 
 function SineWaveGraph({ period, amplitude, tempOffset }) {
     const p = parseFloat(period) || 10;
@@ -94,6 +95,8 @@ export function IndustrialFunctions({ machine, machines, setMachines }) {
     const availableMachinesForPlc = machines.filter((m) => {
         if (!industrialTypes.includes(m.type)) return false;
         if (m.id === machine.id) return false;
+        // Config holders are not deployed, so they cannot be monitored.
+        if (isHolderDevice(m)) return false;
 
         const mEth0Domain = m.interfaces?.if?.[0]?.eth?.domain;
         return mEth0Domain && mEth0Domain === machineEth0Domain;

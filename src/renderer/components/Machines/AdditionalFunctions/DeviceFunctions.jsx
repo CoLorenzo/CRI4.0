@@ -3,8 +3,7 @@
 /* eslint-disable prettier/prettier */
 import { Button } from "@nextui-org/react";
 import { MdFileUpload, MdDelete, MdDescription } from "react-icons/md";
-
-const MAIN_CONFIGS = ["simulation.json", "gateway.json", "visualization.json"];
+import { MAIN_CONFIGS, syncDeviceMachines } from "../../../utils/deviceAutoCreate";
 
 export function DeviceFunctions({ machine, machines, setMachines }) {
     const configs = machine.device?.configs || [];
@@ -18,33 +17,37 @@ export function DeviceFunctions({ machine, machines, setMachines }) {
             })
         );
         Promise.all(readers).then((newConfigs) => {
-            setMachines(machines.map((m) => {
-                if (m.id === machine.id) {
-                    // Replace files with the same name, append the others
-                    const merged = [
-                        ...configs.filter((c) => !newConfigs.some((n) => n.name === c.name)),
-                        ...newConfigs,
-                    ];
-                    return { ...m, device: { ...(m.device || {}), configs: merged } };
-                }
-                return m;
-            }));
+            setMachines((prev) =>
+                syncDeviceMachines(prev.map((m) => {
+                    if (m.id === machine.id) {
+                        // Replace files with the same name, append the others
+                        const merged = [
+                            ...configs.filter((c) => !newConfigs.some((n) => n.name === c.name)),
+                            ...newConfigs,
+                        ];
+                        return { ...m, device: { ...(m.device || {}), configs: merged } };
+                    }
+                    return m;
+                }))
+            );
         });
     };
 
     const removeFile = (name) => {
-        setMachines(machines.map((m) => {
-            if (m.id === machine.id) {
-                return {
-                    ...m,
-                    device: {
-                        ...(m.device || {}),
-                        configs: configs.filter((c) => c.name !== name),
-                    },
-                };
-            }
-            return m;
-        }));
+        setMachines((prev) =>
+            syncDeviceMachines(prev.map((m) => {
+                if (m.id === machine.id) {
+                    return {
+                        ...m,
+                        device: {
+                            ...(m.device || {}),
+                            configs: configs.filter((c) => c.name !== name),
+                        },
+                    };
+                }
+                return m;
+            }))
+        );
     };
 
     const missingMain = MAIN_CONFIGS.filter((name) => !configs.some((c) => c.name === name));
@@ -55,7 +58,8 @@ export function DeviceFunctions({ machine, machines, setMachines }) {
             <p className="text-xs text-default-400">
                 Upload <code>simulation.json</code>, <code>gateway.json</code>,{" "}
                 <code>visualization.json</code> and one JSON file per Modbus device.
-                Without uploads the default scenario is used.
+                A <code>physical_simulator</code> machine (10.2.x.x) and one
+                machine per device config are created automatically.
             </p>
 
             <div className="relative group">

@@ -1,6 +1,7 @@
 import { CheckboxGroup, Checkbox, Tabs, Tab } from "@nextui-org/react";
 import { Input } from "@nextui-org/input";
 import { MdSearch, MdFileUpload } from "react-icons/md";
+import { isHolderDevice } from "../../../utils/deviceAutoCreate";
 
 export function ScadaFunctions({ machine, machines, setMachines }) {
     // Find all industrial machines on the same subnet (same eth0 domain)
@@ -26,6 +27,8 @@ export function ScadaFunctions({ machine, machines, setMachines }) {
         if (!industrialTypes.includes(m.type)) return false;
         // Exclude self
         if (m.id === machine.id) return false;
+        // Config holders are not deployed, so they cannot be monitored.
+        if (isHolderDevice(m)) return false;
 
         // Check if the machine is on the same eth0 domain (subnet)
         const mEth0Domain = m.interfaces?.if?.[0]?.eth?.domain;

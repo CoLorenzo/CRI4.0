@@ -12,6 +12,8 @@
 /* eslint-disable camelcase */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable prettier/prettier */
+import { isHolderDevice } from '../utils/deviceAutoCreate';
+
 const
 	LENGTH_MAIN = 350;
 	const LENGTH_SERVER = 150;
@@ -123,6 +125,8 @@ function generate_nodes_edges(lab, ifNameAt, ifOspfCost, routingLabel) {
 	for (let m in lab) {
 		let machine = lab[m];
 		if (machine.name === "") continue;
+		// Config holders are not deployed and must not appear in the topology.
+		if (isHolderDevice(machine)) continue;
 		// each machine is a node. beware of duplicates
 		let id = "machine-" + machine.name;
 		if (!containsNodeWithID(id, nodes)) {

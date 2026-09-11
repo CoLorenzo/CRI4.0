@@ -1,6 +1,13 @@
 #!/bin/sh
-# Launches the physics simulation and one peripheral process per device
-# config file found in the scenario directory.
+# Device machine launcher.
+#
+# Two roles, selected with the DEVICE_MODE env var (set in lab.conf by the
+# generated lab):
+#   physical-sim  → runs the physics simulation + gateway + web UI, using the
+#                   main scenario configs (simulation/gateway/visualization).
+#   peripheral    → runs a single peripheral binary (e.g. temp-sensor) from the
+#                   device config shipped to /scenario, connecting to the
+#                   physics simulator over netstream (NETSTREAM_ADDR).
 #
 # The scenario directory defaults to /scenario. User-provided configs are
 # copied there by the Kathara startup script; if the directory is missing
@@ -8,8 +15,45 @@
 
 SCENARIO_DIR="${SCENARIO_DIR:-/scenario}"
 DEFAULTS_DIR="/scenario-defaults"
+MODE="${DEVICE_MODE:-physical-sim}"
 
 mkdir -p "$SCENARIO_DIR"
+
+if [ "$MODE" = "peripheral" ]; then
+    # Launch the (single) peripheral device config shipped to /scenario.
+    for DEVICE_FILE in "$SCENARIO_DIR"/*.json; do
+        BASENAME=$(basename "$DEVICE_FILE")
+        case "$BASENAME" in
+            simulation.json|gateway.json|visualization.json) continue ;;
+        esac
+
+        DEVICE_TYPE=$(jq -r '.device_type' "$DEVICE_FILE")
+
+        case "$DEVICE_TYPE" in
+            TempSensor)     BIN="temp-sensor" ;;
+            ValveActuator)  BIN="valve-actuator" ;;
+            *)
+                echo "[device] SKIP $BASENAME: no driver for '$DEVICE_TYPE'"
+                continue
+                ;;
+        esac
+
+        # Point the peripheral at the (possibly remote) physics simulator. The
+        # shipped config keeps its pristine value; we rewrite it at runtime.
+        if [ -n "$NETSTREAM_ADDR" ]; then
+            jq --arg a "$NETSTREAM_ADDR" '.netstream_addr = $a' "$DEVICE_FILE" > /tmp/device.json \
+                && mv /tmp/device.json "$DEVICE_FILE"
+        fi
+
+        echo "[device] launching $BIN --config $DEVICE_FILE"
+        "$BIN" --config "$DEVICE_FILE" &
+    done
+
+    wait
+    exit 0
+fi
+
+# ── physical-sim mode (default) ────────────────────────────────────────────
 
 # Fall back to the default scenario if the user did not provide one
 for MAIN in simulation.json gateway.json visualization.json; do
@@ -18,57 +62,10 @@ for MAIN in simulation.json gateway.json visualization.json; do
     fi
 done
 
-# If no device config was provided, use the default peripherals too
-HAS_DEVICE=0
-for f in "$SCENARIO_DIR"/*.json; do
-    case "$(basename "$f")" in
-        simulation.json|gateway.json|visualization.json) continue ;;
-        *) HAS_DEVICE=1 ;;
-    esac
-done
-if [ "$HAS_DEVICE" -eq 0 ]; then
-    for f in "$DEFAULTS_DIR"/*.json; do
-        case "$(basename "$f")" in
-            simulation.json|gateway.json|visualization.json) continue ;;
-            *) cp "$f" "$SCENARIO_DIR/" ;;
-        esac
-    done
-fi
-
 echo "[device] starting physics-sim"
 physics-sim \
     --sim-cfg "$SCENARIO_DIR/simulation.json" \
     --net-cfg "$SCENARIO_DIR/gateway.json" \
     --vis-cfg "$SCENARIO_DIR/visualization.json" &
-
-sleep 1
-
-# Launch the matching peripheral binary for every device config file
-for DEVICE_FILE in "$SCENARIO_DIR"/*.json; do
-    BASENAME=$(basename "$DEVICE_FILE")
-    case "$BASENAME" in
-        simulation.json|gateway.json|visualization.json) continue ;;
-    esac
-
-    DEVICE_TYPE=$(jq -r '.device_type' "$DEVICE_FILE")
-
-    case "$DEVICE_TYPE" in
-        TempSensor)     BIN="temp-sensor" ;;
-        ValveActuator)  BIN="valve-actuator" ;;
-        HydraulicLine|ThermalTank)
-            # No dedicated driver yet: these device types are simulated by
-            # physics-sim itself and exposed through the generic peripherals.
-            echo "[device] SKIP $BASENAME: no driver for '$DEVICE_TYPE'"
-            continue
-            ;;
-        *)
-            echo "[device] SKIP $BASENAME: unknown device_type '$DEVICE_TYPE'"
-            continue
-            ;;
-    esac
-
-    echo "[device] launching $BIN --config $DEVICE_FILE"
-    "$BIN" --config "$DEVICE_FILE" &
-done
 
 wait

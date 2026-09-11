@@ -1,5 +1,13 @@
 // src/shared/make-node.js
 import AdmZip from "adm-zip";
+import {
+  MAIN_CONFIGS,
+  NETSTREAM_PORT,
+  isHolderDevice,
+  isPhysicalSim,
+  isPeripheral,
+  getPhysSimIp,
+} from "../renderer/utils/deviceAutoCreate";
 
 /** ───────────────── Helpers identici al renderer (adattati a Node) ───────────────── */
 
@@ -61,6 +69,9 @@ function getDeviceModbusEndpoints(machine) {
   const configs = (machine.device?.configs || []).filter(
     (c) => c?.name && c?.content && !MAIN_CONFIGS.includes(c.name)
   );
+
+  // The physics simulator only serves the scenario configs, no Modbus servers.
+  if (isPhysicalSim(machine)) return [];
 
   if (configs.length === 0) {
     return [
@@ -149,6 +160,8 @@ function makeStartupFiles(netkit, lab) {
   let collectorIpCounter = 1; // New counter for 10.1.0.X subnet
 
   for (let machine of netkit) {
+    // Config holders are not deployed: they only hold the uploaded scenario.
+    if (machine.type === "device" && isHolderDevice(machine)) continue;
     const rawName = machine.type === "attacker" ? (machine.name || "attacker") : machine.name;
     const machineName = String(rawName || "node").replace(/[^\w.-]/g, "_");
 
@@ -175,6 +188,8 @@ function makeStartupFiles(netkit, lab) {
 
   // 2. Generate startup files
   for (let machine of netkit) {
+    // Config holders are not deployed: skip their startup generation.
+    if (machine.type === "device" && isHolderDevice(machine)) continue;
     const rawName = machine.type === "attacker" ? (machine.name || "attacker") : machine.name;
     const machineName = String(rawName || "node").replace(/[^\w.-]/g, "_");
 
@@ -1037,7 +1052,11 @@ function makeLabConfFile(netkit, lab) {
   //solo prime due righe e quarta
   //quando partito, fare NEL MAIN lconfig .... e poi eseguire all'interno i due comandi ip addr ed ip link
 
+  const physSimIp = getPhysSimIp(netkit.find((m) => isPhysicalSim(m)) || {});
+
   for (let machine of netkit) {
+    // Config holders are not deployed: they only hold the uploaded scenario.
+    if (machine.type === "device" && isHolderDevice(machine)) continue;
     // Nome “forzato” e sanificato per evitare slash ecc.
     const rawName =
       machine.type === "attacker" ? (machine.name || "attacker") :
@@ -1075,8 +1094,15 @@ function makeLabConfFile(netkit, lab) {
     if (machine.type == "netproxy") { lab.file["lab.conf"] += `${machineName}[image]=icr/netproxy\n`; }
     if (machine.type == "device") {
       lab.file["lab.conf"] += `${machineName}[image]=icr/device\n`;
-      // physics-sim web UI (only one device machine can map the host port)
-      lab.file["lab.conf"] += `${machineName}[port]="8080:8080/tcp"\n`;
+      if (isPhysicalSim(machine)) {
+        // physics-sim web UI (only the physical simulator maps the host port)
+        lab.file["lab.conf"] += `${machineName}[env]="DEVICE_MODE=physical-sim"\n`;
+        lab.file["lab.conf"] += `${machineName}[port]="8080:8080/tcp"\n`;
+      } else if (isPeripheral(machine)) {
+        // Peripherals connect to the physics simulator over netstream.
+        lab.file["lab.conf"] += `${machineName}[env]="DEVICE_MODE=peripheral"\n`;
+        lab.file["lab.conf"] += `${machineName}[env]="NETSTREAM_ADDR=${physSimIp}:${NETSTREAM_PORT}"\n`;
+      }
     }
     if (machine.type == "mosquitto") {
       lab.file["lab.conf"] += `${machineName}[image]=icr/mosquitto\n`;
@@ -1359,6 +1385,8 @@ export async function generateZipNode(machines, labInfo, outPath) {
     }
 
     if (machine.type === 'device' && Array.isArray(machine.device?.configs)) {
+      // Config holders are not deployed, so their configs must not be shipped.
+      if (isHolderDevice(machine)) continue;
       const machineName = String(machine.name || "device").replace(/[^\w.-]/g, "_");
       for (const cfg of machine.device.configs) {
         if (!cfg?.name || !cfg?.content) continue;
