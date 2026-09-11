@@ -56,5 +56,17 @@ echo "[mqtt-eavesdropping] broker=${BROKER_ADDR}:${BROKER_PORT} topic=${SUBTOPIC
 # Fluent Bit tails the stream file (background).
 fluent-bit -c "${CONF_FILE}" &
 
+SUB_ARGS="-h ${BROKER_ADDR} -p ${BROKER_PORT} -t ${SUBTOPIC}"
+
+# TLS fallback: when the broker sits behind the TLS termination proxy, subscribe
+# over TLS (the proxy forwards SUBSCRIBE/PUBLISH to the broker); otherwise use
+# plaintext MQTT for direct brokers.
+if [ -f /rootCA.pem ] && timeout 8 mosquitto_sub --cafile /rootCA.pem --insecure ${SUB_ARGS} -C 1 -W 4 > /dev/null 2>&1; then
+    echo "[mqtt-eavesdropping] broker accepts TLS, eavesdropping securely"
+    # Subscribe and append every message to the stream file (keeps this script alive).
+    exec mosquitto_sub --cafile /rootCA.pem --insecure ${SUB_ARGS} -v >> "${STREAM_FILE}"
+fi
+
+echo "[mqtt-eavesdropping] TLS not available, falling back to plaintext"
 # Subscribe and append every message to the stream file (keeps this script alive).
-mosquitto_sub -h "${BROKER_ADDR}" -p "${BROKER_PORT}" -t "${SUBTOPIC}" -v >> "${STREAM_FILE}"
+exec mosquitto_sub ${SUB_ARGS} -v >> "${STREAM_FILE}"

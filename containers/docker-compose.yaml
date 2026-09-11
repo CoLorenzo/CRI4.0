@@ -182,7 +182,9 @@ services:
       - NET_ADMIN
       - NET_RAW
   sniffing-mqtt-eavesdropping:
-    build: ./sniffing/mqtt-eavesdropping
+    build:
+      context: ..
+      dockerfile: ./containers/sniffing/mqtt-eavesdropping/Dockerfile
     image: icr/sniffing-mqtt-eavesdropping
     profiles:
       - kali
@@ -213,7 +215,9 @@ services:
     build: ./mosquitto
     image: icr/mosquitto
   mqtt_pub:
-    build: ./mqtt_pub
+    build:
+      context: ..
+      dockerfile: ./containers/mqtt_pub/Dockerfile
     image: icr/mqtt_pub
   netproxy:
     build:

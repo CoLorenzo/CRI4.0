@@ -391,7 +391,10 @@ while [ "\$i" -lt "\$CRI_INTERFACES_LEN" ]; do
     i=\$((i + 1))
 done
 
-mkdir -p /mosquitto/config /mosquitto/data /mosquitto/log
+mkdir -p /mosquitto/config /mosquitto/data /mosquitto/log /mosquitto/certs
+openssl req -x509 -newkey rsa:2048 -keyout /mosquitto/certs/server.key -out /mosquitto/certs/server.crt -days 3650 -nodes -subj "/CN=${machineName}-mosquitto" 2>/dev/null
+chmod 644 /mosquitto/certs/server.crt
+chmod 600 /mosquitto/certs/server.key
 ${authSetup}cat > /mosquitto/config/mosquitto.conf << '__MOSQ_EOF__'
 ${userDirective}per_listener_settings true
 
@@ -400,6 +403,11 @@ ${listenerAuth}
 
 listener 9001
 protocol websockets
+${listenerAuth}
+
+listener 8883
+certfile /mosquitto/certs/server.crt
+keyfile /mosquitto/certs/server.key
 ${listenerAuth}
 
 listener 1884 127.0.0.1
@@ -465,10 +473,50 @@ MESSAGE='${message}'
 TIME='${time}'
 USERNAME='${username}'
 PASSWORD='${password}'
+AUTH_ARGS=\${USERNAME:+-u "\$USERNAME" -P "\$PASSWORD"}
+
+# Install wait4x (via Homebrew) if missing so we can wait for the broker/proxy.
+if ! command -v wait4x >/dev/null 2>&1; then
+    if [ "$(id -u)" -ne 0 ]; then
+        if ! command -v brew >/dev/null 2>&1; then
+            apt-get update
+            apt-get install -y curl git
+            yes "" | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            tee -a ~/.bashrc > /dev/null << '__HOMEBREW_EOF__'
+if [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
+__HOMEBREW_EOF__
+            . ~/.bashrc 2>/dev/null || true
+        fi
+        brew install -y wait4x 2>/dev/null || true
+    fi
+fi
+# Homebrew refuses to run as root (kathara containers do), so fall back to the
+# official static binary when wait4x is still missing.
+if ! command -v wait4x >/dev/null 2>&1; then
+    curl -fsSL -o /tmp/wait4x.tgz https://github.com/wait4x/wait4x/releases/download/v3.7.1/wait4x-linux-amd64.tar.gz
+    tar -xzf /tmp/wait4x.tgz -C /usr/local/bin wait4x
+    chmod +x /usr/local/bin/wait4x
+fi
+
+# Wait until the broker (or its TLS proxy) is accepting connections.
+wait4x tcp "\${BROKER_ADDR}:\${BROKER_PORT}" --timeout 90s
+
+# TLS fallback: if the broker/proxy accepts a TLS connection, publish securely;
+# otherwise fall back to plaintext MQTT.
+TLS_ARGS=""
+if timeout 5 mosquitto_pub --cafile /rootCA.pem --insecure \
+    -h "\$BROKER_ADDR" -p "\$BROKER_PORT" \$AUTH_ARGS -t "\$TOPIC" -m "\$MESSAGE" > /dev/null 2>&1; then
+    TLS_ARGS="--cafile /rootCA.pem --insecure"
+    echo "[mqtt_pub] broker accepts TLS, publishing securely"
+else
+    echo "[mqtt_pub] broker does not accept TLS, falling back to plaintext"
+fi
 
 while true; do
-    mosquitto_pub -h "\${BROKER_ADDR}" -p "\${BROKER_PORT}" \${USERNAME:+-u "$USERNAME" -P "$PASSWORD"} -t "\${TOPIC}" -m "\${MESSAGE}"
-    sleep "\${TIME}"
+    mosquitto_pub \$TLS_ARGS -h "\$BROKER_ADDR" -p "\$BROKER_PORT" \$AUTH_ARGS -t "\$TOPIC" -m "\$MESSAGE"
+    sleep "\$TIME"
 done
 `;
 
@@ -565,8 +613,6 @@ options = NO_SSLv3
 options = NO_COMPRESSION
 pid = /var/run/stunnel.pid
 foreground = no
-sudo nft delete table ip nat
-
 
 [section]
 accept = ${in_addr}

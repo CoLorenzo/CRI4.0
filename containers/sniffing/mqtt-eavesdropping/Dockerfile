@@ -26,5 +26,8 @@ RUN uv pip install requests smoloki \
  && printf '#!/bin/sh\nexec uv run smoloki "$@"\n' > /usr/local/bin/smoloki \
  && chmod +x /usr/local/bin/smoloki
 
-COPY mqtt-eavesdropping.sh /usr/local/bin/mqtt-eavesdropping.sh
+COPY containers/sniffing/mqtt-eavesdropping/mqtt-eavesdropping.sh /usr/local/bin/mqtt-eavesdropping.sh
 RUN chmod +x /usr/local/bin/mqtt-eavesdropping.sh
+
+# mkcert root CA so mosquitto_sub can eavesdrop through the TLS termination proxy.
+COPY containers/tls_termination_proxy/rootCA.pem /rootCA.pem
