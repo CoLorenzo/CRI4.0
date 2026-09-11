@@ -73,6 +73,17 @@ app.use((req, res, next) => {
     next();
 });
 
+// In web mode the Express process only exposes the API (port 3001); the React
+// UI is served by the webpack dev server (port 1212). Redirect the API root so
+// opening http://localhost:3001/ in a browser lands on the UI instead of
+// Express's default "Cannot GET /".
+if (process.env.NODE_ENV !== 'production') {
+    const webUiPort = parseInt(process.env.PORT || '1212', 10);
+    app.get('/', (_req, res) => {
+        res.redirect(`http://127.0.0.1:${webUiPort}/`);
+    });
+}
+
 // Serve static files from the React app (if built) or just API for now
 // In development, we'll run this alongside the webpack dev server.
 // In production web mode, we might want to serve static files too.
