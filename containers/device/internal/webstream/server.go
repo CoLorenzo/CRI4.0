@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io/fs"
 	"log/slog"
+	"math"
 	"net"
 	"mime"
 	"net/http"
@@ -77,6 +78,24 @@ func (s *Server) handleTopology(w http.ResponseWriter, _ *http.Request) {
 	_ = json.NewEncoder(w).Encode(cfg)
 }
 
+// sanitizeSnapshot sostituisce i valori non-finiti (NaN/±Inf) con 0, così lo
+// snapshot resta sempre serializzabile in JSON (vedi handleSSEStream).
+func sanitizeSnapshot(snapshot map[string]physics.RuntimeSnapshot) {
+	for comp, state := range snapshot {
+		for k, v := range state.Inputs {
+			if math.IsNaN(v) || math.IsInf(v, 0) {
+				state.Inputs[k] = 0
+			}
+		}
+		for k, v := range state.Outputs {
+			if math.IsNaN(v) || math.IsInf(v, 0) {
+				state.Outputs[k] = 0
+			}
+		}
+		snapshot[comp] = state
+	}
+}
+
 func (s *Server) handleVisualization(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(s.visualConfBytes)
@@ -110,6 +129,12 @@ func (s *Server) handleSSEStream(w http.ResponseWriter, r *http.Request) {
 		case <-ticker.C:
 			// Estraiamo la fotografia istantanea totale delle variabili in RAM dall'Engine
 			snapshot := s.engine.GetRuntimeSnapshot()
+
+			// json.Marshal fallisce (e lo stream resterebbe muto) se un valore è
+			// NaN/±Inf (es. una costante di tempo del sensore più piccola del
+			// passo di integrazione). Sanitizziamo i non-finiti per non lasciare
+			// la dashboard su "Waiting for data...".
+			sanitizeSnapshot(snapshot)
 
 			// Serializziamo in formato JSON compatto
 			payload, err := json.Marshal(snapshot)

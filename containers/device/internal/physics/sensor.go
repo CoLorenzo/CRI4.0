@@ -40,7 +40,15 @@ func (s *Thermowell) Tick(dt float64) {
 
 	// Equazione differenziale discretizzata del primo ordine:
 	// dT_meas/dt = (T_real - T_meas) / Tau
-	deltaMeas := ((s.RealTemperature - currentMeas) / s.Tau) * dt
+	//
+	// Usiamo il fattore alpha = dt/Tau CLAMPATO a 1: l'Eulero esplicito di una
+	// costante di tempo più piccola del passo di integrazione (Tau < dt) è
+	// instabile e diverge a ±Inf/NaN, bloccando lo snapshot SSE del simulatore.
+	alpha := dt / s.Tau
+	if alpha > 1 {
+		alpha = 1
+	}
+	deltaMeas := (s.RealTemperature - currentMeas) * alpha
 
 	s.MeasuredTemperature.Next = currentMeas + deltaMeas
 }
