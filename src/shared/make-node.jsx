@@ -660,6 +660,9 @@ stunnel
           for (const monitoredId of machine.industrial.monitored_machines) {
             const targetMachine = netkit.find(m => m.id === monitoredId);
             if (targetMachine) {
+              // Config holders are not deployed: skip them so they don't shift
+              // the OpenPLC Modbus device order (and the %IW/%QW addresses).
+              if (isHolderDevice(targetMachine)) continue;
               // Determine IP address: use Industrial Network (eth1)
               let targetIp = null;
               const eth1Interface = targetMachine.interfaces?.if?.find((i) => i.eth?.number === 1);
@@ -749,6 +752,9 @@ stunnel
           for (const monitoredId of machine.industrial.monitored_machines) {
             const targetMachine = netkit.find(m => m.id === monitoredId);
             if (targetMachine) {
+              // Config holders are not deployed: skip them so the SCADA
+              // auto-discovery only sees real Modbus servers.
+              if (isHolderDevice(targetMachine)) continue;
               let targetIp = null;
               const eth1Interface = targetMachine.interfaces?.if?.find((i) => i.eth?.number === 1);
               if (eth1Interface && eth1Interface.ip) {

@@ -146,8 +146,13 @@ function buildPhysicalSim(existing, mainConfigs) {
 }
 
 function ensurePhysSimInterface(interfaces) {
-  const ifs = interfaces?.if || [];
-  if (ifs.some((i) => i?.eth?.domain === PHYS_SIM_DOMAIN)) return interfaces;
+  // Drop blank placeholder interfaces (no domain AND no IP): they would turn
+  // into non-sequential eth numbers after toNetkitFormat renumbering, making
+  // Kathara fail with "Interface N missing on device <name>".
+  const ifs = (interfaces?.if || []).filter((i) => i?.eth?.domain || i?.ip);
+  if (ifs.some((i) => i?.eth?.domain === PHYS_SIM_DOMAIN)) {
+    return { ...interfaces, if: ifs, counter: ifs.length };
+  }
   return {
     counter: ifs.length + 1,
     if: [
@@ -164,25 +169,44 @@ function ensurePhysSimInterface(interfaces) {
 
 function buildPeripheral(existing, peripheral, physIfaceIp, industrialDomain, industrialIp) {
   const base = existing || { id: uuidv4(), ...backboneModel, name: peripheral.name };
-  const interfaces =
-    existing && existing.interfaces?.if?.length
-      ? existing.interfaces
-      : {
-          counter: 2,
-          if: [
+  // Reuse the user's configured interfaces, dropping blank placeholders and
+  // ensuring the PHYSSIM interface (netstream to the physics simulator) exists.
+  const meaningfulIfs = (existing?.interfaces?.if || []).filter((i) => i?.eth?.domain || i?.ip);
+  let interfaces;
+  if (meaningfulIfs.length > 0) {
+    const hasPhys = meaningfulIfs.some((i) => i?.eth?.domain === PHYS_SIM_DOMAIN);
+    interfaces = {
+      counter: meaningfulIfs.length + (hasPhys ? 0 : 1),
+      if: hasPhys
+        ? meaningfulIfs
+        : [
+            ...meaningfulIfs,
             {
-              eth: { number: 0, domain: industrialDomain },
-              ip: industrialIp || '',
-              name: '',
-            },
-            {
-              eth: { number: 1, domain: PHYS_SIM_DOMAIN },
+              eth: { number: meaningfulIfs.length, domain: PHYS_SIM_DOMAIN },
               ip: physIfaceIp,
               name: '',
             },
           ],
-          free: '',
-        };
+      free: existing.interfaces?.free || '',
+    };
+  } else {
+    interfaces = {
+      counter: 2,
+      if: [
+        {
+          eth: { number: 0, domain: industrialDomain },
+          ip: industrialIp || '',
+          name: '',
+        },
+        {
+          eth: { number: 1, domain: PHYS_SIM_DOMAIN },
+          ip: physIfaceIp,
+          name: '',
+        },
+      ],
+      free: '',
+    };
+  }
 
   return {
     ...base,
